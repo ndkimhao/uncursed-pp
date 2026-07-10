@@ -129,3 +129,26 @@ def test_mixed_file_and_directory_inputs(tmp_path):
     lone = tmp_path / "lone.uncursed"
     lone.write_text(PASSING)
     assert _run([str(lone), str(d)]) == 0
+
+
+def test_multi_file_output_has_separators_and_summary(tmp_path, capsys):
+    good = tmp_path / "good.uncursed"
+    good.write_text(PASSING)
+    bad = tmp_path / "bad.uncursed"
+    bad.write_text("@macro ID(x)\n{{x}}\n@endmacro\n#?  ID(7)\n#=>     8\n")
+    also = tmp_path / "also.uncursed"
+    also.write_text(PASSING)
+    assert _run([str(good), str(bad), str(also)]) == 1
+    out = capsys.readouterr().out
+    # a blank line separates file sections
+    assert "specs passed\n\nok" in out or "specs passed\n\nFAIL" in out
+    # grand summary with totals and the failing files called out
+    assert "3 files: 2/3 specs passed" in out
+    assert "FAILED bad.uncursed" in out or f"FAILED {bad}" in out
+
+
+def test_single_file_has_no_grand_summary(tmp_path, capsys):
+    src = tmp_path / "one.uncursed"
+    src.write_text(PASSING)
+    assert _run([str(src)]) == 0
+    assert "files:" not in capsys.readouterr().out

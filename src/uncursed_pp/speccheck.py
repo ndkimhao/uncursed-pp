@@ -285,8 +285,12 @@ def main(argv: list[str] | None = None) -> None:
         else:
             paths.append(p)
 
-    any_failed = False
-    for path in paths:
+    total_passed = 0
+    total_specs = 0
+    failed_files: list[tuple[Path, int, int]] = []  # (path, passed, total)
+    for n, path in enumerate(paths):
+        if n:
+            print()  # blank line between file sections
         try:
             results = check_file(
                 path,
@@ -305,11 +309,19 @@ def main(argv: list[str] | None = None) -> None:
         for r in results:
             print(f"{'ok  ' if r.ok else 'FAIL'}  {r.invocation}")
             if not r.ok:
-                any_failed = True
                 for line in r.detail.splitlines():
                     print(f"      {line}")
         print(f"{path}: {passed}/{len(results)} specs passed")
-    raise SystemExit(1 if any_failed else 0)
+        total_passed += passed
+        total_specs += len(results)
+        if passed != len(results):
+            failed_files.append((path, passed, len(results)))
+    if len(paths) > 1:
+        print()
+        print(f"{len(paths)} files: {total_passed}/{total_specs} specs passed")
+        for path, passed, total in failed_files:
+            print(f"FAILED {path} ({passed}/{total})")
+    raise SystemExit(1 if failed_files else 0)
 
 
 if __name__ == "__main__":
