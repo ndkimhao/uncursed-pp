@@ -1,0 +1,23 @@
+# ── stringize(): C strings from computed tokens ──────────────────────
+#
+# The C `#` operator only stringizes DIRECT macro parameters. For
+# anything computed — a loop variable, a tuple element, a concat()
+# result — use {{stringize(x)}}, which compiles to BOOST_PP_STRINGIZE
+# and works on the token's final value.
+#
+# Scenario: an error-name table indexed by the enum value itself.
+
+macro DEFINE_ERROR_NAMES(codes: seq<token>)
+static const char *error_name[] = {
+@for c in codes
+  [{{c}}] = {{stringize(c)}},
+@end
+};
+end
+
+#?  DEFINE_ERROR_NAMES((E_OK)(E_IO)(E_NOMEM))
+#=>     static const char *error_name[] = {
+#=>         [E_OK] = "E_OK",
+#=>         [E_IO] = "E_IO",
+#=>         [E_NOMEM] = "E_NOMEM",
+#=>     };
