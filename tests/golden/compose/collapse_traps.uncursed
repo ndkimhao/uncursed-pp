@@ -1,0 +1,83 @@
+# Merge-machinery regression traps (ultracode review fixes). Three ways
+# the collapse pass used to hijack lookalikes:
+#   1. macro A's chain family (UNCURSED_PP_A_CH1_) merging with B's must
+#      not rewrite the FRONT of a macro literally named A_CH1's own
+#      machinery (UNCURSED_PP_A_CH1_EACH1, UNCURSED_PP_A_CH1_CH1_<n>);
+#   2. @if branch helpers whose user params happen to spell "r, d, e"
+#      own no spare data slot and must not be d-slot-parameterized;
+#   3. loop bodies differing only in a lone paren must stay unmerged -
+#      splicing '(' as FOR_EACH data unbalances the argument list.
+@macro A($xs: seq<token>)
+@for $x in $xs
+f({{$x}});
+@end
+@endmacro
+
+@macro B($ys: seq<token>)
+@for $y in $ys
+f({{$y}});
+@end
+@endmacro
+
+@macro A_CH1($zs: seq<token>)
+@for $z in $zs
+g({{$z}});
+@end
+@endmacro
+
+@macro IA($r: token, $d: token, $e: token, $fs: seq<token>)
+@for $f in $fs
+@if $f == 1
+use({{$r}});
+@else
+alt({{$d}}, {{$e}});
+@end
+@end
+@endmacro
+
+@macro IB($r: token, $d: token, $e: token, $fs: seq<token>)
+@for $f in $fs
+@if $f == 1
+use2({{$r}});
+@else
+alt({{$d}}, {{$e}});
+@end
+@end
+@endmacro
+
+@macro OA($xs: seq<token>)
+@for $x in $xs
+call {{$x}} (
+@end
+@endmacro
+
+@macro OB($ys: seq<token>)
+@for $y in $ys
+call {{$y}} )
+@end
+@endmacro
+
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
+#?  A((a)(b))
+#=>     f(a); f(b);
+
+#?  B((u)(v))
+#=>     f(u); f(v);
+
+# trap 1: the lookalike macro still expands after A+B's family merge
+#?  A_CH1((z)(w))
+#=>     g(z); g(w);
+
+# trap 2: branch helpers with user-named r/d/e params stay intact
+#?  IA(R, D, E, (1)(2))
+#=>     use(R); alt(D, E);
+
+#?  IB(R, D, E, (1))
+#=>     use2(R);
+
+# trap 3: lone-paren bodies expand verbatim (never merged through d)
+#?  OA((p))
+#=>     call p (
+
+#?  OB((q))
+#=>     call q )
