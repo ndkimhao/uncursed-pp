@@ -28,6 +28,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="CURSEDPP_",
         help="prefix for generated helper macros (default: CURSEDPP_)",
     )
+    parser.add_argument(
+        "--runtime-name",
+        default=None,
+        help="filename of the shared runtime header (default: derived from --helper-prefix)",
+    )
     return parser
 
 
@@ -39,6 +44,7 @@ def main(argv: list[str] | None = None) -> None:
         pp_prefix=args.pp_prefix,
         pp_include=args.pp_include,
         helper_prefix=args.helper_prefix,
+        runtime_name=args.runtime_name,
     )
     try:
         result = compile_template(input_path.read_text(), str(input_path), config=config)

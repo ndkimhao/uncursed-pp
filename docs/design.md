@@ -118,7 +118,7 @@ default `BOOST_PP_`). Generated helpers are namespaced `CURSEDPP_<MACRO>_<KIND>`
 | `concat(a, b, ...)` | nested `BOOST_PP_CAT(a, BOOST_PP_CAT(b, ...))` |
 | `@let name := expr` | generation-time binding; inlined at each use site |
 | tail defaults | arity chain `CURSEDPP_<M>_1 → ..._N` filling defaults + `#define M(...) BOOST_PP_OVERLOAD(CURSEDPP_<M>_, __VA_ARGS__)(__VA_ARGS__)` |
-| named args | per-keyword paste-probe detector + `BOOST_PP_SEQ_FOLD_LEFT` extractor over `BOOST_PP_VARIADIC_TO_SEQ(tail)`; arity-1 overload handles the zero-keyword call; shared KW_CHECK/KW_FIRST utils live in a companion `cursedpp_runtime.h` written next to the output, so multiple generated headers include one copy |
+| named args | setter dispatch: one `SET_<KW>(v) slot, v` per keyword; each `KW(value)` arg pastes onto `SET_` and names its own slot, a single `SEQ_FOLD_LEFT` TUPLE_REPLACEs slots in the defaults tuple; arity dispatch via OVERLOAD handles the zero-keyword call; shared KW_PUT utils live in a companion runtime header (name via `--runtime-name` / `@pragma runtime_name`), one copy for all generated headers. Unknown keywords are compile errors, not silent defaults |
 | variadic param | `BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)`, then treated as seq |
 
 Efficiency stance: prefer `IIF` over `IF`, keep helper indirection ≤2 deep, no

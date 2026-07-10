@@ -121,13 +121,18 @@ WIDGET_SRC = (
 )
 
 
-def test_named_args_emit_probe_and_fold():
+def test_named_args_emit_setter_dispatch():
     out = compile_source(WIDGET_SRC, "widget.cursed")
-    assert "#define CURSEDPP_MAKE_WIDGET_KW_WIDTH_WIDTH(v) v, 1\n" in out
-    assert "BOOST_PP_SEQ_FOLD_LEFT" in out
+    # one setter per keyword: the argument dispatches itself, no probing
+    assert "#define CURSEDPP_MAKE_WIDGET_SET_WIDTH(v) 0, v\n" in out
+    assert "#define CURSEDPP_MAKE_WIDGET_SET_HEIGHT(v) 1, v\n" in out
+    assert "#define CURSEDPP_MAKE_WIDGET_SET_FLAGS(v) 2, v\n" in out
+    # a single fold over the args, seeded with the defaults tuple
+    assert out.count("BOOST_PP_SEQ_FOLD_LEFT") == 1
+    assert "(100, 50, )" in out
     # common utils live in the companion runtime header, not inline
     assert '#include "cursedpp_runtime.h"' in out
-    assert "#define CURSEDPP_KW_CHECK" not in out
+    assert "#define CURSEDPP_KW_PUT" not in out
     assert "#define CURSEDPP_MAKE_WIDGET_1(name) CURSEDPP_MAKE_WIDGET_BODY(name, 100, 50, )\n" in out
     assert (
         "#define MAKE_WIDGET(...) "
@@ -194,14 +199,43 @@ def test_custom_pp_prefix_requires_include():
     assert "pp_include" in str(excinfo.value)
 
 
+def test_runtime_header_matches_golden():
+    from pathlib import Path
+
+    from cursedpp.emitter import EmitConfig, runtime_header
+
+    golden = Path(__file__).parent / "golden" / "cursedpp_runtime.h"
+    assert runtime_header(EmitConfig()) == golden.read_text()
+
+
 def test_runtime_header_contents():
     from cursedpp.emitter import EmitConfig, runtime_header
 
     rt = runtime_header(EmitConfig())
     assert "#pragma once" in rt
-    assert "#define CURSEDPP_KW_CHECK_N(x, n, ...) n" in rt
-    assert "#define CURSEDPP_KW_FIRST_N(x, ...) x" in rt
+    assert "#include <boost/preprocessor/tuple/replace.hpp>" in rt
+    assert "#define CURSEDPP_KW_PUT(state, ...) CURSEDPP_KW_PUT_I(state, __VA_ARGS__)" in rt
+    assert "#define CURSEDPP_KW_PUT_I(state, i, v) BOOST_PP_TUPLE_REPLACE(state, i, v)" in rt
     assert "shared by all cursedpp-generated headers" in rt
+
+
+def test_runtime_name_customizable():
+    from cursedpp.emitter import EmitConfig, compile_template
+
+    result = compile_template(
+        WIDGET_SRC, "widget.cursed", config=EmitConfig(runtime_name="acme_common.h")
+    )
+    assert result.runtime_name == "acme_common.h"
+    assert '#include "acme_common.h"' in result.header
+
+
+def test_runtime_name_pragma():
+    from cursedpp.emitter import compile_template
+
+    src = '@pragma runtime_name "acme_common.h"\n' + WIDGET_SRC
+    result = compile_template(src, "widget.cursed")
+    assert result.runtime_name == "acme_common.h"
+    assert '#include "acme_common.h"' in result.header
 
 
 def test_compile_template_reports_runtime_dependency():

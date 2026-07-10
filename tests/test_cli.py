@@ -64,7 +64,7 @@ def test_cli_writes_runtime_header_when_needed(tmp_path):
     main([str(src), "-o", str(out)])
     runtime = out.parent / "cursedpp_runtime.h"
     assert runtime.exists()
-    assert "CURSEDPP_KW_CHECK" in runtime.read_text()
+    assert "CURSEDPP_KW_PUT" in runtime.read_text()
 
 
 def test_cli_no_runtime_for_plain_macros(tmp_path):
@@ -72,3 +72,11 @@ def test_cli_no_runtime_for_plain_macros(tmp_path):
     src.write_text("macro ID(x)\n{{x}}\nend\n")
     main([str(src)])
     assert not (tmp_path / "cursedpp_runtime.h").exists()
+
+
+def test_cli_runtime_name_flag(tmp_path):
+    src = tmp_path / "w.cursed"
+    src.write_text("macro W(name, named WIDTH = 1)\nf({{name}}, {{WIDTH}})\nend\n")
+    main([str(src), "--runtime-name", "acme_common.h"])
+    assert (tmp_path / "acme_common.h").exists()
+    assert '#include "acme_common.h"' in (tmp_path / "w.h").read_text()

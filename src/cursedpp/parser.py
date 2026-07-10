@@ -314,7 +314,7 @@ class _Block:
     line: int = 0
 
 
-_KNOWN_PRAGMAS = {"pp_prefix", "pp_include", "helper_prefix"}
+_KNOWN_PRAGMAS = {"pp_prefix", "pp_include", "helper_prefix", "runtime_name"}
 
 
 def parse_file(source: str, filename: str) -> File:
