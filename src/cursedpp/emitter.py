@@ -53,6 +53,8 @@ _PP_HEADERS = {
     "SEQ_ELEM": "seq/elem.hpp",
     "SEQ_SIZE": "seq/size.hpp",
     "SEQ_ENUM": "seq/enum.hpp",
+    "DEC": "arithmetic/dec.hpp",
+    "BOOL": "logical/bool.hpp",
     "SEQ_FOLD_LEFT": "seq/fold_left.hpp",
     "TUPLE_ELEM": "tuple/elem.hpp",
     "STRINGIZE": "stringize.hpp",
@@ -440,15 +442,37 @@ class _MacroEmitter:
         else_helper = self._add_helper(
             "ELSE", params, _collapse_ws(self._render_block(node.else_, branch_env))
         )
-        cond = self._render_cond(node.cond, env, node.line)
+        cond, swapped = self._render_cond(node.cond, env, node.line)
         args = ", ".join(env[n].c_expr for n in free)
-        return f"{self.pp('IIF')}({cond}, {then_helper}, {else_helper})({args})"
+        if cond == "0":
+            return f"{else_helper}({args})"
+        if cond == "1":
+            return f"{then_helper}({args})"
+        first, second = (else_helper, then_helper) if swapped else (then_helper, else_helper)
+        return f"{self.pp('IIF')}({cond}, {first}, {second})({args})"
 
-    def _render_cond(self, cond: Cond, env: _Env, line: int) -> str:
+    def _render_cond(self, cond: Cond, env: _Env, line: int) -> tuple[str, bool]:
+        """Render a condition to (0/1-valued expression, branches-swapped).
+
+        Relational ops with a literal RHS compile to a saturating
+        BOOST_PP_DEC chain + BOOST_PP_BOOL instead of LESS/GREATER etc.,
+        whose SUB hides a full BOOST_PP_WHILE (audit: ~27x). BOOL(DEC^k(x))
+        is 1 iff x > k, so > / >= read it directly and < / <= swap branches;
+        k below zero constant-folds ("0"/"1" sentinel = always else/then).
+        """
         if isinstance(cond, IsParen):
-            return self._resolve(cond, env, line).c_expr
+            return self._resolve(cond, env, line).c_expr, False
         lhs = self._resolve(cond.lhs, env, line).c_expr
-        return f"{self.pp(_OP_TO_PP[cond.op])}({lhs}, {cond.value})"
+        if cond.op in ("==", "!="):
+            return f"{self.pp(_OP_TO_PP[cond.op])}({lhs}, {cond.value})", False
+        swapped = cond.op in ("<", "<=")
+        k = cond.value - 1 if cond.op in ("<", ">=") else cond.value
+        if k < 0:  # x < 0 impossible; x >= 0 vacuous (values are 0..256)
+            return ("0" if cond.op == "<" else "1"), False
+        expr = lhs
+        for _ in range(k):
+            expr = f"{self.pp('DEC')}({expr})"
+        return f"{self.pp('BOOL')}({expr})", swapped
 
     def _free_vars(self, nodes: list[BodyNode], env: _Env, bound: set[str]) -> list[str]:
         """Names from `env` referenced by `nodes`, in first-use order."""
