@@ -100,6 +100,7 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 | Binding | `@let $g := concat(get_, $f.$name)` — generation-time, block-scoped; also binds an inline `@join`/`@if` for reuse |
 | Tail defaults | `@macro LOG($msg, $level = INFO, $out = stderr)` — arity dispatch |
 | Named args | `@macro W($name, named $WIDTH = 100)` — call `W(n, WIDTH(20))`, any order/subset; `required named $HOST` must appear |
+| Raw directives | `@#include <stdint.h>` / `@#define CAP 16` — passed through to the header verbatim |
 | Variadic | `@macro F($items: variadic)` — call `F(a, (b,c), d)`; body sees a seq. `variadic<tuple<$t, $n>>` gives single-paren tuple call sites: `F((int, x), (float, y))` |
 
 Within a loop over `seq<tuple<...>>`, the tuple's element names are bound

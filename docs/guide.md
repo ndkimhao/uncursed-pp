@@ -58,6 +58,11 @@ A `.uncursed` file contains, in any order at the top level:
 - **Comments** — lines whose first non-blank character is `#`. Allowed at top
   level and inside macro bodies (the line is dropped entirely).
 - **Pragmas** — `@pragma <key> <value>` lines (see §8). By convention at the top.
+- **Raw directives** — `@#<directive>` lines emit the rest verbatim (as
+  `#<directive>`) into the generated header at the same source position:
+  `@#include <stdint.h>`, `@#define CAP 16`. The text passes through
+  untouched (no comment handling); a trailing backslash continues the
+  directive onto the next line. Top level only.
 - **Macro definitions** — `@macro NAME(params)` ... `@endmacro`.
 - **Invocation specs** — `#?` / `#=>` comments used by the test suite (see §12).
   They are ordinary comments to the compiler.
@@ -325,6 +330,7 @@ compile-time error (use it at the level where it was bound).
 | `@if <cond>` ... [`@else` ...] `@end` | line form (trailing `@then` optional), or inline `@if <cond> @then <then-text> [@else <else-text>] @end` (`@then` required: it marks where the condition ends) |
 | `@let <name> := <expr or inline @join/@if>` | line form only |
 | `@pragma <key> <value>` | top level only |
+| `@#<directive>` | top level only; verbatim passthrough to the header (supports `\` continuation) |
 
 Inline directives nest (an inline `@if` inside an inline `@join` works); each
 inline directive closes with its own `@end` on the same line.

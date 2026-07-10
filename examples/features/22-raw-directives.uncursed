@@ -1,0 +1,33 @@
+# ── Raw preprocessing directives: @# passthrough ─────────────────────
+#
+# `@#<directive>` emits the rest of the line VERBATIM (as `#<directive>`)
+# into the generated header, at this exact source position. Use it for
+# plain includes, constants, and ordinary C macros that belong with the
+# generated ones — no second header file, no @pragma include needed.
+#
+# Details:
+#   - the text is verbatim — stringize `#x`, paste `##`, everything
+#     passes through untouched;
+#   - a trailing backslash continues the directive onto the next line,
+#     exactly like C;
+#   - top level only: a generated #define cannot contain directives.
+
+@#include <stdint.h>
+@#define MAX_SENSORS 8
+@#define SENSOR_RANGE(lo, hi) \
+    { (lo), (hi) }
+
+@macro SENSOR_SLOT($idx)
+((uint8_t)(({{$idx}}) % MAX_SENSORS))
+@endmacro
+
+# The emitted directives are real preprocessor lines - MAX_SENSORS
+# expands in the same translation unit. (stdint.h's own contents
+# precede the expansion in the preprocessed output; the leading
+# <...> wildcard absorbs them.)
+#?  SENSOR_SLOT(11)
+#=> <...> ((uint8_t)((11) % 8))
+
+# The continued #define is an ordinary callable C macro:
+#?  SENSOR_RANGE(0, 255)
+#=> <...> { (0), (255) }

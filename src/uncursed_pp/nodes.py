@@ -219,3 +219,6 @@ class File:
     # as (number of macros preceding the group, raw text) - reproduced
     # in the generated header at the same position
     comments: list[tuple[int, str]] = field(default_factory=list)
+    # raw '@#' preprocessing directives, same anchoring as comments;
+    # emitted verbatim (already '#'-prefixed, continuations included)
+    directives: list[tuple[int, str]] = field(default_factory=list)

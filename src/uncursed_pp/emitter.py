@@ -1367,6 +1367,10 @@ def _emit_file(file: File, source_name: str, config: EmitConfig) -> tuple[str, d
             if pos == position:
                 macro_chunks.append("\n")
                 macro_chunks.append(_standalone_comment(text))
+        for pos, text in file.directives:
+            if pos == position:
+                macro_chunks.append("\n")
+                macro_chunks.append(text + "\n")
 
     for idx, (macro, out) in enumerate(zip(file.macros, outs)):
         emit_standalone(idx)

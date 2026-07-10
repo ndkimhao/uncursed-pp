@@ -456,6 +456,7 @@ def parse_file(source: str, filename: str) -> File:
     pragmas: dict[str, str] = {}
     extra_includes: list[str] = []
     comments: list[tuple[int, str]] = []
+    directives: list[tuple[int, str]] = []
     lines = source.split("\n")
     i = 0
     pending: list[str] = []  # contiguous comment/spec lines, not yet placed
@@ -475,6 +476,31 @@ def parse_file(source: str, filename: str) -> File:
             continue
         if stripped.startswith("#"):
             pending.append(lines[i])
+            i += 1
+            continue
+        if stripped.startswith("@#"):
+            # raw preprocessing-directive passthrough: '@#define X ...'
+            # emits '#define X ...' VERBATIM at this source position
+            # (trailing '\' continues onto the next line, like C)
+            flush_standalone()
+            text = stripped[1:]
+            if text.strip() == "#":
+                raise UncursedPpError(
+                    "empty '@#' directive (expected e.g. '@#define NAME ...')",
+                    filename,
+                    i + 1,
+                )
+            parts = [text]
+            while parts[-1].rstrip().endswith("\\"):
+                i += 1
+                if i >= len(lines) or not lines[i].strip():
+                    raise UncursedPpError(
+                        "'@#' line continuation with nothing to continue",
+                        filename,
+                        i,
+                    )
+                parts.append(lines[i])
+            directives.append((len(macros), "\n".join(parts)))
             i += 1
             continue
         if stripped.startswith("@pragma "):
@@ -505,8 +531,14 @@ def parse_file(source: str, filename: str) -> File:
     flush_standalone()
 
     return File(
-        macros=macros, pragmas=pragmas, extra_includes=extra_includes, comments=comments
+        macros=macros,
+        pragmas=pragmas,
+        extra_includes=extra_includes,
+        comments=comments,
+        directives=directives,
     )
+
+
 
 
 # prefixes are pasted into generated identifiers - anything else in the
@@ -603,6 +635,14 @@ def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef,
         if stripped.startswith("#"):
             i += 1
             continue
+
+        if stripped.startswith("@#"):
+            raise UncursedPpError(
+                "'@#' directives are only allowed at the top level (a "
+                "generated #define cannot contain another directive)",
+                filename,
+                lineno,
+            )
 
         if _is_block_directive(stripped):
             _handle_directive(stripped[1:], stack, filename, lineno)

@@ -91,6 +91,10 @@ S{ @join $items as $it with ", ": @if is_paren($it) @then {{$it}} @else ({{$it}}
 
 ### Language rules
 - Body is raw C text; `@`-directives for control flow; `{{expr}}` interpolation.
+- `@#<directive>` (top level): raw preprocessing-directive passthrough,
+  emitted verbatim at its source position. Trailing `\` continues the
+  directive. Subsumes `@pragma include` for simple cases (both remain
+  supported).
 - Inline `@if` requires `@then` between the condition and the then-text
   (`@if <cond> @then <text> [@else <text>] @end`); a full-line `@if` may
   optionally end with `@then`. The explicit boundary lets conditions be any
