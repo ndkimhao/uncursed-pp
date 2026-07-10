@@ -1,0 +1,5 @@
+# Variadic + inline @if + is_paren(): pad bare tokens to (token, omit).
+#   NORMALIZE(a, (b,c), d)  →  S{ (a, omit), (b,c), (d, omit) }
+macro NORMALIZE(items: variadic)
+S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @end@end }
+end
