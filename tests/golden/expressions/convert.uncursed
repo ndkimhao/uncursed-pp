@@ -32,3 +32,15 @@ count {{len($t)}}: {{remove_parens($t)}}
 
 #?  TAIL_SEQ((root, x, y))
 #=>     root[ f(x); f(y); ]
+
+# fixed named tuples convert too - the names are just access sugar
+@macro SPLIT($p: tuple<$x, $y>)
+@let $s := to_seq($p)
+@for $e in $s
+item({{$e}});
+@end
+first={{$p.$x}}
+@endmacro
+
+#?  SPLIT((3, 4))
+#=>     item(3); item(4); first=3

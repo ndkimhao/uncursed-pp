@@ -23,8 +23,8 @@ uncursed-pp has three variable-count shapes and one "bare" form:
 
 | Conversion | Write | Result |
 |---|---|---|
-| tuple → seq | `to_seq($row)` | `(a, b, c)` → `(a)(b)(c)`; result is fully seq-typed (loop it, index it, pass it to seq macros). Identity on seq-typed values. Hybrids convert their tail. |
-| seq → tuple | `to_tuple($xs)` | `(a)(b)(c)` → `(a, b, c)`; result is fully tuple-typed (`len`, `[i]`, `is_empty`, iteration). Identity on tuple-typed values. |
+| tuple → seq | `to_seq($row)` | `(a, b, c)` → `(a)(b)(c)`; result is seq-typed — bind it with `@let` to loop or index it. Identity on seq-typed values. Hybrids convert their tail; fixed named tuples convert whole (names are access sugar). |
+| seq → tuple | `to_tuple($xs)` | `(a)(b)(c)` → `(a, b, c)`; result is tuple-typed (`len`, `[i]`, `is_empty`, iteration) — bind it with `@let` first. Identity on tuple-typed values (including fixed named tuples). |
 | tuple → bare commas | `{{remove_parens($row)}}` | `(a, b, c)` → `a, b, c` — the tuple's parens are its only wrapper |
 | seq → bare commas | `@join $xs with ", ": {{$x}}@end` | the identity comma join (compiles to the cheap `BOOST_PP_SEQ_ENUM`) |
 | anything → parenthesized | `({{$x}})` | plain text — parens are just text |

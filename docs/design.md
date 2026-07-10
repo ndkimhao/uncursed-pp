@@ -84,7 +84,7 @@ S{ @join $items as $it with ", ": @if is_paren($it) {{$it}} @else ({{$it}}, omit
 @end
 @endmacro
 
-# ── 9. Per-file pragmas (override CLI) ──────────────────────────────
+# ── 9. Per-file pragmas ──────────────────────────────
 @pragma pp_prefix  MYLIB_PP_
 @pragma pp_include "mylib/preprocessor.hpp"
 ```

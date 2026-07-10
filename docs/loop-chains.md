@@ -44,9 +44,10 @@ helpers at all (~50–140×).
 ## How dispatch works
 
 - `PICK` looks the seq's size up in a **0/1 size-class table**
-  (`UNCURSED_PP_LE16_<n>`, one `CAT` + `IIF` per call). The default table
-  lives in the shared runtime header; a non-default `loop_chain_limit`
-  emits a local `LE<K>` table in the generated header.
+  (`UNCURSED_PP_LE16_<n>`, one `CAT` + `IIF` per call). Every `LE<K>`
+  table lives in the shared runtime header - the default 16 and any
+  non-default K alike (`--runtime-chain-limits` bakes extra K values
+  into a shared companion).
 - Sizes **≤ K** take the chain (`SMALL`); larger seqs take the unchanged
   `SEQ_FOR_EACH` form (`BIG`) — measured ~0.5% overhead versus chains-off,
   token-identical output. There is **no call-site limit**: a 200-element

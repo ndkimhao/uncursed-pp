@@ -314,7 +314,7 @@ is then reused at every use site (the loop helper is generated once):
 |---|---|
 | `@for <target> in <seq>` ... `@end` | line form only; target = `(a, b)` or `x` |
 | `@join <seq> [as x] with "<sep>"` ... `@end` | line form, or inline `@join ...: body@end` |
-| `@if <cond>` ... [`@else` ...] `@end` | line form, or inline `@if c then @else else @end` |
+| `@if <cond>` ... [`@else` ...] `@end` | line form, or inline `@if c <then-text> @else <else-text> @end` (no `then` keyword) |
 | `@let <name> := <expr or inline @join/@if>` | line form only |
 | `@pragma <key> <value>` | top level only |
 
@@ -362,7 +362,7 @@ identically from the source file alone:
 | `runtime_include I` | `"<runtime_name>"` | the `#include` text generated headers use for the runtime — a path and/or `<...>` form; where the file lives is your include-path contract |
 | `arg_prefix P` | *(empty)* | prefix for every generated parameter name — kills the body-text name-capture hazard (see codegen.md) |
 | `loop_chain on\|off` | `on` | consumption-chain iteration for loops without free outer variables (~25x cheaper preprocessing) |
-| `loop_chain_limit K` | `16` | chain length: seqs up to K elements take the chain, longer ones the `SEQ_FOR_EACH` fallback (~0.5% overhead). Non-default K emits a local size table; `256` covers every possible seq, dropping the fallback, the size pick, and the `for_each.hpp` include entirely |
+| `loop_chain_limit K` | `16` | chain length: seqs up to K elements take the chain, longer ones the `SEQ_FOR_EACH` fallback (~0.5% overhead). every `LE<K>` size table lives in the shared runtime companion (use `--runtime-chain-limits` when headers with different K share one companion); `256` covers every possible seq, dropping the fallback, the size pick, and the `for_each.hpp` include entirely |
 | `include "H"` or `include <H>` | — | extra `#include`s appended in order (repeatable) |
 
 Vendored-boost recipes:
@@ -390,7 +390,7 @@ For each macro, uncursed-pp emits the public `#define` plus namespaced helpers:
 - `UNCURSED_PP_<MACRO>_BODY1` — macros with tuple params spread the fields in
 - `UNCURSED_PP_<MACRO>_SEPn` — non-comma join separators
 - `UNCURSED_PP_<MACRO>_THENn` / `_ELSEn` — `@if` branches
-- `UNCURSED_PP_<MACRO>_SET_<KW>`, `_STEP`, `_PUT_<slot>`, `_BODY`, `_UNPACK`, `_KW`, `_<n>` — named args (slot updates are direct generated replacers; no `TUPLE_REPLACE`/`WHILE`)
+- `UNCURSED_PP_<MACRO>_SET_<KW>`, `_STEP1`/`_STEP_D`/`_STEP_I`, `_PUT_<slot>`, `_BODY`/`_BODY_D`, `_SIZE`/`_DISPATCH`, `_<n>`, `_ERROR_*` — named args (slot updates are direct generated replacers; no `TUPLE_REPLACE`/`WHILE`)
 - `UNCURSED_PP_<MACRO>_<n>` — tail-default arity chain
 
 Two whole-file passes keep output small and deterministic:
@@ -535,7 +535,8 @@ parameter (`sname`) used inside loops; `len()` in an interpolation.
 
 ## 14. v1 limitations
 
-- Flat loops only (no nesting, no looping macro invoked from a loop body).
+- Loops nest at most 4 deep (one SEQ_FOR_EACH level + 3 REPEAT dimensions);
+  a looping macro must not be invoked from a loop body.
 - Seqs/variadics must be non-empty at call sites.
 - Comparisons only against integer literals 0–256; no arbitrary
   token equality.

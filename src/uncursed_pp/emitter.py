@@ -577,12 +577,17 @@ class _MacroEmitter:
                     f"{self.pp('TUPLE_TO_SEQ')}({self._vtuple_view(inner)})",
                     SeqT(inner.type.elem),
                 )
+            if isinstance(inner.type, TupleT):
+                # names are access sugar; the value converts like any tuple
+                return _Binding(
+                    f"{self.pp('TUPLE_TO_SEQ')}({inner.c_expr})", SeqT(TokenT())
+                )
             raise UncursedPpError(
                 "to_seq() needs a tuple- or seq-typed value", self.filename, line
             )
         if isinstance(expr, ToTuple):
             inner = self._resolve(expr.arg, env, line)
-            if isinstance(inner.type, VarTupleT):
+            if isinstance(inner.type, (VarTupleT, TupleT)):
                 return inner  # identity
             if isinstance(inner.type, SeqT):
                 return _Binding(
@@ -1244,7 +1249,7 @@ def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
             return expr_whole(e.base)
         if isinstance(e, Concat):
             return any(expr_whole(a) for a in e.args)
-        if isinstance(e, (RemoveParens, Stringize, Len, IsParen, IsEmpty)):
+        if isinstance(e, (RemoveParens, Stringize, Len, IsParen, IsEmpty, ToSeq, ToTuple)):
             return expr_whole(e.arg)
         return False
 

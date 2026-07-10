@@ -88,8 +88,10 @@ def _search_directive(pattern: re.Pattern[str], text: str) -> re.Match[str] | No
     return None
 
 _CMP = r"(?:==|!=|<=|>=|<|>)"
+# one nesting level inside the call parens covers computed arguments
+# like len(to_seq($t)) or len($xs[0])
 _COND_PATTERNS = [
-    re.compile(rf"len\(\s*\$?\w+\s*\)\s*{_CMP}\s*\d+"),
+    re.compile(rf"len\((?:[^()]|\([^()]*\))*\)\s*{_CMP}\s*\d+"),
     re.compile(rf"(?:is_paren|is_empty)\((?:[^()]|\([^()]*\))*\)(?:\s*{_CMP}\s*\d+)?"),
     re.compile(rf"\$?[A-Za-z_][\w.$\[\]]*\s*{_CMP}\s*\d+"),
 ]
@@ -674,9 +676,10 @@ def _handle_directive(directive: str, stack: list[_Block], filename: str, lineno
         stack[-1].target.append(join)
         stack.append(_Block(join.body, join, "join", lineno))
     elif word == "if":
-        cond, leftover = _match_cond(directive[len("if ") :].strip(), filename, lineno)
-        if leftover.strip():
-            raise UncursedPpError("unexpected text after @if condition", filename, lineno)
+        # a block @if owns the whole rest of the line: parse it with the
+        # real grammar (the _COND_PATTERNS prefilter exists only for the
+        # INLINE form, where the condition's end must be found mid-line)
+        cond = _parse_fragment("cond", directive[len("if ") :].strip(), filename, lineno)
         node = If(cond=cond, line=lineno)
         stack[-1].target.append(node)
         stack.append(_Block(node.then, node, "if", lineno))

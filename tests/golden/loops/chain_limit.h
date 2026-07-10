@@ -10,7 +10,7 @@
 
 /* # loop_chain_limit tuning: chains cover seqs up to K elements; larger
  * # seqs take the SEQ_FOR_EACH fallback. K=4 here so the specs can cross
- * # the boundary cheaply. A non-default K also emits a local LE4 size table.
+ * # the boundary cheaply. The LE4 size table lives in the shared runtime companion.
  */
 
 /* uncursed-pp source:

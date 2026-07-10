@@ -294,3 +294,19 @@ def test_to_seq_on_hybrid_converts_the_tail():
     )
     out = compile_source(src, "t.uncursed")
     assert "TL1" in out  # tail extraction feeds the conversion
+
+
+def test_to_seq_on_fixed_named_tuple(tmp_path):
+    # a fixed named tuple IS a tuple: convertible like any other (the
+    # names are just access sugar); to_tuple() on it is identity
+    import pytest as _pytest
+    from conftest import CC, canon, preprocess_src
+
+    if CC is None:
+        _pytest.skip("no C compiler available")
+    src = (
+        '@macro F($p: tuple<$x, $y>)\n@let $s := to_seq($p)\n'
+        '@for $e in $s\nitem({{$e}});\n@end\nfirst={{$p.$x}}\n@endmacro\n'
+    )
+    out = preprocess_src(tmp_path, src, "cv", "F((3, 4))")
+    assert canon("item(3); item(4); first=3") in out

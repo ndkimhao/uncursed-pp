@@ -187,3 +187,28 @@ def test_end_inside_string_literal_stays_in_the_string():
     )
     out = compile_source(src, "t.uncursed")
     assert '"not the @end yet"' in out
+
+
+@requires_boost
+def test_if_len_of_computed_value(tmp_path):
+    # guide.md: the comparison lhs is typically len(...) - including
+    # len() OF a computed value like to_seq($t) or an indexed element
+    src = (
+        '@macro F($t: tuple)\n@if len(to_seq($t)) > 2\nbig({{$t}});\n'
+        '@else\nsmall({{$t}});\n@end\n@endmacro\n'
+    )
+    out = preprocess_src(tmp_path, src, "lc", "F((a, b, c))\nF((a))")
+    assert canon("big((a, b, c));") in out
+    assert canon("small((a));") in out
+
+
+def test_block_if_condition_is_full_grammar():
+    # block @if conditions go straight to the grammar - arbitrarily
+    # nested expression lhs, no prefilter
+    src = (
+        '@macro F($t: tuple)\n@if len(to_seq(to_tuple(to_seq($t)))) > 2\nbig\n'
+        '@else\nsmall\n@end\n@endmacro\n'
+    )
+    [macro] = parse_file(src, "t.uncursed").macros
+    node = next(n for n in macro.body if isinstance(n, If))
+    assert isinstance(node.cond, Cmp) and isinstance(node.cond.lhs, Len)

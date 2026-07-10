@@ -26,7 +26,7 @@
  * @end
  * @endmacro
  */
-#define UNCURSED_PP_TAKES_SEQ_EACH1(r, d, e) f(e);
+#define UNCURSED_PP_CONVERT_H1(r, d, e) d(e);
 #define UNCURSED_PP_TAKES_SEQ_CH1_1(e) f(e);
 #define UNCURSED_PP_TAKES_SEQ_CH1_2(e) f(e); UNCURSED_PP_TAKES_SEQ_CH1_1
 #define UNCURSED_PP_TAKES_SEQ_CH1_3(e) f(e); UNCURSED_PP_TAKES_SEQ_CH1_2
@@ -45,7 +45,7 @@
 #define UNCURSED_PP_TAKES_SEQ_CH1_16(e) f(e); UNCURSED_PP_TAKES_SEQ_CH1_15
 #define UNCURSED_PP_TAKES_SEQ_SMALL1(seq) BOOST_PP_CAT(UNCURSED_PP_TAKES_SEQ_CH1_, BOOST_PP_SEQ_SIZE(seq)) seq
 #define UNCURSED_PP_TAKES_SEQ_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_TAKES_SEQ_SMALL1, UNCURSED_PP_TAKES_SEQ_BIG1)
-#define UNCURSED_PP_TAKES_SEQ_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_TAKES_SEQ_EACH1, ~, seq)
+#define UNCURSED_PP_TAKES_SEQ_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_CONVERT_H1, f, seq)
 #define TAKES_SEQ(xs) UNCURSED_PP_TAKES_SEQ_PICK1(BOOST_PP_SEQ_SIZE(xs))(xs)
 
 /* uncursed-pp source:
@@ -85,4 +85,41 @@
 
 /* #?  TAIL_SEQ((root, x, y))
  * #=>     root[ f(x); f(y); ]
+ */
+
+/* uncursed-pp source:
+ * # fixed named tuples convert too - the names are just access sugar
+ * @macro SPLIT($p: tuple<$x, $y>)
+ * @let $s := to_seq($p)
+ * @for $e in $s
+ * item({{$e}});
+ * @end
+ * first={{$p.$x}}
+ * @endmacro
+ */
+#define UNCURSED_PP_SPLIT_CH1_1(e) item(e);
+#define UNCURSED_PP_SPLIT_CH1_2(e) item(e); UNCURSED_PP_SPLIT_CH1_1
+#define UNCURSED_PP_SPLIT_CH1_3(e) item(e); UNCURSED_PP_SPLIT_CH1_2
+#define UNCURSED_PP_SPLIT_CH1_4(e) item(e); UNCURSED_PP_SPLIT_CH1_3
+#define UNCURSED_PP_SPLIT_CH1_5(e) item(e); UNCURSED_PP_SPLIT_CH1_4
+#define UNCURSED_PP_SPLIT_CH1_6(e) item(e); UNCURSED_PP_SPLIT_CH1_5
+#define UNCURSED_PP_SPLIT_CH1_7(e) item(e); UNCURSED_PP_SPLIT_CH1_6
+#define UNCURSED_PP_SPLIT_CH1_8(e) item(e); UNCURSED_PP_SPLIT_CH1_7
+#define UNCURSED_PP_SPLIT_CH1_9(e) item(e); UNCURSED_PP_SPLIT_CH1_8
+#define UNCURSED_PP_SPLIT_CH1_10(e) item(e); UNCURSED_PP_SPLIT_CH1_9
+#define UNCURSED_PP_SPLIT_CH1_11(e) item(e); UNCURSED_PP_SPLIT_CH1_10
+#define UNCURSED_PP_SPLIT_CH1_12(e) item(e); UNCURSED_PP_SPLIT_CH1_11
+#define UNCURSED_PP_SPLIT_CH1_13(e) item(e); UNCURSED_PP_SPLIT_CH1_12
+#define UNCURSED_PP_SPLIT_CH1_14(e) item(e); UNCURSED_PP_SPLIT_CH1_13
+#define UNCURSED_PP_SPLIT_CH1_15(e) item(e); UNCURSED_PP_SPLIT_CH1_14
+#define UNCURSED_PP_SPLIT_CH1_16(e) item(e); UNCURSED_PP_SPLIT_CH1_15
+#define UNCURSED_PP_SPLIT_SMALL1(seq) BOOST_PP_CAT(UNCURSED_PP_SPLIT_CH1_, BOOST_PP_SEQ_SIZE(seq)) seq
+#define UNCURSED_PP_SPLIT_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_SPLIT_SMALL1, UNCURSED_PP_SPLIT_BIG1)
+#define UNCURSED_PP_SPLIT_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_CONVERT_H1, item, seq)
+#define SPLIT(p) \
+    UNCURSED_PP_SPLIT_PICK1(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_TO_SEQ(p)))(BOOST_PP_TUPLE_TO_SEQ(p)) \
+    first=BOOST_PP_TUPLE_ELEM(0, p)
+
+/* #?  SPLIT((3, 4))
+ * #=>     item(3); item(4); first=3
  */
