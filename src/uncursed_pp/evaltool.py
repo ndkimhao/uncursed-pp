@@ -35,9 +35,11 @@ def _find_clang_format() -> str | None:
     return os.environ.get("CLANG_FORMAT") or shutil.which("clang-format")
 
 
-def _clang_format(text: str, clang_format: str, timeout: float) -> str:
+def _clang_format(
+    text: str, clang_format: str, timeout: float, extra: Sequence[str] = ()
+) -> str:
     run = subprocess.run(
-        [clang_format],
+        [clang_format, *extra],
         input=text,
         capture_output=True,
         text=True,
@@ -83,7 +85,12 @@ class _Evaluator:
 
 
 def _fill_specs(
-    path: Path, ev: _Evaluator, *, fmt: str | None, timeout: float
+    path: Path,
+    ev: _Evaluator,
+    *,
+    fmt: str | None,
+    fmt_args: Sequence[str] = (),
+    timeout: float,
 ) -> tuple[int, list[str]]:
     """Replace every single-`<???>` expectation with the real expansion.
     Returns (filled count, error messages)."""
@@ -116,7 +123,7 @@ def _fill_specs(
                     continue
                 text = expansion
                 if fmt is not None:
-                    text = _clang_format(expansion, fmt, timeout).rstrip("\n")
+                    text = _clang_format(expansion, fmt, timeout, fmt_args).rstrip("\n")
                 for expanded_line in text.split("\n"):
                     out.append(f"#=>     {expanded_line}")
                 filled += 1
@@ -153,6 +160,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--format", action="store_true",
         help="pretty-print through clang-format ($CLANG_FORMAT or PATH)",
+    )
+    parser.add_argument(
+        "--format-arg", action="append", default=[], metavar="ARG",
+        help=(
+            "extra argument passed to clang-format verbatim (repeatable), "
+            "e.g. --format-arg=-style=Google"
+        ),
     )
     parser.add_argument(
         "--update-specs", action="store_true",
@@ -215,12 +229,22 @@ def main(argv: list[str] | None = None) -> None:
                 print(f"uncursed-pp-eval: {exc}", file=sys.stderr)
                 raise SystemExit(1) from exc
             if fmt is not None:
-                print(_clang_format(expansion, fmt, args.timeout), end="")
+                try:
+                    print(_clang_format(expansion, fmt, args.timeout, args.format_arg), end="")
+                except CppError as exc:
+                    print(f"uncursed-pp-eval: {exc}", file=sys.stderr)
+                    raise SystemExit(2) from exc
             else:
                 print(expansion)
             raise SystemExit(0)
 
-        filled, errors = _fill_specs(path, ev, fmt=fmt, timeout=args.timeout)
+        try:
+            filled, errors = _fill_specs(
+                path, ev, fmt=fmt, fmt_args=args.format_arg, timeout=args.timeout
+            )
+        except CppError as exc:  # clang-format problems are setup errors
+            print(f"uncursed-pp-eval: {exc}", file=sys.stderr)
+            raise SystemExit(2) from exc
         for e in errors:
             print(f"uncursed-pp-eval: {e}", file=sys.stderr)
         if filled:

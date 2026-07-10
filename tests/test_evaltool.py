@@ -111,3 +111,21 @@ def test_format_without_clang_format_is_setup_error(tmp_path, capsys, monkeypatc
     src.write_text(TEMPLATE)
     assert _run([str(src), "PAIR(1, 2)", "--format"]) == 2
     assert "clang-format" in capsys.readouterr().err
+
+
+@pytest.mark.skipif(shutil.which("clang-format") is None, reason="no clang-format")
+def test_format_args_reach_clang_format(tmp_path, capsys):
+    src = tmp_path / "t.uncursed"
+    src.write_text("@macro FN($n)\nvoid {{$n}}(int alpha, int beta, int gamma, int delta);\n@endmacro\n")
+    assert _run([str(src), "FN(f)", "--format",
+                 "--format-arg=-style={BasedOnStyle: LLVM, ColumnLimit: 20}"]) == 0
+    narrow = capsys.readouterr().out
+    assert narrow.count("\n") >= 3  # the 20-column limit forces wrapping
+
+
+@pytest.mark.skipif(shutil.which("clang-format") is None, reason="no clang-format")
+def test_bad_format_arg_is_a_clean_error(tmp_path, capsys):
+    src = tmp_path / "t.uncursed"
+    src.write_text(TEMPLATE)
+    assert _run([str(src), "PAIR(1, 2)", "--format", "--format-arg=--definitely-not-a-flag"]) == 2
+    assert "clang-format" in capsys.readouterr().err

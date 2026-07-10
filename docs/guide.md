@@ -424,7 +424,8 @@ specs, unknown compiler, template errors). `--work-dir` keeps the
 generated header and one numbered `.c` snippet per spec for inspection.
 
 Its sibling `uncursed-pp-eval` takes ONE template and either prints an
-invocation's expansion (`--format` pipes it through clang-format) or
+invocation's expansion (`--format` pipes it through clang-format;
+repeatable `--format-arg=-style=...` passes flags to it verbatim) or
 fills spec sentinels: write the invocation with `#=> <???>` as its only
 expectation, run `uncursed-pp-eval file.uncursed --update-specs`, and
 the sentinel is replaced in place with the real expansion (formatted if
