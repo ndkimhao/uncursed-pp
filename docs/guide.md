@@ -39,11 +39,13 @@ uv run uncursed-pp fields.uncursed -o fields.h # compile one template
 make test                                 # pytest incl. real `cc -E` e2e tests
 ```
 
-`uncursed-pp INPUT [-o OUTPUT]` writes `OUTPUT` (default: input stem + `.h`).
-If the template uses features that need shared utilities (currently: named
-arguments), a small companion header (default `uncursed_pp_runtime.h`) is written
-next to the output; generated headers `#include` it by name. Multiple generated
-headers in one directory share the single runtime file.
+`uncursed-pp INPUT [-o OUTPUT] [--emit-runtime]` writes `OUTPUT` (default:
+input stem + `.h`). Templates whose generated code needs shared utilities
+(keyword-argument spreading, the loop-chain size table) `#include` a small
+companion header (default `uncursed_pp_runtime.h`) by name. The companion is
+only written when you pass `--emit-runtime`; by default the CLI prints a
+stderr note when a header needs one (silence it with `--no-emit-runtime`).
+Multiple generated headers in one directory share the single runtime file.
 
 ## 3. File structure
 

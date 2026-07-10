@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .emitter import compile_template
+from .emitter import compile_template, runtime_header
 from .parser import UncursedPpError
 
 
@@ -19,6 +19,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("input", help="input .uncursed template file")
     parser.add_argument("-o", "--output", help="output header path (default: <input stem>.h)")
+    parser.add_argument(
+        "--emit-runtime",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "write the shared companion runtime header next to the output. "
+            "By default it is never written: a header that needs one gets a "
+            "stderr note instead (silence it with --no-emit-runtime)"
+        ),
+    )
     return parser
 
 
@@ -45,11 +55,20 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(1) from exc
     try:
         output_path.write_text(result.header)
-        if result.runtime is not None:
-            (output_path.parent / result.runtime_name).write_text(result.runtime)
+        if args.emit_runtime:
+            # explicit request: write even when this header doesn't need it,
+            # so one invocation can seed a directory shared by many headers
+            runtime = result.runtime if result.runtime is not None else runtime_header(result.config)
+            (output_path.parent / result.runtime_name).write_text(runtime)
     except OSError as exc:
         print(f"uncursed-pp: cannot write {output_path}: {exc.strerror}", file=sys.stderr)
         raise SystemExit(1) from exc
+    if args.emit_runtime is None and result.runtime is not None:
+        print(
+            f'uncursed-pp: note: {output_path.name} includes "{result.runtime_name}"; '
+            "pass --emit-runtime to write it (or --no-emit-runtime to silence this note)",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":

@@ -100,11 +100,14 @@ Identical generated helpers are deduplicated across the file into shared
 `UNCURSED_PP_<FILESTEM>_H<n>` macros; loop bodies differing by one constant
 token share a helper with the constant passed through `FOR_EACH`'s data slot.
 
-Common utilities (currently the `KW_SPREAD` tuple-unpacking helper) are not
-inlined: headers that need them `#include "uncursed_pp_runtime.h"`, a small
-companion file uncursed-pp writes next to the output. Multiple generated headers
-share the one runtime file. Its name defaults to `<helper_prefix>_runtime.h`
-and is customizable via `@pragma runtime_name "acme_common.h"`.
+Common utilities (currently the `KW_SPREAD` tuple-unpacking helper and the
+loop-chain size table) are not inlined: headers that need them
+`#include "uncursed_pp_runtime.h"`, a small companion file written next to
+the output when you pass `--emit-runtime` (by default nothing extra is
+written; a header that needs the companion gets a stderr note, silenced by
+`--no-emit-runtime`). Multiple generated headers share the one runtime file.
+Its name defaults to `<helper_prefix>_runtime.h` and is customizable via
+`@pragma runtime_name "acme_common.h"`.
 
 ## Call-site rules (C is still C)
 

@@ -1068,6 +1068,7 @@ class CompileResult:
     header: str
     runtime: str | None  # companion runtime header content, if the header needs it
     runtime_name: str
+    config: EmitConfig  # resolved config (pragmas applied)
 
 
 def compile_template(
@@ -1100,6 +1101,7 @@ def compile_template(
         header=header,
         runtime=runtime_header(config) if needs_runtime else None,
         runtime_name=runtime_name(config),
+        config=config,
     )
 
 

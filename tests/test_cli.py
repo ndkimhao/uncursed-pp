@@ -63,22 +63,53 @@ def test_cli_config_via_pragmas(tmp_path):
     assert "MY_D_EACH1" in text
 
 
-def test_cli_writes_runtime_header_when_needed(tmp_path):
+def test_cli_default_does_not_write_runtime_but_notes(tmp_path, capsys):
     src = tmp_path / "w.uncursed"
     src.write_text("macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n")
     out = tmp_path / "sub" / "w.h"
     out.parent.mkdir()
     main([str(src), "-o", str(out)])
+    assert not (out.parent / "uncursed_pp_runtime.h").exists()
+    err = capsys.readouterr().err
+    assert '"uncursed_pp_runtime.h"' in err and "--emit-runtime" in err
+
+
+def test_cli_emit_runtime_writes_when_needed(tmp_path, capsys):
+    src = tmp_path / "w.uncursed"
+    src.write_text("macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n")
+    out = tmp_path / "sub" / "w.h"
+    out.parent.mkdir()
+    main([str(src), "-o", str(out), "--emit-runtime"])
     runtime = out.parent / "uncursed_pp_runtime.h"
+    assert runtime.exists()
+    assert "UNCURSED_PP_KW_SPREAD" in runtime.read_text()
+    assert capsys.readouterr().err == ""
+
+
+def test_cli_emit_runtime_writes_even_when_not_needed(tmp_path):
+    # explicit request pre-seeds a directory shared by several headers
+    src = tmp_path / "p.uncursed"
+    src.write_text("macro ID(x)\n{{x}}\nend\n")
+    main([str(src), "--emit-runtime"])
+    runtime = tmp_path / "uncursed_pp_runtime.h"
     assert runtime.exists()
     assert "UNCURSED_PP_KW_SPREAD" in runtime.read_text()
 
 
-def test_cli_no_runtime_for_plain_macros(tmp_path):
+def test_cli_no_emit_runtime_is_silent(tmp_path, capsys):
+    src = tmp_path / "w.uncursed"
+    src.write_text("macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n")
+    main([str(src), "--no-emit-runtime"])
+    assert not (tmp_path / "uncursed_pp_runtime.h").exists()
+    assert capsys.readouterr().err == ""
+
+
+def test_cli_no_runtime_and_no_note_for_plain_macros(tmp_path, capsys):
     src = tmp_path / "p.uncursed"
     src.write_text("macro ID(x)\n{{x}}\nend\n")
     main([str(src)])
     assert not (tmp_path / "uncursed_pp_runtime.h").exists()
+    assert capsys.readouterr().err == ""
 
 
 def test_cli_runtime_name_pragma(tmp_path):
@@ -87,7 +118,7 @@ def test_cli_runtime_name_pragma(tmp_path):
         '@pragma runtime_name "acme_common.h"\n'
         "macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n"
     )
-    main([str(src)])
+    main([str(src), "--emit-runtime"])
     assert (tmp_path / "acme_common.h").exists()
     assert '#include "acme_common.h"' in (tmp_path / "w.h").read_text()
 

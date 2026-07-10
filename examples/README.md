@@ -42,4 +42,5 @@ cat /tmp/out.h
 
 The generated header embeds its own source as a comment, so a `.h` is
 readable standalone. Headers that need shared utilities `#include` a
-small companion runtime header, committed alongside.
+small companion runtime header, committed alongside here; when compiling
+your own templates, pass `--emit-runtime` to write it next to the output.
