@@ -1,5 +1,7 @@
 # uncursed-pp
 
+**Write it uncursed. Ship it cursed.**
+
 A compiler from a readable template DSL to C preprocessor macros built on
 [Boost.Preprocessor](https://www.boost.org/doc/libs/latest/libs/preprocessor/doc/index.html).
 You describe a macro like a web render template; uncursed-pp emits the cursed
