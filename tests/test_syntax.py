@@ -319,3 +319,23 @@ def test_eof_comment_terminator_is_escaped_too():
     src = "@macro R($x)\n{{$x}}\n@endmacro\n\n# trailing */ note\n"
     out = compile_source(src, "t.uncursed")
     assert "/* # trailing * / note */" in out
+
+
+def test_duplicate_parameter_names_are_an_error():
+    # '#define F(x, x)' is rejected by every C preprocessor; catch it at
+    # template-compile time instead of poisoning the generated header
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source("@macro F($x, $x)\n{{$x}}\n@endmacro\n", "t.uncursed")
+    assert "duplicate parameter" in str(excinfo.value)
+
+
+def test_positional_param_shaped_like_a_kwarg_slot_is_deconflicted():
+    # a user param legitimately named $e1 must not collide with the
+    # generated per-arity keyword slots (e1..eN)
+    src = "@macro EC($e1, named $K = 1)\nf({{$e1}}, {{$K}})\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    import re
+
+    for params in re.findall(r"#define UNCURSED_PP_EC_\d\(([^)]*)\)", out):
+        names = [p.strip() for p in params.split(",")]
+        assert len(names) == len(set(names)), f"duplicate macro parameter: {params}"

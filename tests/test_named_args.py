@@ -141,10 +141,12 @@ def test_required_after_named_is_error():
 
 
 def test_single_keyword_put_arity():
+    # one keyword slot + one ~ guard slot: without the guard a misspelled
+    # keyword would keep BODY's arity and expand silently
     src = '@macro S1($name, named $ONLY = 7)\nf({{$name}}, {{$ONLY}})\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
-    assert "#define UNCURSED_PP_S1_PUT_0(v, p0) v\n" in out
-    assert "#define UNCURSED_PP_S1_2(name, e1) UNCURSED_PP_S1_BODY_D(name, UNCURSED_PP_S1_STEP1(e1, 7))\n" in out
+    assert "#define UNCURSED_PP_S1_PUT_0(v, p0, e0) v, e0\n" in out
+    assert "#define UNCURSED_PP_S1_2(name, e1) UNCURSED_PP_S1_BODY_D(name, UNCURSED_PP_S1_STEP1(e1, 7, ~))\n" in out
 
 
 def test_empty_default_keeps_its_slot_in_the_state():
@@ -163,3 +165,31 @@ def test_named_variadic_value_unwraps_by_juxtaposition():
     assert "UNCURSED_PP_KW_SPREAD COLORS" in out
     assert "REMOVE_PARENS" not in out
     assert '#include "uncursed_pp_runtime.h"' in out
+
+
+def test_misspelled_keyword_with_single_named_param_is_loud(tmp_path):
+    # the hard-error contract must hold at ONE keyword too: the garbage
+    # state keeps BODY's arity when there is only one slot, so a guard
+    # slot pads the state to make the mismatch visible
+    import pytest as _pytest
+    from conftest import CC, preprocess_src, requires_boost  # noqa: F401
+
+    if CC is None:
+        _pytest.skip("no C compiler available")
+    src = '@macro W($a, named $FLAG = x)\nw {{$a}} {{$FLAG}}\n@endmacro\n'
+    with _pytest.raises(AssertionError, match="preprocessing failed"):
+        preprocess_src(tmp_path, src, "w", "W(a, TYPO(9))")
+
+
+def test_repeated_keyword_beyond_max_arity_is_loud(tmp_path):
+    # one repeat too many overflows the bounded size scan; the size slot
+    # then holds a keyword call and the dispatch pastes {base}{KW} - which
+    # is now a defined error stub, not silent garbage
+    import pytest as _pytest
+    from conftest import CC, preprocess_src
+
+    if CC is None:
+        _pytest.skip("no C compiler available")
+    src = '@macro R1($a, named $K = 0)\nr {{$a}} {{$K}}\n@endmacro\n'
+    with _pytest.raises(AssertionError, match="preprocessing failed"):
+        preprocess_src(tmp_path, src, "r", "R1(a, K(1), K(2))")

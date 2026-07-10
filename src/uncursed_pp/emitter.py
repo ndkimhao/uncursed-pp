@@ -265,6 +265,13 @@ class _MacroEmitter:
         variadic: list[Param],
     ) -> None:
         line = self.macro.line
+        seen_names: set[str] = set()
+        for p in self.macro.params:
+            if p.name in seen_names:
+                raise UncursedPpError(
+                    f"duplicate parameter name ${p.name}", self.filename, line
+                )
+            seen_names.add(p.name)
         if variadic:
             if len(variadic) > 1:
                 raise UncursedPpError("at most one variadic parameter", self.filename, line)
@@ -381,11 +388,26 @@ class _MacroEmitter:
             f"#define {base}STEP_I({i_}, {v_}, ...) {base}PUT_ ## {i_}({v_}, __VA_ARGS__)\n"
         )
         arity = len(named)
-        slots = [self.arg(f"p{j}") for j in range(arity)]
+        # per-arity heads (and the guard slot below) mix user positional
+        # names with generated slots: pick a stem no user param collides
+        # with (a positional legitimately named $e1 must keep working)
+        slot_stem = "e"
+        while any(re.fullmatch(rf"{slot_stem}\d+", p.name) for p in self.macro.params):
+            slot_stem += "_"
+        # a single keyword slot cannot surface a misspelled keyword: the
+        # garbage state is still ONE argument, so BODY's arity would not
+        # change. A trailing ~ guard slot pads the state - the typo path
+        # collapses state+guard into one blob and BODY hard-errors.
+        guarded = arity == 1
+        state = [self.arg(f"p{j}") for j in range(arity)]
+        if guarded:
+            state.append(self.arg(f"{slot_stem}0"))
+            defaults = f"{defaults}, ~"
         for slot in range(arity):
-            replaced = ", ".join(v_ if j == slot else self.arg(f"p{j}") for j in range(arity))
-            defines.append(f"#define {base}PUT_{slot}({v_}, {', '.join(slots)}) {replaced}\n")
-        defines.append(_format_define(f"{base}BODY({', '.join(all_names)})", body))
+            replaced = ", ".join(v_ if j == slot else state[j] for j in range(len(state)))
+            defines.append(f"#define {base}PUT_{slot}({v_}, {', '.join(state)}) {replaced}\n")
+        body_names = all_names + ([state[-1]] if guarded else [])
+        defines.append(_format_define(f"{base}BODY({', '.join(body_names)})", body))
         defines.append(f"#define {base}BODY_D(...) {base}BODY(__VA_ARGS__)\n")
 
         required = len(pos)
@@ -410,7 +432,7 @@ class _MacroEmitter:
                 f"{base}BODY({', '.join(pos_names)}, {defaults})\n"
             )
         for k in range(max(1, n_required_kw), arity + 1):
-            kw_params = [self.arg(f"e{j}") for j in range(1, k + 1)]
+            kw_params = [self.arg(f"{slot_stem}{j}") for j in range(1, k + 1)]
             nest = defaults
             for e in kw_params:  # innermost gets the first kwarg: last wins
                 nest = f"{base}STEP1({e}, {nest})"
@@ -419,6 +441,26 @@ class _MacroEmitter:
                 f"{base}BODY_D({', '.join(pos_names)}, {nest})\n"
             )
         self._emit_arity_dispatch(base, required + arity)
+        # a keyword repeated past the max arity overflows the bounded
+        # size scan: the size slot then holds a keyword CALL (KW(v)),
+        # and the dispatch pastes {base}{KW}. Defining those names as
+        # error stubs turns the overflow into a hard cpp error - zero
+        # per-call cost, k extra defines. (Skipped for a keyword named
+        # like generated machinery; the stub must not redefine it.)
+        helper_names = {h.name for h in self.out.helpers}
+        emitted = "".join(defines)
+        err = f"{base}ERROR_TOO_MANY_ARGUMENTS"
+        stubs = [
+            f"#define {base}{p.name}(...) {err}(~)\n"
+            for p in named
+            if f"{base}{p.name}" not in helper_names
+            and f"#define {base}{p.name}(" not in emitted
+        ]
+        if stubs:
+            defines.append(
+                f"#define {err}({self.arg('kw')}, {self.arg('excess')})\n"
+            )
+            defines.extend(stubs)
 
     # ── rendering ────────────────────────────────────────────────────
 

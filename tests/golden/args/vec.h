@@ -19,16 +19,18 @@
 #define UNCURSED_PP_VEC_STEP1(e, ...) UNCURSED_PP_VEC_STEP_D(BOOST_PP_CAT(UNCURSED_PP_VEC_SET_, e), __VA_ARGS__)
 #define UNCURSED_PP_VEC_STEP_D(...) UNCURSED_PP_VEC_STEP_I(__VA_ARGS__)
 #define UNCURSED_PP_VEC_STEP_I(i, v, ...) UNCURSED_PP_VEC_PUT_ ## i(v, __VA_ARGS__)
-#define UNCURSED_PP_VEC_PUT_0(v, p0) v
-#define UNCURSED_PP_VEC_BODY(name, items, PREFIX) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_VEC_EACH1, (PREFIX, name), items)
+#define UNCURSED_PP_VEC_PUT_0(v, p0, e0) v, e0
+#define UNCURSED_PP_VEC_BODY(name, items, PREFIX, e0) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_VEC_EACH1, (PREFIX, name), items)
 #define UNCURSED_PP_VEC_BODY_D(...) UNCURSED_PP_VEC_BODY(__VA_ARGS__)
-#define UNCURSED_PP_VEC_2(name, items) UNCURSED_PP_VEC_BODY(name, items, v)
-#define UNCURSED_PP_VEC_3(name, items, e1) UNCURSED_PP_VEC_BODY_D(name, items, UNCURSED_PP_VEC_STEP1(e1, v))
+#define UNCURSED_PP_VEC_2(name, items) UNCURSED_PP_VEC_BODY(name, items, v, ~)
+#define UNCURSED_PP_VEC_3(name, items, e1) UNCURSED_PP_VEC_BODY_D(name, items, UNCURSED_PP_VEC_STEP1(e1, v, ~))
 #define UNCURSED_PP_VEC_SIZE(...) UNCURSED_PP_VEC_SIZE_I(__VA_ARGS__, 3, 2, 1,)
 #define UNCURSED_PP_VEC_SIZE_I(e0, e1, e2, size, ...) size
 #define UNCURSED_PP_VEC_DISPATCH(n) UNCURSED_PP_VEC_DISPATCH_I(n)
 #define UNCURSED_PP_VEC_DISPATCH_I(n) UNCURSED_PP_VEC_ ## n
 #define VEC(...) UNCURSED_PP_VEC_DISPATCH(UNCURSED_PP_VEC_SIZE(__VA_ARGS__))(__VA_ARGS__)
+#define UNCURSED_PP_VEC_ERROR_TOO_MANY_ARGUMENTS(kw, excess)
+#define UNCURSED_PP_VEC_PREFIX(...) UNCURSED_PP_VEC_ERROR_TOO_MANY_ARGUMENTS(~)
 
 /* # ── invocation specs (verified through cc -E by the spec harness) ──
  * #?  VEC(acc, (x)(y))

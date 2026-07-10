@@ -74,3 +74,11 @@ unsigned {{$name}}[] = { {{$COLORS}} };
 # documented caveat: a misspelled keyword is a C compile error, not a
 # silent default
 #?! MAKE_WIDGET(wbad, WIDHT(9))
+
+# documented caveat holds at ONE keyword too (the ~ guard slot makes
+# the typo's unchanged argument count visible)
+#?! STYLE(sbad, COLOURS(red))
+
+# a keyword repeated past the max arity overflows the size scan; the
+# dispatch lands on a defined error stub, never silent garbage
+#?! MAKE_WIDGET(w, WIDTH(1), WIDTH(2), WIDTH(3), WIDTH(4))

@@ -35,6 +35,10 @@
 #define UNCURSED_PP_MAKE_WIDGET_DISPATCH(n) UNCURSED_PP_MAKE_WIDGET_DISPATCH_I(n)
 #define UNCURSED_PP_MAKE_WIDGET_DISPATCH_I(n) UNCURSED_PP_MAKE_WIDGET_ ## n
 #define MAKE_WIDGET(...) UNCURSED_PP_MAKE_WIDGET_DISPATCH(UNCURSED_PP_MAKE_WIDGET_SIZE(__VA_ARGS__))(__VA_ARGS__)
+#define UNCURSED_PP_MAKE_WIDGET_ERROR_TOO_MANY_ARGUMENTS(kw, excess)
+#define UNCURSED_PP_MAKE_WIDGET_WIDTH(...) UNCURSED_PP_MAKE_WIDGET_ERROR_TOO_MANY_ARGUMENTS(~)
+#define UNCURSED_PP_MAKE_WIDGET_HEIGHT(...) UNCURSED_PP_MAKE_WIDGET_ERROR_TOO_MANY_ARGUMENTS(~)
+#define UNCURSED_PP_MAKE_WIDGET_FLAGS(...) UNCURSED_PP_MAKE_WIDGET_ERROR_TOO_MANY_ARGUMENTS(~)
 
 /* uncursed-pp source:
  * # 'named variadic' keyword values may contain bare commas: the generated
@@ -47,16 +51,18 @@
 #define UNCURSED_PP_STYLE_STEP1(e, ...) UNCURSED_PP_STYLE_STEP_D(BOOST_PP_CAT(UNCURSED_PP_STYLE_SET_, e), __VA_ARGS__)
 #define UNCURSED_PP_STYLE_STEP_D(...) UNCURSED_PP_STYLE_STEP_I(__VA_ARGS__)
 #define UNCURSED_PP_STYLE_STEP_I(i, v, ...) UNCURSED_PP_STYLE_PUT_ ## i(v, __VA_ARGS__)
-#define UNCURSED_PP_STYLE_PUT_0(v, p0) v
-#define UNCURSED_PP_STYLE_BODY(name, COLORS) unsigned name[] = { UNCURSED_PP_KW_SPREAD COLORS };
+#define UNCURSED_PP_STYLE_PUT_0(v, p0, e0) v, e0
+#define UNCURSED_PP_STYLE_BODY(name, COLORS, e0) unsigned name[] = { UNCURSED_PP_KW_SPREAD COLORS };
 #define UNCURSED_PP_STYLE_BODY_D(...) UNCURSED_PP_STYLE_BODY(__VA_ARGS__)
-#define UNCURSED_PP_STYLE_1(name) UNCURSED_PP_STYLE_BODY(name, (none))
-#define UNCURSED_PP_STYLE_2(name, e1) UNCURSED_PP_STYLE_BODY_D(name, UNCURSED_PP_STYLE_STEP1(e1, (none)))
+#define UNCURSED_PP_STYLE_1(name) UNCURSED_PP_STYLE_BODY(name, (none), ~)
+#define UNCURSED_PP_STYLE_2(name, e1) UNCURSED_PP_STYLE_BODY_D(name, UNCURSED_PP_STYLE_STEP1(e1, (none), ~))
 #define UNCURSED_PP_STYLE_SIZE(...) UNCURSED_PP_STYLE_SIZE_I(__VA_ARGS__, 2, 1,)
 #define UNCURSED_PP_STYLE_SIZE_I(e0, e1, size, ...) size
 #define UNCURSED_PP_STYLE_DISPATCH(n) UNCURSED_PP_STYLE_DISPATCH_I(n)
 #define UNCURSED_PP_STYLE_DISPATCH_I(n) UNCURSED_PP_STYLE_ ## n
 #define STYLE(...) UNCURSED_PP_STYLE_DISPATCH(UNCURSED_PP_STYLE_SIZE(__VA_ARGS__))(__VA_ARGS__)
+#define UNCURSED_PP_STYLE_ERROR_TOO_MANY_ARGUMENTS(kw, excess)
+#define UNCURSED_PP_STYLE_COLORS(...) UNCURSED_PP_STYLE_ERROR_TOO_MANY_ARGUMENTS(~)
 
 /* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
  * #?  MAKE_WIDGET(w1)
@@ -133,4 +139,14 @@
 /* # documented caveat: a misspelled keyword is a C compile error, not a
  * # silent default
  * #?! MAKE_WIDGET(wbad, WIDHT(9))
+ */
+
+/* # documented caveat holds at ONE keyword too (the ~ guard slot makes
+ * # the typo's unchanged argument count visible)
+ * #?! STYLE(sbad, COLOURS(red))
+ */
+
+/* # a keyword repeated past the max arity overflows the size scan; the
+ * # dispatch lands on a defined error stub, never silent garbage
+ * #?! MAKE_WIDGET(w, WIDTH(1), WIDTH(2), WIDTH(3), WIDTH(4))
  */
