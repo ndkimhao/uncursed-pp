@@ -102,3 +102,46 @@ def test_norm_strips_parens_iff_present(tmp_path):
     assert canon("a, b") in stripped
     passthrough = preprocess(tmp_path, "norm", "NORM(q)")
     assert canon("q") in passthrough
+
+
+LOG_SRC = 'macro LOG(msg, level = INFO, out = stderr)\nfprintf({{out}}, "[" #{{level}} "] %s\\n", {{msg}});\nend\n'
+
+WIDGET_SRC = (
+    "macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )\n"
+    "struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };\n"
+    "end\n"
+)
+
+
+def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> str:
+    header = tmp_path / f"{stem}.h"
+    header.write_text(compile_source(source, f"{stem}.cursed"))
+    snippet = tmp_path / "main.c"
+    snippet.write_text(f'#include "{header.name}"\n{invocation}\n')
+    result = subprocess.run(
+        [CC, "-E", "-P", str(snippet)], capture_output=True, text=True, check=True
+    )
+    return canon(result.stdout)
+
+
+@requires_boost
+def test_log_default_args(tmp_path):
+    assert canon("fprintf(stderr, \"[\" \"INFO\" \"] %s\\n\", m);") in preprocess_src(
+        tmp_path, LOG_SRC, "log", "LOG(m)"
+    )
+    assert canon("fprintf(stdout, \"[\" \"WARN\" \"] %s\\n\", m);") in preprocess_src(
+        tmp_path, LOG_SRC, "log2", "LOG(m, WARN, stdout)"
+    )
+
+
+@requires_boost
+def test_widget_named_args(tmp_path):
+    assert canon("struct widget w1 = { 100, 50, };") in preprocess_src(
+        tmp_path, WIDGET_SRC, "w1", "MAKE_WIDGET(w1)"
+    )
+    assert canon("struct widget w2 = { 100, 80, };") in preprocess_src(
+        tmp_path, WIDGET_SRC, "w2", "MAKE_WIDGET(w2, HEIGHT(80))"
+    )
+    assert canon("struct widget w3 = { 20, 50, BOLD };") in preprocess_src(
+        tmp_path, WIDGET_SRC, "w3", "MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))"
+    )

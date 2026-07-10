@@ -133,6 +133,8 @@ BodyNode = Text | Interp | ForEach | Join | Let | If
 class Param:
     name: str
     type: Type | None  # None = bare token param
+    default: str | None = None  # None = required; "" = defaults to empty
+    named: bool = False  # passed as NAME(value) at the call site
     line: int = 0
 
 

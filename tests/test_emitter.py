@@ -86,3 +86,47 @@ def test_empty_else_branch_emits_empty_helper():
     # branches reference no variables, so the helpers take zero parameters
     assert "#define CURSEDPP_F_ELSE1()\n" in out
     assert "CURSEDPP_F_THEN1, CURSEDPP_F_ELSE1)()" in out
+
+
+LOG_SRC = 'macro LOG(msg, level = INFO, out = stderr)\nfprintf({{out}}, "[" #{{level}} "] %s\\n", {{msg}});\nend\n'
+
+
+def test_tail_defaults_emit_overload_chain():
+    out = compile_source(LOG_SRC, "log.cursed")
+    assert "#define CURSEDPP_LOG_1(msg) CURSEDPP_LOG_3(msg, INFO, stderr)\n" in out
+    assert "#define CURSEDPP_LOG_2(msg, level) CURSEDPP_LOG_3(msg, level, stderr)\n" in out
+    assert "#define CURSEDPP_LOG_3(msg, level, out)" in out
+    assert "#define LOG(...) BOOST_PP_OVERLOAD(CURSEDPP_LOG_, __VA_ARGS__)(__VA_ARGS__)\n" in out
+
+
+def test_default_after_required_only():
+    from cursedpp.parser import CursedppError
+
+    with pytest.raises(CursedppError) as excinfo:
+        compile_source("macro F(a = 1, b)\nx\nend\n", "f.cursed")
+    assert "default" in str(excinfo.value)
+
+
+def test_mixing_defaults_and_named_is_error():
+    from cursedpp.parser import CursedppError
+
+    with pytest.raises(CursedppError):
+        compile_source("macro F(a, b = 1, named C = 2)\nx\nend\n", "f.cursed")
+
+
+WIDGET_SRC = (
+    "macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )\n"
+    "struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };\n"
+    "end\n"
+)
+
+
+def test_named_args_emit_probe_and_fold():
+    out = compile_source(WIDGET_SRC, "widget.cursed")
+    assert "#define CURSEDPP_MAKE_WIDGET_KW_WIDTH_WIDTH(v) v, 1\n" in out
+    assert "BOOST_PP_SEQ_FOLD_LEFT" in out
+    assert "#define CURSEDPP_MAKE_WIDGET_1(name) CURSEDPP_MAKE_WIDGET_BODY(name, 100, 50, )\n" in out
+    assert (
+        "#define MAKE_WIDGET(...) "
+        "BOOST_PP_OVERLOAD(CURSEDPP_MAKE_WIDGET_, __VA_ARGS__)(__VA_ARGS__)\n" in out
+    )

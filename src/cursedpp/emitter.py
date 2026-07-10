@@ -20,6 +20,7 @@ from .nodes import (
     Len,
     Let,
     MacroDef,
+    Param,
     RemoveParens,
     SeqT,
     Text,
@@ -84,7 +85,7 @@ class _Helper:
 @dataclass
 class _MacroOut:
     helpers: list[_Helper] = field(default_factory=list)
-    define: str = ""
+    defines: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -99,11 +100,19 @@ _Env = dict[str, _Binding]
 class _MacroEmitter:
     """Emits one macro: a main #define plus any generated helper macros."""
 
-    def __init__(self, macro: MacroDef, config: EmitConfig, filename: str, used: set[str]):
+    def __init__(
+        self,
+        macro: MacroDef,
+        config: EmitConfig,
+        filename: str,
+        used: set[str],
+        file_state: dict[str, bool],
+    ):
         self.macro = macro
         self.config = config
         self.filename = filename
         self.used = used
+        self.file_state = file_state
         self.out = _MacroOut()
         self._helper_counts: dict[str, int] = {}
 
@@ -112,11 +121,117 @@ class _MacroEmitter:
         return f"{self.config.pp_prefix}{name}"
 
     def emit(self) -> _MacroOut:
-        params = ", ".join(p.name for p in self.macro.params)
+        pos = [p for p in self.macro.params if not p.named and p.default is None]
+        defaulted = [p for p in self.macro.params if not p.named and p.default is not None]
+        named = [p for p in self.macro.params if p.named]
+        self._validate_params(pos, defaulted, named)
+
         env = {p.name: _Binding(p.name, p.type) for p in self.macro.params}
         body = self._render_block(self.macro.body, env)
-        self.out.define = _format_define(f"{self.macro.name}({params})", body)
+
+        if defaulted:
+            self._emit_overload_chain(pos, defaulted, body)
+        elif named:
+            self._emit_named(pos, named, body)
+        else:
+            params = ", ".join(p.name for p in self.macro.params)
+            self.out.defines.append(_format_define(f"{self.macro.name}({params})", body))
         return self.out
+
+    def _validate_params(
+        self, pos: list[Param], defaulted: list[Param], named: list[Param]
+    ) -> None:
+        line = self.macro.line
+        if defaulted and named:
+            raise CursedppError(
+                "a macro may use tail defaults OR named params, not both",
+                self.filename,
+                line,
+            )
+        ordered = [("pos", p) for p in self.macro.params if not p.named and p.default is None]
+        seen_special = False
+        for p in self.macro.params:
+            special = p.named or p.default is not None
+            if seen_special and not special:
+                raise CursedppError(
+                    f"required parameter {p.name!r} cannot follow a defaulted/named one",
+                    self.filename,
+                    line,
+                )
+            seen_special = seen_special or special
+        if (defaulted or named) and not pos:
+            raise CursedppError(
+                "defaults/named params need at least one required parameter "
+                "(arity dispatch cannot see a zero-argument call)",
+                self.filename,
+                line,
+            )
+
+    def _emit_overload_chain(
+        self, pos: list[Param], defaulted: list[Param], body: str
+    ) -> None:
+        all_params = pos + defaulted
+        names = [p.name for p in all_params]
+        base = f"{self.config.helper_prefix}{self.macro.name}_"
+        total, required = len(all_params), len(pos)
+        for k in range(required, total):
+            head = f"{base}{k}({', '.join(names[:k])})"
+            args = names[:k] + [p.default or "" for p in all_params[k:]]
+            self.out.defines.append(f"#define {head} {base}{total}({', '.join(args)})\n")
+        self.out.defines.append(_format_define(f"{base}{total}({', '.join(names)})", body))
+        self.out.defines.append(
+            f"#define {self.macro.name}(...) "
+            f"{self.pp('OVERLOAD')}({base}, __VA_ARGS__)(__VA_ARGS__)\n"
+        )
+
+    def _emit_named(self, pos: list[Param], named: list[Param], body: str) -> None:
+        self.file_state["kw_utils"] = True
+        base = f"{self.config.helper_prefix}{self.macro.name}_"
+        kw_util = self.config.helper_prefix
+        pos_names = [p.name for p in pos]
+        all_names = pos_names + [p.name for p in named]
+        cat = self.pp("CAT")
+        iif = self.pp("IIF")
+
+        defines = self.out.defines
+        for p in named:
+            kw = p.name
+            probe = f"{base}KW_{kw}_"
+            defines.append(f"#define {probe}{kw}(v) v, 1\n")
+            defines.append(f"#define {base}IS_{kw}(e) {kw_util}KW_CHECK({cat}({probe}, e))\n")
+            defines.append(
+                f"#define {base}TAKE_{kw}(state, e) {kw_util}KW_FIRST({cat}({probe}, e))\n"
+            )
+            defines.append(
+                f"#define {base}FOLD_{kw}(s, state, e) "
+                f"{iif}({base}IS_{kw}(e), {base}TAKE_{kw}, {base}KEEP)(state, e)\n"
+            )
+            defines.append(
+                f"#define {base}GET_{kw}(seq) "
+                f"{self.pp('SEQ_FOLD_LEFT')}({base}FOLD_{kw}, {p.default or ''}, seq)\n"
+            )
+        defines.append(f"#define {base}KEEP(state, e) state\n")
+        defines.append(_format_define(f"{base}BODY({', '.join(all_names)})", body))
+
+        gets = ", ".join(
+            f"{base}GET_{p.name}({self.pp('VARIADIC_TO_SEQ')}(__VA_ARGS__))" for p in named
+        )
+        defines.append(
+            f"#define {base}KW({', '.join(pos_names)}, ...) "
+            f"{base}BODY({', '.join(pos_names)}, {gets})\n"
+        )
+        required = len(pos)
+        default_args = ", ".join(p.default or "" for p in named)
+        defines.append(
+            f"#define {base}{required}({', '.join(pos_names)}) "
+            f"{base}BODY({', '.join(pos_names)}, {default_args})\n"
+        )
+        for i in range(1, len(named) + 1):
+            defines.append(f"#define {base}{required + i} {base}KW\n")
+        defines.append(
+            f"#define {self.macro.name}(...) "
+            f"{self.pp('OVERLOAD')}({base}, __VA_ARGS__)(__VA_ARGS__)\n"
+        )
 
     # ── rendering ────────────────────────────────────────────────────
 
@@ -365,13 +480,14 @@ def _format_helper(helper: _Helper) -> str:
 def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None) -> str:
     config = config or EmitConfig()
     used: set[str] = set()
+    file_state = {"kw_utils": False}
     macro_chunks: list[str] = []
     for macro in file.macros:
-        out = _MacroEmitter(macro, config, source_name, used).emit()
+        out = _MacroEmitter(macro, config, source_name, used, file_state).emit()
         macro_chunks.append("\n")
         for helper in out.helpers:
             macro_chunks.append(_format_helper(helper))
-        macro_chunks.append(out.define)
+        macro_chunks.extend(out.defines)
 
     if config.pp_include is not None:
         includes = [config.pp_include]
@@ -385,6 +501,15 @@ def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None)
     if includes:
         chunks.append("\n")
         chunks.extend(f"#include <{inc}>\n" for inc in includes)
+    if file_state["kw_utils"]:
+        hp = config.helper_prefix
+        chunks.append(
+            "\n"
+            f"#define {hp}KW_CHECK_N(x, n, ...) n\n"
+            f"#define {hp}KW_CHECK(...) {hp}KW_CHECK_N(__VA_ARGS__, 0,)\n"
+            f"#define {hp}KW_FIRST_N(x, ...) x\n"
+            f"#define {hp}KW_FIRST(...) {hp}KW_FIRST_N(__VA_ARGS__,)\n"
+        )
     chunks.extend(macro_chunks)
     return "".join(chunks)
 

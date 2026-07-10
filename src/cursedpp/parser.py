@@ -79,9 +79,17 @@ class _Ast(Transformer[Any, Any]):
     def param_list(self, items: list[Any]) -> list[Param]:
         return list(items)
 
-    def param(self, items: list[Any]) -> Param:
+    def plain_param(self, items: list[Any]) -> Param:
         name, type_ = items
         return Param(name=str(name), type=type_)
+
+    def defaulted_param(self, items: list[Any]) -> Param:
+        name, default = items
+        return Param(name=str(name), type=None, default=_clean_default(default))
+
+    def named_param(self, items: list[Any]) -> Param:
+        name, default = items
+        return Param(name=str(name), type=None, default=_clean_default(default), named=True)
 
     def seq_type(self, items: list[Any]) -> SeqT:
         return SeqT(items[0])
@@ -166,6 +174,10 @@ def _build_call(name: str, args: tuple[Expr, ...]) -> Expr:
         return IsParen(args[0])
     known = "concat, is_paren, len, remove_parens"
     raise ValueError(f"unknown function: {name}() (known: {known})")
+
+
+def _clean_default(token: Any) -> str:
+    return "" if token is None else str(token).strip()
 
 
 def _unquote(token: Any) -> str:

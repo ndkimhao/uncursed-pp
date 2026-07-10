@@ -166,3 +166,34 @@ def test_parse_if_without_comparison_rejects_plain_expr():
     src = "macro F(x)\n@if x\nbody\n@end\nend\n"
     with pytest.raises(CursedppError):
         parse_file(src, "t.cursed")
+
+
+def test_parse_tail_defaults():
+    src = "macro LOG(msg, level = INFO, out = stderr)\nf({{msg}}, {{level}}, {{out}});\nend\n"
+    [macro] = parse_file(src, "t.cursed").macros
+    assert [(p.name, p.default, p.named) for p in macro.params] == [
+        ("msg", None, False),
+        ("level", "INFO", False),
+        ("out", "stderr", False),
+    ]
+
+
+def test_parse_empty_default():
+    src = "macro ATTR(name, qualifiers = )\n{{qualifiers}} int {{name}};\nend\n"
+    [macro] = parse_file(src, "t.cursed").macros
+    assert macro.params[1].default == ""
+
+
+def test_parse_named_params():
+    src = (
+        "macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )\n"
+        "struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };\n"
+        "end\n"
+    )
+    [macro] = parse_file(src, "t.cursed").macros
+    assert [(p.name, p.default, p.named) for p in macro.params] == [
+        ("name", None, False),
+        ("WIDTH", "100", True),
+        ("HEIGHT", "50", True),
+        ("FLAGS", "", True),
+    ]
