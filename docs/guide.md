@@ -253,10 +253,13 @@ is then reused at every use site (the loop helper is generated once):
 Inline directives nest (an inline `@if` inside an inline `@join` works); each
 inline directive closes with its own `@end` on the same line.
 
-**v1 limit — flat loops:** one loop level per macro. No `@for` inside `@for`,
-and a generated macro must not be invoked from inside another generated
-macro's loop body (Boost.PP's `FOR_EACH` is not reentrant). Sequential calls —
-one generated macro invoking others *outside* any loop — are fine.
+**Nesting limit — 4 loop levels:** the outer loop compiles to
+`SEQ_FOR_EACH`; inner loops ride `BOOST_PP_REPEAT`'s three auto-detected
+dimensions with `SEQ_ELEM` indexing. Five-deep is a compile error. A
+generated macro must still not be invoked from inside another generated
+macro's loop body (cursedpp cannot see call sites to route reentrancy).
+Sequential calls — one generated macro invoking others *outside* any
+loop — are fine.
 
 ## 7. Loop bodies and outer variables
 
@@ -367,11 +370,13 @@ its expectations always sit on separate lines:
 #=>     enum { Point_field_count = 2 };
 ```
 
-`tests/test_integration.py` discovers every `#?` case, compiles the template,
-invokes the macro from a C snippet, runs `cc -E -P`, and asserts that each
-`#=>` fragment appears (whitespace-canonicalized) in the expansion. A case may
-list any number of `#=>` fragments. Every golden template must carry at least
-one spec (enforced by a meta-test).
+`tests/test_e2e_specs.py` discovers every `#?` case, compiles the template,
+invokes the macro from a C snippet, runs `cc -E -P`, and requires the whole
+preprocessed output to EQUAL the joined `#=>` lines, token-exactly (string
+literal interiors verbatim, whitespace between tokens normalized) — a missing
+or extra emitted token fails. `#?! INVOCATION` cases assert that preprocessing
+must fail (for documented failure modes). Every golden template must carry
+specs, and every macro it defines must be exercised (meta-tests enforce both).
 
 ## 13. Worked example: a reflection system
 

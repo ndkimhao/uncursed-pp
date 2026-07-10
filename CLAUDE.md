@@ -15,9 +15,9 @@ at C compile time via Boost.PP primitives.
 
 Pipeline: source → line-level pass (`parser.py`: pragmas, macro headers, body
 vs directive lines, `end` matching) → lark mini-grammars (`grammar.lark`) for
-signatures/directives/`{{expr}}` → dataclass AST (`nodes.py`) → semantic checks
-(`semantics.py`) → helper IR + macro bodies (`emitter.py`) → helper dedup/
-factoring (`collapse.py`) → C header text.
+signatures/directives/`{{expr}}` → dataclass AST (`nodes.py`) → semantic
+checks + helper IR + macro bodies (`emitter.py`) → helper dedup/factoring
+(`collapse.py`) → C header text.
 
 Design spec: `docs/design.md`. Language rules and call-site caveats live there —
 consult it before changing DSL syntax or codegen. Codegen performance work must

@@ -20,7 +20,8 @@ end
  * macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
  * ...
  */
-#define CURSEDPP_DECLARE_FIELDS_EACH1(r, d, e) BOOST_PP_TUPLE_ELEM(0, e) BOOST_PP_TUPLE_ELEM(1, e);
+#define CURSEDPP_DECLARE_FIELDS_AP1(type, name) type name;
+#define CURSEDPP_DECLARE_FIELDS_EACH1(r, d, e) CURSEDPP_DECLARE_FIELDS_AP1 e
 #define DECLARE_FIELDS(fields) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_DECLARE_FIELDS_EACH1, ~, fields)
 
 /* usage — expands at C compile time */
@@ -97,11 +98,11 @@ Identical generated helpers are deduplicated across the file into shared
 `CURSEDPP_H<n>` macros; loop bodies differing by one constant token share a
 helper with the constant passed through `FOR_EACH`'s data slot.
 
-Common utilities (the keyword-argument `KW_PUT` machinery) are not inlined:
-headers that need them `#include "cursedpp_runtime.h"`, a small companion file
-cursedpp writes next to the output. Multiple generated headers share the one
-runtime file. Its name defaults to `<helper-prefix>_runtime.h` and is
-customizable via `--runtime-name` or `@pragma runtime_name "acme_common.h"`.
+Common utilities (currently the `KW_SPREAD` tuple-unpacking helper) are not
+inlined: headers that need them `#include "cursedpp_runtime.h"`, a small
+companion file cursedpp writes next to the output. Multiple generated headers
+share the one runtime file. Its name defaults to `<helper_prefix>_runtime.h`
+and is customizable via `@pragma runtime_name "acme_common.h"`.
 
 ## Call-site rules (C is still C)
 

@@ -107,8 +107,8 @@ end
 
 ## Codegen mapping (DSL → Boost.PP)
 
-All `BOOST_PP_` occurrences below use the configured prefix (`--pp-prefix`,
-default `BOOST_PP_`). Generated helpers are namespaced `CURSEDPP_<MACRO>_<KIND>`.
+All `BOOST_PP_` occurrences below use the configured prefix
+(`@pragma pp_prefix`, default `BOOST_PP_`). Generated helpers are namespaced `CURSEDPP_<MACRO>_<KIND>`.
 
 | Construct | Generated code |
 |---|---|
@@ -126,7 +126,7 @@ default `BOOST_PP_`). Generated helpers are namespaced `CURSEDPP_<MACRO>_<KIND>`
 | `@let name := expr` | generation-time binding; inlined at each use site |
 | `named variadic K = d` | keyword value may contain bare commas: `SET_K(...) slot, (__VA_ARGS__)` re-wraps, interpolation auto-`REMOVE_PARENS` — net effect: verbatim value passthrough |
 | tail defaults | arity chain `CURSEDPP_<M>_1 → ..._N` filling defaults + a per-macro max-arity size scan (`OVERLOAD`'s 65-slot scan is ~2x slower) |
-| named args | setter dispatch: one `SET_<KW>(v) slot, v` per keyword; each `KW(value)` arg pastes onto `SET_` and names its own slot, a single `SEQ_FOLD_LEFT` TUPLE_REPLACEs slots in the defaults tuple; arity dispatch via OVERLOAD handles the zero-keyword call; shared KW_PUT utils live in a companion runtime header (name via `--runtime-name` / `@pragma runtime_name`), one copy for all generated headers. Unknown keywords are compile errors, not silent defaults |
+| named args | setter dispatch: one `SET_<KW>` per keyword; each `KW(value)` arg pastes onto `SET_` and names its own slot; arity-specific setter chains apply slot updates via generated per-slot replacers (`PUT_<n>`, spread through `KW_SPREAD`) — no fold, no `TUPLE_REPLACE`/`WHILE`; a bounded max-arity size scan dispatches arity (no `OVERLOAD`). Shared `KW_SPREAD` lives in the companion runtime header (`@pragma runtime_name`). Unknown keywords are compile errors, not silent defaults |
 | variadic param | `BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)`, then treated as seq |
 
 Efficiency stance: prefer `IIF` over `IF`, keep helper indirection ≤2 deep, no
@@ -196,14 +196,15 @@ src/cursedpp/
                           #   VarRef, ElemAccess, RemoveParens, Pragma
   grammar.lark            # signature / directive / expression mini-grammars
   parser.py               # line pass + lark transformers → AST (positions attached)
-  semantics.py            # checks below
+
   emitter.py              # AST → helper IR + macro bodies → C header text (prefix-aware)
   collapse.py             # helper dedup/factoring pass over the helper IR
-  cli.py                  # argparse: input.cursed [-o out.h] [--pp-prefix] [--pp-include]
+  cli.py                  # argparse: input.cursed [-o out.h] (config via @pragma)
 tests/
-  test_parser.py  test_semantics.py  test_emitter.py   # unit
-  golden/*.cursed + *.h                                # golden-file emitter tests
-  test_integration.py                                  # real `cc -E`, auto-skip w/o boost
+  test_<feature>.py       # one file per feature: AST + error-path checks
+  test_golden.py          # exact golden-header comparison (golden/**/)
+  test_e2e_specs.py       # #? specs through real `cc -E` (vendored boost)
+  golden/<category>/*.cursed + *.h
 examples/example.cursed
 ```
 
@@ -235,5 +236,5 @@ named/variadic; default-less param after defaulted one; unknown pragma.
 6. `variadic` param type.
 7. Helper collapse pass (exact merge, then `d`-parameterized merge) — golden
    files updated to shared-helper output; unit tests for merge/no-merge cases.
-8. `@pragma` + `--pp-prefix`/`--pp-include` plumbed through emitter.
+8. `@pragma` configuration plumbed through emitter (pragma-only; no CLI flags).
 9. Examples, README (call-site caveats), full integration suite.
