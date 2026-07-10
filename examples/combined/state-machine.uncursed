@@ -7,7 +7,7 @@
 # The states seq defines the enum; the transitions seq defines step().
 # An event that matches no transition leaves the state unchanged.
 
-macro DEFINE_FSM(fsm, states: seq<token>, transitions: seq<tuple<src, evt, dst>>)
+@macro DEFINE_FSM(fsm, states: seq<token>, transitions: seq<tuple<src, evt, dst>>)
 enum {{concat(fsm, _state)}} {
 @for s in states
   {{s}},
@@ -19,7 +19,7 @@ static int {{concat(fsm, _step)}}(int s, int ev) {
 @end
   return s;
 }
-end
+@endmacro
 
 #?  DEFINE_FSM(door, (CLOSED)(OPEN), ((CLOSED, EV_OPEN, OPEN))((OPEN, EV_CLOSE, CLOSED)))
 #=>     enum door_state {

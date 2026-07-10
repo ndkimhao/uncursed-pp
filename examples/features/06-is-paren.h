@@ -5,13 +5,13 @@
 #include <boost/preprocessor/punctuation/is_begin_parens.hpp>
 
 /* uncursed-pp source:
- * macro INIT_CALL(fn, arg)
+ * @macro INIT_CALL(fn, arg)
  * @if is_paren(arg)
  *   {{fn}}{{arg}};
  * @else
  *   {{fn}}(({{arg}}));
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_INIT_CALL_THEN1(fn, arg) fn arg;
 #define UNCURSED_PP_INIT_CALL_ELSE1(fn, arg) fn((arg));

@@ -13,7 +13,7 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DEFINE_BITFLAGS(setname, flags: seq<tuple<fname, bit>>)
+ * @macro DEFINE_BITFLAGS(setname, flags: seq<tuple<fname, bit>>)
  * enum {
  * @for (fname, bit) in flags
  *   {{fname}} = 1 << {{bit}},
@@ -28,7 +28,7 @@
  *   }
  *   return "?";
  * }
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_BITFLAGS_AP1(fname, bit) fname = 1 << bit,
 #define UNCURSED_PP_BITFLAGS_H1(r, d, e) d e

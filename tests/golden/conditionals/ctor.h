@@ -12,13 +12,13 @@
 
 /* uncursed-pp source:
  * # Branch on argument count: single-arg vs n-arg initializer.
- * macro CTOR(name, args: seq<tuple<type, argname>>)
+ * @macro CTOR(name, args: seq<tuple<type, argname>>)
  * @if len(args) == 1
  *   explicit_single_arg_init({{name}})
  * @else
  *   {{concat(name, _init)}}(@join args with ", ": {{argname}}@end)
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_CTOR_THEN1(name, args) explicit_single_arg_init(name)
 #define UNCURSED_PP_CTOR_AP1(type, argname) argname

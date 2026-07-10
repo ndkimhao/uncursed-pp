@@ -13,10 +13,10 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DEFINE_LUT(name, vals: tuple<token...>)
+ * @macro DEFINE_LUT(name, vals: tuple<token...>)
  * static const int {{name}}[] = { @join vals as v with ", ": {{v}}@end };
  * enum { {{concat(name, _len)}} = {{len(vals)}} };
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_LUT_LOOP1(vals) BOOST_PP_SEQ_ENUM(BOOST_PP_TUPLE_TO_SEQ(vals))
 #define UNCURSED_PP_DEFINE_LUT_NIL1(vals)
@@ -26,11 +26,11 @@
     enum { BOOST_PP_CAT(name, _len) = BOOST_PP_IIF(UNCURSED_PP_18_UNBOUNDED_TUPLE_H1(vals), 0, BOOST_PP_TUPLE_SIZE(vals)) };
 
 /* uncursed-pp source:
- * macro DEFINE_MODES(ms: tuple<tuple<mode, bit>...>)
+ * @macro DEFINE_MODES(ms: tuple<tuple<mode, bit>...>)
  * @for (mode, bit) in ms
  *   {{mode}} = 1 << {{bit}},
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_MODES_AP1(mode, bit) mode = 1 << bit,
 #define UNCURSED_PP_DEFINE_MODES_EACH1(r, d, e) UNCURSED_PP_DEFINE_MODES_AP1 e
@@ -58,13 +58,13 @@
 #define DEFINE_MODES(ms) BOOST_PP_IIF(UNCURSED_PP_18_UNBOUNDED_TUPLE_H1(ms), UNCURSED_PP_DEFINE_MODES_NIL1, UNCURSED_PP_DEFINE_MODES_LOOP1)(ms)
 
 /* uncursed-pp source:
- * macro CALL_CTX(fn, extras: tuple)
+ * @macro CALL_CTX(fn, extras: tuple)
  * @if is_empty(extras)
  *   {{fn}}(ctx);
  * @else
  *   {{fn}}(ctx, @join extras as a with ", ": {{a}}@end);
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_CALL_CTX_THEN1(fn, extras) fn(ctx);
 #define UNCURSED_PP_CALL_CTX_LOOP1(extras) BOOST_PP_SEQ_ENUM(BOOST_PP_TUPLE_TO_SEQ(extras))

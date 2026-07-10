@@ -1,8 +1,8 @@
 # Tail defaults: arity dispatch at C compile time.
 #   LOG(m) / LOG(m, WARN) / LOG(m, WARN, stdout)
-macro LOG(msg, level = INFO, out = stderr)
+@macro LOG(msg, level = INFO, out = stderr)
 fprintf({{out}}, "[" #{{level}} "] %s\n", {{msg}});
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  LOG(m)

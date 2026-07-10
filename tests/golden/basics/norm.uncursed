@@ -1,7 +1,7 @@
 # Normalize: strip parens iff present (inline @if + is_paren).
-macro NORM(x)
+@macro NORM(x)
 @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  NORM(q)

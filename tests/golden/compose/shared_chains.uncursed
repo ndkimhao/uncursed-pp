@@ -4,17 +4,17 @@
 # UNCURSED_PP_<M>_CH1_<n> bug: the small-seq specs exercise the merged
 # chain path, the 17-element spec the SEQ_FOR_EACH fallback.
 
-macro DECLARE_INTS(xs: seq<token>)
+@macro DECLARE_INTS(xs: seq<token>)
 @for x in xs
   int {{x}};
 @end
-end
+@endmacro
 
-macro DECLARE_MORE_INTS(ys: seq<token>)
+@macro DECLARE_MORE_INTS(ys: seq<token>)
 @for y in ys
   int {{y}};
 @end
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  DECLARE_INTS((a)(b))

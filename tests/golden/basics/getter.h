@@ -6,12 +6,12 @@
 
 /* uncursed-pp source:
  * # Getter function for one (type, name) field; concat() pastes the identifier.
- * macro GETTER(field: tuple<type, name>)
+ * @macro GETTER(field: tuple<type, name>)
  * @let getter := concat(get_, field.name)
  * {{field.type}} {{getter}}(const struct self *s) {
  *   return s->{{field.name}};
  * }
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_GETTER_BODY1(type, name) \
     type BOOST_PP_CAT(get_, name)(const struct self *s) { \

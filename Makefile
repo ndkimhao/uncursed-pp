@@ -2,7 +2,7 @@ MISE := mise exec --
 BOOST_PP_DIR := .boost-pp
 BOOST_PP_REF := boost-1.90.0
 
-.PHONY: setup check test test-unit test-integration typecheck example clean boost-pp
+.PHONY: setup check test test-unit test-integration typecheck example regen-golden clean boost-pp
 
 check: typecheck test
 
@@ -29,6 +29,11 @@ test-integration: boost-pp
 
 typecheck:
 	$(MISE) uv run mypy
+
+# Regenerate every golden/example .h from its template. Mechanics only:
+# goldens are updated deliberately - READ the diff before committing.
+regen-golden:
+	$(MISE) uv run python scripts/regen_goldens.py
 
 example:
 	$(MISE) uv run uncursed-pp examples/combined/bitflags.uncursed -o /tmp/example.h --emit-runtime

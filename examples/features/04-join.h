@@ -12,9 +12,9 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DECLARE_FN(ret, fname, params: seq<tuple<ptype, pname>>)
+ * @macro DECLARE_FN(ret, fname, params: seq<tuple<ptype, pname>>)
  * {{ret}} {{fname}}(@join params with ", ": {{ptype}} {{pname}}@end);
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DECLARE_FN_AP1(ptype, pname) ptype pname
 #define UNCURSED_PP_DECLARE_FN_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) UNCURSED_PP_DECLARE_FN_AP1 e
@@ -40,9 +40,9 @@
 #define DECLARE_FN(ret, fname, params) ret fname(UNCURSED_PP_DECLARE_FN_PICK1(BOOST_PP_SEQ_SIZE(params))(params));
 
 /* uncursed-pp source:
- * macro ANY_FLAG_SET(mask, flags: seq<token>)
+ * @macro ANY_FLAG_SET(mask, flags: seq<token>)
  * (@join flags as f with " || ": ({{mask}} & {{f}})@end)
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_ANY_FLAG_SET_SEP1() ||
 #define UNCURSED_PP_ANY_FLAG_SET_EACH1(r, d, i, e) BOOST_PP_IF(i, UNCURSED_PP_ANY_FLAG_SET_SEP1, BOOST_PP_EMPTY)() (d & e)

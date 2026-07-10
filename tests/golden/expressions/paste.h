@@ -6,24 +6,24 @@
 
 /* uncursed-pp source:
  * # Explicit pasting and stringizing of computed tokens; @let chains.
- * macro NAME_OF(x)
+ * @macro NAME_OF(x)
  * {{stringize(concat(pre_, x))}}
- * end
+ * @endmacro
  */
 #define NAME_OF(x) BOOST_PP_STRINGIZE(BOOST_PP_CAT(pre_, x))
 
 /* uncursed-pp source:
- * macro TRIPLE(a)
+ * @macro TRIPLE(a)
  * {{concat(pre_, a, _post)}}
- * end
+ * @endmacro
  */
 #define TRIPLE(a) BOOST_PP_CAT(pre_, BOOST_PP_CAT(a, _post))
 
 /* uncursed-pp source:
- * macro CHAIN(base)
+ * @macro CHAIN(base)
  * @let a := concat(base, _mid)
  * @let b := concat(a, _end)
  * {{b}}
- * end
+ * @endmacro
  */
 #define CHAIN(base) BOOST_PP_CAT(BOOST_PP_CAT(base, _mid), _end)

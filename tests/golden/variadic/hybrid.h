@@ -16,13 +16,13 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DECL_FIELD(f: tuple<fname, ftype, token...>)
+ * @macro DECL_FIELD(f: tuple<fname, ftype, token...>)
  * @if is_empty(f)
  *   {{f.ftype}} {{f.fname}};
  * @else
  *   {{f.ftype}} {{f.fname}} __attribute__((@join f as a with ", ": {{a}}@end));
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DECL_FIELD_THEN1(f) BOOST_PP_TUPLE_ELEM(1, f) BOOST_PP_TUPLE_ELEM(0, f);
 #define UNCURSED_PP_DECL_FIELD_TL2(t) UNCURSED_PP_DECL_FIELD_TL2_I t
@@ -35,9 +35,9 @@
 
 /* uncursed-pp source:
  * # len() and [i] are tail-scoped: the head does not count
- * macro TAIL_INFO(f: tuple<n, token...>)
+ * @macro TAIL_INFO(f: tuple<n, token...>)
  * {{f.n}}: {{len(f)}} flags, first {{f[0]}}
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_HYBRID_H4(t) UNCURSED_PP_HYBRID_H3 t
 #define UNCURSED_PP_HYBRID_H3(f0, ...) (__VA_ARGS__)
@@ -45,12 +45,12 @@
 
 /* uncursed-pp source:
  * # typed tails unpack; heads stay named
- * macro ROUTE(r: tuple<verb, tuple<code, action>...>)
+ * @macro ROUTE(r: tuple<verb, tuple<code, action>...>)
  * {{concat(switch_, r.verb)}}:
  * @for (code, action) in r
  *   case {{code}}: {{action}}();
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_ROUTE_AP1(code, action) case code: action();
 #define UNCURSED_PP_ROUTE_EACH1(r, d, e) UNCURSED_PP_ROUTE_AP1 e
@@ -84,11 +84,11 @@
  * # helper family through the TAIL extraction (chain families move as
  * # units - docs/optimization.md round 3); small and empty inputs pin
  * # the CAT-dispatched paths
- * macro EMIT_A(f: tuple<n, token...>)
+ * @macro EMIT_A(f: tuple<n, token...>)
  * @for x in f
  *   emit({{x}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_HYBRID_H5(r, d, e) emit(e);
 #define UNCURSED_PP_HYBRID_HC6_1(e) emit(e);
@@ -114,11 +114,11 @@
 #define EMIT_A(f) BOOST_PP_IIF(UNCURSED_PP_HYBRID_H2(UNCURSED_PP_HYBRID_H4(f)), UNCURSED_PP_HYBRID_H1, UNCURSED_PP_EMIT_A_LOOP1)(f)
 
 /* uncursed-pp source:
- * macro EMIT_B(f: tuple<n, token...>)
+ * @macro EMIT_B(f: tuple<n, token...>)
  * @for x in f
  *   emit({{x}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_EMIT_B_LOOP1(f) UNCURSED_PP_EMIT_B_PICK1(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_TO_SEQ(UNCURSED_PP_HYBRID_H4(f))))(BOOST_PP_TUPLE_TO_SEQ(UNCURSED_PP_HYBRID_H4(f)))
 #define UNCURSED_PP_EMIT_B_SMALL1(seq) BOOST_PP_CAT(UNCURSED_PP_HYBRID_HC6_, BOOST_PP_SEQ_SIZE(seq)) seq
@@ -128,11 +128,11 @@
 
 /* uncursed-pp source:
  * # hybrids as seq elements: per-row heads, variable-width tails
- * macro ROWS(fs: seq<tuple<n, token...>>)
+ * @macro ROWS(fs: seq<tuple<n, token...>>)
  * @for f in fs
  *   {{f.n}}[ @join f as a with ", ": {{a}}@end ]
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_ROWS_EACH1(z, n, d) BOOST_PP_COMMA_IF(n) BOOST_PP_SEQ_ELEM(n, d)
 #define UNCURSED_PP_ROWS_LOOP1(f) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_TO_SEQ(UNCURSED_PP_HYBRID_H4(f))), UNCURSED_PP_ROWS_EACH1, BOOST_PP_TUPLE_TO_SEQ(UNCURSED_PP_HYBRID_H4(f)))

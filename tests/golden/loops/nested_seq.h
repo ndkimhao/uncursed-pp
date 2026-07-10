@@ -11,12 +11,12 @@
 /* uncursed-pp source:
  * # seq<seq<token>>: index the outer seq, bind the inner one with @let,
  * # then loop over it (one loop level - the outer access is an index).
- * macro FIRST_ROW(grid: seq<seq<token>>)
+ * @macro FIRST_ROW(grid: seq<seq<token>>)
  * @let row := grid[0]
  * @for x in row
  * cell({{x}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_FIRST_ROW_EACH1(r, d, e) cell(e);
 #define UNCURSED_PP_FIRST_ROW_CH1_1(e) cell(e);

@@ -7,9 +7,9 @@
 
 /* uncursed-pp source:
  * # Normalize: strip parens iff present (inline @if + is_paren).
- * macro NORM(x)
+ * @macro NORM(x)
  * @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_NORM_THEN1(x) BOOST_PP_REMOVE_PARENS(x)
 #define UNCURSED_PP_NORM_ELSE1(x) x

@@ -16,11 +16,11 @@ are **not** expanded when uncursed-pp runs. They compile into Boost.PP machinery
 compiler preprocesses your code**. Call sites pass real, variable-length data:
 
 ```text
-macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
+@macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
 @for (type, name) in fields
   {{type}} {{name}};
 @end
-end
+@endmacro
 ```
 
 ```c
@@ -54,26 +54,37 @@ A `.uncursed` file contains, in any order at the top level:
 - **Comments** — lines whose first non-blank character is `#`. Allowed at top
   level and inside macro bodies (the line is dropped entirely).
 - **Pragmas** — `@pragma <key> <value>` lines (see §8). By convention at the top.
-- **Macro definitions** — `macro NAME(params)` ... `end`.
+- **Macro definitions** — `@macro NAME(params)` ... `@endmacro`.
 - **Invocation specs** — `#?` / `#=>` comments used by the test suite (see §12).
   They are ordinary comments to the compiler.
 
 A macro definition:
 
 ```text
-macro NAME(param, param, ...)
+@macro NAME(param, param, ...)
 <body: raw C text, directives, interpolations>
-end
+@endmacro
 ```
 
-`end` must sit alone on its own line. Macro names and parameter names are C
+`@endmacro` sits alone on its own line, and the parameter list may span
+multiple lines (a trailing comma is allowed):
+
+```text
+@macro MAKE_WIDGET(
+    name,
+    named WIDTH = 100,
+    named HEIGHT = 50,
+)
+```
+
+Macro names and parameter names are C
 identifiers. A file may define any number of macros; later macros may invoke
 earlier ones *textually* in their bodies (see the reflection example, §13).
 
 ## 4. Parameters and types
 
 ```text
-macro M(a, xs: seq<token>, f: tuple<type, name>, rest: variadic)
+@macro M(a, xs: seq<token>, f: tuple<type, name>, rest: variadic)
 ```
 
 | Type | Declares | C call-site shape |
@@ -114,9 +125,9 @@ Notes:
 ### Tail defaults
 
 ```text
-macro LOG(msg, level = INFO, out = stderr)
+@macro LOG(msg, level = INFO, out = stderr)
 fprintf({{out}}, "[" #{{level}} "] %s\n", {{msg}});
-end
+@endmacro
 ```
 
 `LOG(m)`, `LOG(m, WARN)`, `LOG(m, WARN, stdout)` are all valid; omitted
@@ -128,9 +139,9 @@ contain commas or parens.
 ### Named parameters
 
 ```text
-macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
+@macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
 struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };
-end
+@endmacro
 ```
 
 ```c
@@ -282,11 +293,11 @@ loop — are fine.
 Loop bodies may reference anything in scope — outer parameters included:
 
 ```text
-macro TABLE(sname, fields: seq<tuple<type, name, fmt>>)
+@macro TABLE(sname, fields: seq<tuple<type, name, fmt>>)
 @for (type, name, fmt) in fields
   { {{stringize(name)}}, offsetof({{sname}}, {{name}}) },
 @end
-end
+@endmacro
 ```
 
 uncursed-pp threads free outer variables (here `sname`) through `FOR_EACH`'s data
@@ -370,7 +381,7 @@ never edit by hand — recompile the template.
 ## 11. Errors
 
 uncursed-pp reports all errors as `file:line[:col]: message` — parse errors
-(unknown directive, missing `end`, bad signature), semantic errors (undefined
+(unknown directive, missing `@endmacro`, bad signature), semantic errors (undefined
 variable, iterating a non-seq, unpack arity mismatch, unknown tuple element,
 index out of range, parameter-kind mixing), and configuration errors (unknown
 pragma, custom prefix without include). The generated header is only written
@@ -404,36 +415,36 @@ specs, and every macro it defines must be exercised (meta-tests enforce both).
 list is the single source of truth:
 
 ```text
-macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
+@macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
 typedef struct {
 @for (type, name, fmt) in fields
   {{type}} {{name}};
 @end
 } {{sname}};
-end
+@endmacro
 
-macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
+@macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
 static const uncursed_field {{concat(sname, _fields)}}[] = {
 @for (type, name, fmt) in fields
   { {{stringize(name)}}, {{stringize(type)}}, offsetof({{sname}}, {{name}}) },
 @end
 };
 enum { {{concat(sname, _field_count)}} = {{len(fields)}} };
-end
+@endmacro
 
-macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
+@macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
 static void {{concat(print_, sname)}}(const {{sname}} *v) {
 @for (type, name, fmt) in fields
   printf("  " {{stringize(name)}} " = " {{fmt}} "\n", v->{{name}});
 @end
 }
-end
+@endmacro
 
-macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
+@macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
 DEFINE_STRUCT({{sname}}, {{fields}})
 DEFINE_FIELD_TABLE({{sname}}, {{fields}})
 DEFINE_PRINTER({{sname}}, {{fields}})
-end
+@endmacro
 ```
 
 ```c

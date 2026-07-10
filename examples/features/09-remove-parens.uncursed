@@ -8,9 +8,9 @@
 #
 # Scenario: declaring a struct member whose type may contain commas.
 
-macro DECLARE_MEMBER(m: tuple<mtype, mname>)
+@macro DECLARE_MEMBER(m: tuple<mtype, mname>)
 {{remove_parens(m.mtype)}} {{m.mname}};
-end
+@endmacro
 
 # No commas: no wrapping needed, remove_parens is a no-op.
 #?  DECLARE_MEMBER((int, count))

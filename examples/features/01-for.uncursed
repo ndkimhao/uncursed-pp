@@ -13,11 +13,11 @@
 # Scenario: a plugin's event handlers must each be registered at startup.
 # One list, one line per handler, no copy-paste drift.
 
-macro REGISTER_HANDLERS(handlers: seq<token>)
+@macro REGISTER_HANDLERS(handlers: seq<token>)
 @for h in handlers
   register_handler({{h}});
 @end
-end
+@endmacro
 
 # The call expands to plain C — one statement per element:
 #?  REGISTER_HANDLERS((on_open)(on_close)(on_error))

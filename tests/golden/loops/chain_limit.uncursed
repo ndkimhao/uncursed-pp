@@ -3,11 +3,11 @@
 # the boundary cheaply. A non-default K also emits a local LE4 size table.
 @pragma loop_chain_limit 4
 
-macro FIELDS4(fields: seq<tuple<t, n>>)
+@macro FIELDS4(fields: seq<tuple<t, n>>)
 @for (t, n) in fields
   {{t}} {{n}};
 @end
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  FIELDS4(((int, a)))

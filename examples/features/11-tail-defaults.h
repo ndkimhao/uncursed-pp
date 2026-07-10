@@ -2,9 +2,9 @@
 #pragma once
 
 /* uncursed-pp source:
- * macro RETRY(call, attempts = 3, on_fail = abort)
+ * @macro RETRY(call, attempts = 3, on_fail = abort)
  * for (int i_ = 0; i_ < {{attempts}}; i_++) { if ({{call}}() == 0) break; if (i_ == {{attempts}} - 1) {{on_fail}}(); }
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_RETRY_1(call) UNCURSED_PP_RETRY_3(call, 3, abort)
 #define UNCURSED_PP_RETRY_2(call, attempts) UNCURSED_PP_RETRY_3(call, attempts, abort)
@@ -16,9 +16,9 @@
 #define RETRY(...) UNCURSED_PP_RETRY_DISPATCH(UNCURSED_PP_RETRY_SIZE(__VA_ARGS__))(__VA_ARGS__)
 
 /* uncursed-pp source:
- * macro EXPORT_FN(ret, fname, quals = )
+ * @macro EXPORT_FN(ret, fname, quals = )
  * {{quals}} {{ret}} {{fname}}(void);
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_EXPORT_FN_2(ret, fname) UNCURSED_PP_EXPORT_FN_3(ret, fname, )
 #define UNCURSED_PP_EXPORT_FN_3(ret, fname, quals) quals ret fname(void);

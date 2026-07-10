@@ -2,7 +2,7 @@
 // The line-level pass in parser.py decides which start rule applies.
 
 signature: CNAME "(" [param_list] ")"
-param_list: param ("," param)*
+param_list: param ("," param)* ","?
 param: "named" "variadic" CNAME "=" [DEFAULT] -> named_variadic_param
      | "named" CNAME "=" [DEFAULT] -> named_param
      | CNAME "=" [DEFAULT]         -> defaulted_param

@@ -11,9 +11,9 @@
 
 /* uncursed-pp source:
  * # Function prototype from a seq of (type, argname) tuples.
- * macro PROTO(name, args: seq<tuple<type, argname>>)
+ * @macro PROTO(name, args: seq<tuple<type, argname>>)
  * void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_PROTO_AP1(type, argname) type argname
 #define UNCURSED_PP_PROTO_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) UNCURSED_PP_PROTO_AP1 e

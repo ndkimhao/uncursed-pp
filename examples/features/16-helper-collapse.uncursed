@@ -19,17 +19,17 @@
 # so they hit the chain-family path) pin that behavior through the
 # real preprocessor.
 
-macro TRACE_CALLS(fns: seq<token>)
+@macro TRACE_CALLS(fns: seq<token>)
 @for f in fns
   trace_enter({{f}});
 @end
-end
+@endmacro
 
-macro AUDIT_CALLS(fns: seq<token>)
+@macro AUDIT_CALLS(fns: seq<token>)
 @for f in fns
   trace_enter({{f}});
 @end
-end
+@endmacro
 
 # Both macros expand through the SAME shared helpers:
 #?  TRACE_CALLS((open_file)(read_file))

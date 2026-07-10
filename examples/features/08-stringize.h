@@ -9,13 +9,13 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DEFINE_ERROR_NAMES(codes: seq<token>)
+ * @macro DEFINE_ERROR_NAMES(codes: seq<token>)
  * static const char *error_name[] = {
  * @for c in codes
  *   [{{c}}] = {{stringize(c)}},
  * @end
  * };
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_ERROR_NAMES_EACH1(r, d, e) [e] = BOOST_PP_STRINGIZE(e),
 #define UNCURSED_PP_DEFINE_ERROR_NAMES_CH1_1(e) [e] = BOOST_PP_STRINGIZE(e),

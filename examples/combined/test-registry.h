@@ -11,7 +11,7 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro TEST_REGISTRY(tests: variadic<tuple<suite, tname>>)
+ * @macro TEST_REGISTRY(tests: variadic<tuple<suite, tname>>)
  * @for (suite, tname) in tests
  * static void {{concat(test_, suite, _, tname)}}(void);
  * @end
@@ -20,7 +20,7 @@
  *   run_test({{stringize(concat(suite, _, tname))}}, {{concat(test_, suite, _, tname)}});
  * @end
  * }
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_TEST_REGISTRY_CAT4(p0, p1, p2, p3) UNCURSED_PP_TEST_REGISTRY_CAT4_I(p0, p1, p2, p3)
 #define UNCURSED_PP_TEST_REGISTRY_CAT4_I(p0, p1, p2, p3) p0 ## p1 ## p2 ## p3

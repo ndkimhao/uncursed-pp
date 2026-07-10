@@ -1,7 +1,7 @@
 # Composition: typed variadic + loops with free vars + nested concat +
 # stringize + len. One entry list yields an enum, a to-string helper,
 # and a count.
-macro DEFINE_ENUM(ename, entries: variadic<tuple<name, value>>)
+@macro DEFINE_ENUM(ename, entries: variadic<tuple<name, value>>)
 typedef enum {
 @for (name, value) in entries
   {{concat(ename, concat(_, name))}} = {{value}},
@@ -16,7 +16,7 @@ static const char *{{concat(ename, _to_string)}}(int v) {
   return "?";
 }
 enum { {{concat(ename, _count)}} = {{len(entries)}} };
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──
 #?  DEFINE_ENUM(Color, (RED, 1), (GREEN, 2), (BLUE, 4))

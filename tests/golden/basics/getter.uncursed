@@ -1,10 +1,10 @@
 # Getter function for one (type, name) field; concat() pastes the identifier.
-macro GETTER(field: tuple<type, name>)
+@macro GETTER(field: tuple<type, name>)
 @let getter := concat(get_, field.name)
 {{field.type}} {{getter}}(const struct self *s) {
   return s->{{field.name}};
 }
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  GETTER((int, age))

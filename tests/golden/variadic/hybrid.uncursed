@@ -3,13 +3,13 @@
 # len(), is_empty() and [i] are all TAIL-scoped so they agree with each
 # other. Call site (x, int, F1, F2); (x, int) is an empty tail.
 
-macro DECL_FIELD(f: tuple<fname, ftype, token...>)
+@macro DECL_FIELD(f: tuple<fname, ftype, token...>)
 @if is_empty(f)
   {{f.ftype}} {{f.fname}};
 @else
   {{f.ftype}} {{f.fname}} __attribute__((@join f as a with ", ": {{a}}@end));
 @end
-end
+@endmacro
 
 #?  DECL_FIELD((x, int, packed, unused))
 #=>     int x __attribute__((packed, unused));
@@ -19,9 +19,9 @@ end
 #=>     float y;
 
 # len() and [i] are tail-scoped: the head does not count
-macro TAIL_INFO(f: tuple<n, token...>)
+@macro TAIL_INFO(f: tuple<n, token...>)
 {{f.n}}: {{len(f)}} flags, first {{f[0]}}
-end
+@endmacro
 
 #?  TAIL_INFO((cfg, RO, SYNC, DIRECT))
 #=>     cfg: 3 flags, first RO
@@ -30,12 +30,12 @@ end
 #=>     bare: 0 flags, first
 
 # typed tails unpack; heads stay named
-macro ROUTE(r: tuple<verb, tuple<code, action>...>)
+@macro ROUTE(r: tuple<verb, tuple<code, action>...>)
 {{concat(switch_, r.verb)}}:
 @for (code, action) in r
   case {{code}}: {{action}}();
 @end
-end
+@endmacro
 
 #?  ROUTE((GET, (200, ok), (404, missing)))
 #=>     switch_GET:
@@ -46,17 +46,17 @@ end
 # helper family through the TAIL extraction (chain families move as
 # units - docs/optimization.md round 3); small and empty inputs pin
 # the CAT-dispatched paths
-macro EMIT_A(f: tuple<n, token...>)
+@macro EMIT_A(f: tuple<n, token...>)
 @for x in f
   emit({{x}});
 @end
-end
+@endmacro
 
-macro EMIT_B(f: tuple<n, token...>)
+@macro EMIT_B(f: tuple<n, token...>)
 @for x in f
   emit({{x}});
 @end
-end
+@endmacro
 
 #?  EMIT_A((h, one, two))
 #=>     emit(one); emit(two);
@@ -68,11 +68,11 @@ end
 #=>     begin end
 
 # hybrids as seq elements: per-row heads, variable-width tails
-macro ROWS(fs: seq<tuple<n, token...>>)
+@macro ROWS(fs: seq<tuple<n, token...>>)
 @for f in fs
   {{f.n}}[ @join f as a with ", ": {{a}}@end ]
 @end
-end
+@endmacro
 
 #?  ROWS(((r1, a, b))((r2))((r3, c)))
 #=>     r1[ a, b ] r2[ ] r3[ c ]

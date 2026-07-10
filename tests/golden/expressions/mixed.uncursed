@@ -1,18 +1,18 @@
 # Expressions over mixed data: concat of tuple fields, stringize of a
 # seq element and of a computed len(), remove_parens per loop element.
-macro FUSE(p: tuple<a, b>)
+@macro FUSE(p: tuple<a, b>)
 {{concat(p.a, p.b)}}
-end
+@endmacro
 
-macro STR0(xs: seq<token>)
+@macro STR0(xs: seq<token>)
 {{stringize(xs[0])}} / {{stringize(len(xs))}}
-end
+@endmacro
 
-macro CLEAN(fields: seq<tuple<t, n>>)
+@macro CLEAN(fields: seq<tuple<t, n>>)
 @for (t, n) in fields
 {{remove_parens(t)}} {{n}};
 @end
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──
 #?  FUSE((foo, bar))

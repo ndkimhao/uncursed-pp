@@ -19,7 +19,7 @@ from uncursed_pp.parser import UncursedPpError, parse_file
 
 
 def _last_param_type(sig: str) -> object:
-    [macro] = parse_file(f"macro F({sig})\nx\nend\n", "t.uncursed").macros
+    [macro] = parse_file(f"@macro F({sig})\nx\n@endmacro\n", "t.uncursed").macros
     return macro.params[-1].type
 
 
@@ -60,7 +60,7 @@ def test_tuple_of_single_name_is_still_a_named_tuple():
 
 
 def test_is_empty_parses_as_condition():
-    src = "macro F(row: tuple)\n@if is_empty(row)\nnil\n@end\nend\n"
+    src = "@macro F(row: tuple)\n@if is_empty(row)\nnil\n@end\n@endmacro\n"
     [macro] = parse_file(src, "t.uncursed").macros
     node = macro.body[0]
     assert isinstance(node, If)
@@ -69,7 +69,7 @@ def test_is_empty_parses_as_condition():
 
 def test_is_empty_takes_exactly_one_argument():
     with pytest.raises(UncursedPpError):
-        parse_file("macro F(a, b)\n@if is_empty(a, b)\nx\n@end\nend\n", "t.uncursed")
+        parse_file("@macro F(a, b)\n@if is_empty(a, b)\nx\n@end\n@endmacro\n", "t.uncursed")
 
 
 # ── error paths ──────────────────────────────────────────────────────
@@ -77,14 +77,14 @@ def test_is_empty_takes_exactly_one_argument():
 
 def test_named_access_on_unbounded_tuple_is_an_error():
     with pytest.raises(UncursedPpError) as excinfo:
-        compile_source("macro F(row: tuple)\n{{row.first}}\nend\n", "t.uncursed")
+        compile_source("@macro F(row: tuple)\n{{row.first}}\n@endmacro\n", "t.uncursed")
     assert "no named elements" in str(excinfo.value)
 
 
 def test_unpack_needs_a_named_tuple_element():
     with pytest.raises(UncursedPpError) as excinfo:
         compile_source(
-            "macro F(row: tuple<token...>)\n@for (a, b) in row\nx\n@end\nend\n",
+            "@macro F(row: tuple<token...>)\n@for (a, b) in row\nx\n@end\n@endmacro\n",
             "t.uncursed",
         )
     assert "tuple unpacking" in str(excinfo.value)
@@ -92,27 +92,27 @@ def test_unpack_needs_a_named_tuple_element():
 
 def test_iterating_a_token_is_still_an_error():
     with pytest.raises(UncursedPpError):
-        compile_source("macro F(x)\n@for a in x\n{{a}}\n@end\nend\n", "t.uncursed")
+        compile_source("@macro F(x)\n@for a in x\n{{a}}\n@end\n@endmacro\n", "t.uncursed")
 
 
 def test_len_on_plain_token_is_still_an_error():
     with pytest.raises(UncursedPpError):
-        compile_source("macro F(x)\n{{len(x)}}\nend\n", "t.uncursed")
+        compile_source("@macro F(x)\n{{len(x)}}\n@endmacro\n", "t.uncursed")
 
 
 def test_len_accepts_unbounded_tuple():
-    compile_source("macro F(row: tuple)\n{{len(row)}}\nend\n", "t.uncursed")
+    compile_source("@macro F(row: tuple)\n{{len(row)}}\n@endmacro\n", "t.uncursed")
 
 
 def test_unbounded_tuple_loops_compile():
     compile_source(
-        "macro F(row: tuple)\n@for x in row\nf({{x}});\n@end\nend\n", "t.uncursed"
+        "@macro F(row: tuple)\n@for x in row\nf({{x}});\n@end\n@endmacro\n", "t.uncursed"
     )
 
 
 def test_unpack_loop_over_pair_elements_compiles():
     compile_source(
-        "macro F(ps: tuple<tuple<k, v>...>)\n@for (k, v) in ps\nset({{k}}, {{v}});\n@end\nend\n",
+        "@macro F(ps: tuple<tuple<k, v>...>)\n@for (k, v) in ps\nset({{k}}, {{v}});\n@end\n@endmacro\n",
         "t.uncursed",
     )
 
@@ -140,7 +140,7 @@ def test_hybrid_inside_seq():
 
 def test_hybrid_named_head_access_compiles():
     compile_source(
-        "macro F(f: tuple<fname, ftype, token...>)\n{{f.fname}} {{f.ftype}}\nend\n",
+        "@macro F(f: tuple<fname, ftype, token...>)\n{{f.fname}} {{f.ftype}}\n@endmacro\n",
         "t.uncursed",
     )
 
@@ -148,7 +148,7 @@ def test_hybrid_named_head_access_compiles():
 def test_hybrid_unknown_field_lists_names():
     with pytest.raises(UncursedPpError) as excinfo:
         compile_source(
-            "macro F(f: tuple<fname, ftype, token...>)\n{{f.nope}}\nend\n",
+            "@macro F(f: tuple<fname, ftype, token...>)\n{{f.nope}}\n@endmacro\n",
             "t.uncursed",
         )
     assert "fname" in str(excinfo.value) and "ftype" in str(excinfo.value)
@@ -156,10 +156,10 @@ def test_hybrid_unknown_field_lists_names():
 
 def test_hybrid_tail_ops_compile():
     compile_source(
-        "macro F(f: tuple<n, token...>)\n"
+        "@macro F(f: tuple<n, token...>)\n"
         "{{f.n}}: {{len(f)}} {{f[0]}}\n"
         "@for a in f\n[{{a}}]\n@end\n"
-        "end\n",
+        "@endmacro\n",
         "t.uncursed",
     )
 
@@ -167,7 +167,7 @@ def test_hybrid_tail_ops_compile():
 def test_hybrid_unpack_needs_tuple_tail():
     with pytest.raises(UncursedPpError) as excinfo:
         compile_source(
-            "macro F(f: tuple<n, token...>)\n@for (a, b) in f\nx\n@end\nend\n",
+            "@macro F(f: tuple<n, token...>)\n@for (a, b) in f\nx\n@end\n@endmacro\n",
             "t.uncursed",
         )
     assert "tuple unpacking" in str(excinfo.value)

@@ -8,11 +8,11 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro REGISTER_HANDLERS(handlers: seq<token>)
+ * @macro REGISTER_HANDLERS(handlers: seq<token>)
  * @for h in handlers
  *   register_handler({{h}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_REGISTER_HANDLERS_EACH1(r, d, e) register_handler(e);
 #define UNCURSED_PP_REGISTER_HANDLERS_CH1_1(e) register_handler(e);

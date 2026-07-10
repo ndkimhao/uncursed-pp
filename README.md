@@ -7,11 +7,11 @@ You describe a macro like a web render template; uncursed-pp emits the cursed
 **C compile time** — call sites pass real variable-length data.
 
 ```text
-macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
+@macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
 @for (type, name) in fields
   {{type}} {{name}};
 @end
-end
+@endmacro
 ```
 
 ```c
@@ -85,9 +85,9 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 | Stringize | `{{stringize(f.name)}}` → `BOOST_PP_STRINGIZE` — works on computed tokens |
 | Strip parens | `{{remove_parens(x)}}` — strips one layer iff present |
 | Binding | `@let g := concat(get_, f.name)` — generation-time, block-scoped; also binds an inline `@join`/`@if` for reuse |
-| Tail defaults | `macro LOG(msg, level = INFO, out = stderr)` — arity dispatch |
-| Named args | `macro W(name, named WIDTH = 100)` — call `W(n, WIDTH(20))`, any order/subset |
-| Variadic | `macro F(items: variadic)` — call `F(a, (b,c), d)`; body sees a seq. `variadic<tuple<t, n>>` gives single-paren tuple call sites: `F((int, x), (float, y))` |
+| Tail defaults | `@macro LOG(msg, level = INFO, out = stderr)` — arity dispatch |
+| Named args | `@macro W(name, named WIDTH = 100)` — call `W(n, WIDTH(20))`, any order/subset |
+| Variadic | `@macro F(items: variadic)` — call `F(a, (b,c), d)`; body sees a seq. `variadic<tuple<t, n>>` gives single-paren tuple call sites: `F((int, x), (float, y))` |
 
 Within a loop over `seq<tuple<...>>`, the tuple's element names are bound
 automatically (`@join args with ", ": {{type}} {{argname}}@end`). Loop bodies

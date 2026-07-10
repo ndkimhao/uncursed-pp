@@ -12,11 +12,11 @@
 /* uncursed-pp source:
  * # Non-comma separator: baked between chain members on the small-seq
  * # path; the SEQ_FOR_EACH_I fallback keeps it in its own SEP helper.
- * macro ORS(xs: seq<token>)
+ * @macro ORS(xs: seq<token>)
  * @join xs as x with " || "
  * ({{x}})
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_ORS_SEP1() ||
 #define UNCURSED_PP_ORS_EACH1(r, d, i, e) BOOST_PP_IF(i, UNCURSED_PP_ORS_SEP1, BOOST_PP_EMPTY)() (e)

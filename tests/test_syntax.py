@@ -8,11 +8,11 @@ from uncursed_pp.parser import UncursedPpError, parse_file
 
 DECLARE_FIELDS = """\
 # a comment
-macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
+@macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
 @for (type, name) in fields
   {{type}} {{name}};
 @end
-end
+@endmacro
 """
 
 
@@ -28,7 +28,7 @@ def test_parse_macro_signature():
 def test_parse_plain_macro_text_and_interp():
     from uncursed_pp.nodes import Interp
 
-    file = parse_file("macro ID(x)\nvalue: {{x}}!\nend\n", "t.uncursed")
+    file = parse_file("@macro ID(x)\nvalue: {{x}}!\n@endmacro\n", "t.uncursed")
     [macro] = file.macros
     assert macro.params[0].type is None  # bare token param
     lead, interp, tail = macro.body
@@ -40,12 +40,12 @@ def test_parse_plain_macro_text_and_interp():
 
 def test_missing_end_is_error():
     with pytest.raises(UncursedPpError) as excinfo:
-        parse_file("macro FOO(x)\n{{x}}\n", "t.uncursed")
+        parse_file("@macro FOO(x)\n{{x}}\n", "t.uncursed")
     assert "t.uncursed" in str(excinfo.value)
 
 
 def test_unbalanced_at_end_is_error():
-    src = "macro FOO(xs: seq<token>)\n@end\nend\n"
+    src = "@macro FOO(xs: seq<token>)\n@end\n@endmacro\n"
     with pytest.raises(UncursedPpError) as excinfo:
         parse_file(src, "t.uncursed")
     assert "t.uncursed:2" in str(excinfo.value)
@@ -53,7 +53,7 @@ def test_unbalanced_at_end_is_error():
 
 def test_bad_signature_reports_position():
     with pytest.raises(UncursedPpError) as excinfo:
-        parse_file("macro FOO(x::)\nbody\nend\n", "t.uncursed")
+        parse_file("@macro FOO(x::)\nbody\n@endmacro\n", "t.uncursed")
     assert "t.uncursed:1" in str(excinfo.value)
 
 
@@ -64,19 +64,19 @@ def test_unexpected_toplevel_line_is_error():
 
 
 def test_plain_macro_single_line():
-    out = compile_source("macro ID(x)\n{{x}}\nend\n", "id.uncursed")
+    out = compile_source("@macro ID(x)\n{{x}}\n@endmacro\n", "id.uncursed")
     assert "#define ID(x) x\n" in out
     assert "#pragma once" in out
 
 
 def test_multiline_body_uses_continuations():
-    src = "macro TWO(a, b)\nfirst {{a}}\nsecond {{b}}\nend\n"
+    src = "@macro TWO(a, b)\nfirst {{a}}\nsecond {{b}}\n@endmacro\n"
     out = compile_source(src, "two.uncursed")
     assert "#define TWO(a, b) \\\n    first a \\\n    second b\n" in out
 
 
 def test_multiple_macros_share_one_header():
-    src = "macro A(x)\n{{x}}\nend\nmacro B(y)\n{{y}}\nend\n"
+    src = "@macro A(x)\n{{x}}\n@endmacro\n@macro B(y)\n{{y}}\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     assert "#define A(x) x\n" in out
     assert "#define B(y) y\n" in out
@@ -84,19 +84,19 @@ def test_multiple_macros_share_one_header():
 
 
 def test_duplicate_interp_on_one_line():
-    out = compile_source("macro D(x)\n{{x}} + {{x}} + {{x}}\nend\n", "t.uncursed")
+    out = compile_source("@macro D(x)\n{{x}} + {{x}} + {{x}}\n@endmacro\n", "t.uncursed")
     assert "#define D(x) x + x + x\n" in out
 
 
 def test_generated_header_embeds_uncursed_source():
-    src = "# doubles x\nmacro TWICE(x)\n({{x}} + {{x}})\nend\n"
+    src = "# doubles x\n@macro TWICE(x)\n({{x}} + {{x}})\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     comment = (
         "/* uncursed-pp source:\n"
         " * # doubles x\n"
-        " * macro TWICE(x)\n"
+        " * @macro TWICE(x)\n"
         " * ({{x}} + {{x}})\n"
-        " * end\n"
+        " * @endmacro\n"
         " */\n"
     )
     assert comment in out
@@ -105,19 +105,19 @@ def test_generated_header_embeds_uncursed_source():
 
 def test_source_comment_per_macro_with_own_comments():
     src = (
-        "# first\nmacro A(x)\n{{x}}\nend\n"
+        "# first\n@macro A(x)\n{{x}}\n@endmacro\n"
         "\n"
-        "# second\nmacro B(y)\n{{y}}\nend\n"
+        "# second\n@macro B(y)\n{{y}}\n@endmacro\n"
     )
     out = compile_source(src, "t.uncursed")
-    assert " * # first\n * macro A(x)\n" in out
-    assert " * # second\n * macro B(y)\n" in out
+    assert " * # first\n * @macro A(x)\n" in out
+    assert " * # second\n * @macro B(y)\n" in out
     # each macro's comment sits with its own block
     assert out.index("# first") < out.index("#define A(x)") < out.index("# second")
 
 
 def test_spec_comments_are_not_attached():
-    src = "#? A(q)\n#=> q\n# real comment\nmacro A(x)\n{{x}}\nend\n"
+    src = "#? A(q)\n#=> q\n# real comment\n@macro A(x)\n{{x}}\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     assert " * # real comment\n" in out
     assert "#?" not in out
@@ -125,27 +125,27 @@ def test_spec_comments_are_not_attached():
 
 
 def test_blank_line_detaches_comments():
-    src = "# stale note\n\nmacro A(x)\n{{x}}\nend\n"
+    src = "# stale note\n\n@macro A(x)\n{{x}}\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     assert "stale note" not in out
 
 
 def test_comment_terminator_in_body_is_sanitized():
-    src = "macro C(x)\n{{x}} /* inline */\nend\n"
+    src = "@macro C(x)\n{{x}} /* inline */\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     # the embedded source must not close the enclosing C comment early
     assert " * {{x}} /* inline * /\n" in out
 
 
 def test_string_literal_whitespace_survives_emission():
-    src = 'macro P(x)\nprintf("  a  b", {{x}});\nend\n'
+    src = '@macro P(x)\nprintf("  a  b", {{x}});\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
     # check the #define itself, not the embedded source comment
     assert '#define P(x) printf("  a  b", x);' in out
 
 
 def test_raw_string_interior_survives_emission():
-    src = 'macro R1(x)\nconst char *s = R"(a " {{x}}  b " c)";\nend\n'
+    src = '@macro R1(x)\nconst char *s = R"(a " {{x}}  b " c)";\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
     # interior spacing of the raw string (even around embedded quotes)
     # must reach the #define untouched
@@ -158,23 +158,23 @@ def test_raw_string_interior_survives_emission():
 
 
 def test_text_adjacent_to_interp_stays_separate_tokens():
-    out = compile_source("macro P(x)\npre{{x}}post {{x}}5;\nend\n", "t.uncursed")
+    out = compile_source("@macro P(x)\npre{{x}}post {{x}}5;\n@endmacro\n", "t.uncursed")
     assert "#define P(x) pre x post x 5;\n" in out
 
 
 def test_interp_adjacent_to_interp_stays_separate():
-    out = compile_source("macro Q(a, b)\n{{a}}{{b}};\nend\n", "t.uncursed")
+    out = compile_source("@macro Q(a, b)\n{{a}}{{b}};\n@endmacro\n", "t.uncursed")
     assert "#define Q(a, b) a b;\n" in out
 
 
 def test_spread_tuple_field_adjacency_does_not_paste():
-    src = "macro G(f: tuple<t, n>)\nget_{{f.n}} = {{f.t}}{{f.n}};\nend\n"
+    src = "@macro G(f: tuple<t, n>)\nget_{{f.n}} = {{f.t}}{{f.n}};\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     assert "get_ n = t n;" in out
 
 
 def test_punctuation_adjacency_stays_tight():
-    out = compile_source("macro R(x)\n[{{x}}]({{x}});\nend\n", "t.uncursed")
+    out = compile_source("@macro R(x)\n[{{x}}]({{x}});\n@endmacro\n", "t.uncursed")
     assert "#define R(x) [x](x);\n" in out
 
 
@@ -183,19 +183,84 @@ def test_punctuation_adjacency_stays_tight():
 
 def test_unknown_at_directive_line_is_error():
     with pytest.raises(UncursedPpError) as excinfo:
-        parse_file("macro M(xs: seq<token>)\n@fro x in xs\nx\n@end\nend\n", "t.uncursed")
+        parse_file("@macro M(xs: seq<token>)\n@fro x in xs\nx\n@end\n@endmacro\n", "t.uncursed")
     assert "unknown directive" in str(excinfo.value)
     assert "t.uncursed:2" in str(excinfo.value)
 
 
 def test_pragma_inside_macro_body_is_error():
     with pytest.raises(UncursedPpError) as excinfo:
-        parse_file("macro M(x)\n@pragma pp_prefix F_\n{{x}}\nend\n", "t.uncursed")
+        parse_file("@macro M(x)\n@pragma pp_prefix F_\n{{x}}\n@endmacro\n", "t.uncursed")
     assert "top level" in str(excinfo.value)
 
 
 def test_unclosed_interpolation_is_error():
     with pytest.raises(UncursedPpError) as excinfo:
-        parse_file("macro M(x)\nvalue = {{x} + 1;\nend\n", "t.uncursed")
+        parse_file("@macro M(x)\nvalue = {{x} + 1;\n@endmacro\n", "t.uncursed")
     assert "{{" in str(excinfo.value)
     assert "t.uncursed:2" in str(excinfo.value)
+
+
+# ── @macro / @endmacro ───────────────────────────────────────────────
+
+
+def test_atmacro_endmacro_parses():
+    [macro] = parse_file("@macro ID(x)\n{{x}}\n@endmacro\n", "t.uncursed").macros
+    assert macro.name == "ID"
+    assert [p.name for p in macro.params] == ["x"]
+
+
+def test_multiline_params_with_trailing_comma():
+    src = (
+        "@macro W(\n"
+        "    name,\n"
+        "    named WIDTH = 100,\n"
+        "    named HEIGHT = 50,\n"
+        ")\n"
+        "w\n"
+        "@endmacro\n"
+    )
+    [macro] = parse_file(src, "t.uncursed").macros
+    assert [p.name for p in macro.params] == ["name", "WIDTH", "HEIGHT"]
+    assert macro.params[1].named and macro.params[1].default == "100"
+
+
+def test_bare_end_is_body_text():
+    # 'end' alone on a line is ordinary C text now, not a terminator
+    src = "@macro E(x)\nbegin\n" + "end" + "\n{{x}}\n@endmacro\n"
+    [macro] = parse_file(src, "t.uncursed").macros
+    text = "".join(n.value for n in macro.body if isinstance(n, Text))
+    assert "end" in text
+
+
+def test_multiline_params_without_trailing_comma():
+    src = (
+        "@macro F(\n"
+        "    a,\n"
+        "    xs: seq<token>\n"
+        ")\n"
+        "{{a}}\n"
+        "@endmacro\n"
+    )
+    [macro] = parse_file(src, "t.uncursed").macros
+    assert [p.name for p in macro.params] == ["a", "xs"]
+
+
+def test_unclosed_param_list_is_an_error():
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file("@macro F(a,\nb\n", "t.uncursed")
+    assert "parameter list" in str(excinfo.value)
+
+
+def test_endmacro_with_open_block_errors():
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file(
+            "@macro F(xs: seq<token>)\n@for x in xs\n{{x}}\n@endmacro\n", "t.uncursed"
+        )
+    assert "unclosed @for" in str(excinfo.value)
+
+
+def test_missing_endmacro():
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file("@macro F(x)\n{{x}}\n", "t.uncursed")
+    assert "@endmacro" in str(excinfo.value)

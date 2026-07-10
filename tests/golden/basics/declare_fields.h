@@ -10,11 +10,11 @@
 
 /* uncursed-pp source:
  * # Declare one struct field per (type, name) tuple.
- * macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
+ * @macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
  * @for (type, name) in fields
  *   {{type}} {{name}};
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DECLARE_FIELDS_AP1(type, name) type name;
 #define UNCURSED_PP_DECLARE_FIELDS_EACH1(r, d, e) UNCURSED_PP_DECLARE_FIELDS_AP1 e

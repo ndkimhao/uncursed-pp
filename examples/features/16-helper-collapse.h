@@ -8,11 +8,11 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro TRACE_CALLS(fns: seq<token>)
+ * @macro TRACE_CALLS(fns: seq<token>)
  * @for f in fns
  *   trace_enter({{f}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_16_HELPER_COLLAPSE_H1(r, d, e) trace_enter(e);
 #define UNCURSED_PP_16_HELPER_COLLAPSE_HC2_1(e) trace_enter(e);
@@ -37,11 +37,11 @@
 #define TRACE_CALLS(fns) UNCURSED_PP_TRACE_CALLS_PICK1(BOOST_PP_SEQ_SIZE(fns))(fns)
 
 /* uncursed-pp source:
- * macro AUDIT_CALLS(fns: seq<token>)
+ * @macro AUDIT_CALLS(fns: seq<token>)
  * @for f in fns
  *   trace_enter({{f}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_AUDIT_CALLS_SMALL1(seq) BOOST_PP_CAT(UNCURSED_PP_16_HELPER_COLLAPSE_HC2_, BOOST_PP_SEQ_SIZE(seq)) seq
 #define UNCURSED_PP_AUDIT_CALLS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_AUDIT_CALLS_SMALL1, UNCURSED_PP_AUDIT_CALLS_BIG1)

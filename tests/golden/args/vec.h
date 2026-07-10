@@ -8,11 +8,11 @@
 /* uncursed-pp source:
  * # Named args composed with a loop: BODY params referenced inside the
  * # loop ride the d slot as a tuple.
- * macro VEC(name, items: seq<token>, named PREFIX = v)
+ * @macro VEC(name, items: seq<token>, named PREFIX = v)
  * @for i in items
  * {{concat(PREFIX, i)}} {{name}};
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_VEC_EACH1(r, d, e) BOOST_PP_CAT(BOOST_PP_TUPLE_ELEM(0, d), e) BOOST_PP_TUPLE_ELEM(1, d);
 #define UNCURSED_PP_VEC_SET_PREFIX(v) 0, v

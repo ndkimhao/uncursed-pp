@@ -11,13 +11,13 @@
 /* uncursed-pp source:
  * # Composition: @if len over a seq, inline @join inside a branch,
  * # indexing in the other branch, concat in both.
- * macro DISPATCH(fn, args: seq<token>)
+ * @macro DISPATCH(fn, args: seq<token>)
  * @if len(args) == 1
  * {{concat(fn, _1)}}({{args[0]}})
  * @else
  * {{concat(fn, _n)}}({{len(args)}}, @join args as a with ", ": {{a}}@end)
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DISPATCH_THEN1(fn, args) BOOST_PP_CAT(fn, _1)(BOOST_PP_SEQ_ELEM(0, args))
 #define UNCURSED_PP_DISPATCH_ELSE1(fn, args) BOOST_PP_CAT(fn, _n)(BOOST_PP_SEQ_SIZE(args), BOOST_PP_SEQ_ENUM(args))

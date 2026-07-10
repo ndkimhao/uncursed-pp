@@ -7,20 +7,20 @@ from uncursed_pp.emitter import compile_source
 
 TWO_IDENTICAL = (
     "@pragma loop_chain off\n"
-    "macro CALL_A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
-    "macro CALL_B(ys: seq<token>)\n@for y in ys\nf({{y}});\n@end\nend\n"
+    "@macro CALL_A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
+    "@macro CALL_B(ys: seq<token>)\n@for y in ys\nf({{y}});\n@end\n@endmacro\n"
 )
 
 ONE_TOKEN_DIFF = (
     "@pragma loop_chain off\n"
-    "macro DECLARE_INTS(xs: seq<token>)\n@for x in xs\nint {{x}};\n@end\nend\n"
-    "macro DECLARE_FLOATS(ys: seq<token>)\n@for y in ys\nfloat {{y}};\n@end\nend\n"
+    "@macro DECLARE_INTS(xs: seq<token>)\n@for x in xs\nint {{x}};\n@end\n@endmacro\n"
+    "@macro DECLARE_FLOATS(ys: seq<token>)\n@for y in ys\nfloat {{y}};\n@end\n@endmacro\n"
 )
 
 TWO_TOKEN_DIFF = (
     "@pragma loop_chain off\n"
-    "macro A(xs: seq<token>)\n@for x in xs\nint {{x}} = 0;\n@end\nend\n"
-    "macro B(ys: seq<token>)\n@for y in ys\nfloat {{y}} = 1;\n@end\nend\n"
+    "@macro A(xs: seq<token>)\n@for x in xs\nint {{x}} = 0;\n@end\n@endmacro\n"
+    "@macro B(ys: seq<token>)\n@for y in ys\nfloat {{y}} = 1;\n@end\n@endmacro\n"
 )
 
 
@@ -48,7 +48,7 @@ def test_multi_token_diff_stays_unmerged():
 
 
 def test_single_user_keeps_macro_specific_name():
-    src = "macro ONLY(xs: seq<token>)\n@for x in xs\ng({{x}});\n@end\nend\n"
+    src = "@macro ONLY(xs: seq<token>)\n@for x in xs\ng({{x}});\n@end\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     assert "UNCURSED_PP_ONLY_EACH1" in out
     assert "_H1" not in out
@@ -64,13 +64,13 @@ def test_collapsed_shared_helper_expands_correctly(tmp_path):
 
 
 PUNCT_DIFF = (
-    "macro STMTS(xs: seq<token>)\n@for x in xs\n{{x}};\n@end\nend\n"
-    "macro LBLS(ys: seq<token>)\n@for y in ys\n{{y}}:\n@end\nend\n"
+    "@macro STMTS(xs: seq<token>)\n@for x in xs\n{{x}};\n@end\n@endmacro\n"
+    "@macro LBLS(ys: seq<token>)\n@for y in ys\n{{y}}:\n@end\n@endmacro\n"
 )
 
 LITERAL_DIFF = (
-    'macro TBL1(xs: seq<token>)\n@for x in xs\n{ {{x}}, "alpha" },\n@end\nend\n'
-    'macro TBL2(ys: seq<token>)\n@for y in ys\n{ {{y}}, "beta" },\n@end\nend\n'
+    '@macro TBL1(xs: seq<token>)\n@for x in xs\n{ {{x}}, "alpha" },\n@end\n@endmacro\n'
+    '@macro TBL2(ys: seq<token>)\n@for y in ys\n{ {{y}}, "beta" },\n@end\n@endmacro\n'
 )
 
 
@@ -102,8 +102,8 @@ def test_shared_helpers_are_namespaced_per_file():
     # collide on shared helper names
     out_a = compile_source(TWO_IDENTICAL, "widgets.uncursed")
     out_b = compile_source(
-        "macro OTHER(xs: seq<token>)\n@for x in xs\ng({{x}})\n@end\nend\n"
-        "macro OTHER2(ys: seq<token>)\n@for y in ys\ng({{y}})\n@end\nend\n",
+        "@macro OTHER(xs: seq<token>)\n@for x in xs\ng({{x}})\n@end\n@endmacro\n"
+        "@macro OTHER2(ys: seq<token>)\n@for y in ys\ng({{y}})\n@end\n@endmacro\n",
         "gadgets.uncursed",
     )
     assert "UNCURSED_PP_WIDGETS_H1" in out_a
@@ -116,8 +116,8 @@ def test_shared_helpers_are_namespaced_per_file():
 # ── chain families merge as units, never member-by-member ───────────
 
 TWO_IDENTICAL_CHAINS = (
-    "macro A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
-    "macro B(ys: seq<token>)\n@for y in ys\nf({{y}});\n@end\nend\n"
+    "@macro A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
+    "@macro B(ys: seq<token>)\n@for y in ys\nf({{y}});\n@end\n@endmacro\n"
 )
 
 
@@ -144,8 +144,8 @@ def test_identical_chain_families_merge_without_dangling_cat():
 
 def test_different_chain_families_stay_separate():
     src = (
-        "macro A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
-        "macro B(ys: seq<token>)\n@for y in ys\ng({{y}});\n@end\nend\n"
+        "@macro A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
+        "@macro B(ys: seq<token>)\n@for y in ys\ng({{y}});\n@end\n@endmacro\n"
     )
     out = compile_source(src, "t.uncursed")
     assert _cat_prefixes_are_defined(out) == []

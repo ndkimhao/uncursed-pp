@@ -2,7 +2,7 @@
 # inside loops (up to 4 deep) are all fine; only loop depth 5+ is rejected.
 
 # @for inside an @else branch
-macro OPT(xs: seq<token>)
+@macro OPT(xs: seq<token>)
 @if len(xs) == 1
 solo({{xs[0]}})
 @else
@@ -10,10 +10,10 @@ solo({{xs[0]}})
 many({{x}});
 @end
 @end
-end
+@endmacro
 
 # @if inside an @if branch
-macro GRADE(xs: seq<token>)
+@macro GRADE(xs: seq<token>)
 @if len(xs) < 3
 @if len(xs) == 1
 tiny
@@ -23,10 +23,10 @@ small
 @else
 big
 @end
-end
+@endmacro
 
 # three levels: @if -> @for -> @if
-macro TRIAGE(xs: seq<tuple<kind, val>>)
+@macro TRIAGE(xs: seq<tuple<kind, val>>)
 @if len(xs) == 1
 only({{xs[0].val}});
 @else
@@ -38,7 +38,7 @@ routine({{kind}}, {{val}});
 @end
 @end
 @end
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──
 #?  OPT((a))

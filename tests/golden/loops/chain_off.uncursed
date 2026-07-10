@@ -1,11 +1,11 @@
 # loop_chain opt-out: loops compile to plain SEQ_FOR_EACH machinery only.
 @pragma loop_chain off
 
-macro FIELDS_OFF(fields: seq<tuple<t, n>>)
+@macro FIELDS_OFF(fields: seq<tuple<t, n>>)
 @for (t, n) in fields
   {{t}} {{n}};
 @end
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  FIELDS_OFF(((int, a)))

@@ -5,10 +5,10 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DEFINE_ACCESSORS(sname, f: tuple<ftype, fname>)
+ * @macro DEFINE_ACCESSORS(sname, f: tuple<ftype, fname>)
  * static {{f.ftype}} {{concat(get_, f.fname)}}(const struct {{sname}} *o) { return o->{{f.fname}}; }
  * static void {{concat(set_, f.fname)}}(struct {{sname}} *o, {{f.ftype}} v) { o->{{f.fname}} = v; }
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_ACCESSORS_BODY1(sname, ftype, fname) \
     static ftype BOOST_PP_CAT(get_, fname)(const struct sname *o) { return o->fname; } \

@@ -7,9 +7,9 @@
 #
 # Scenario: a color gradient where stops are naturally a bare list.
 
-macro DEFINE_GRADIENT(name, named variadic STOPS = black)
+@macro DEFINE_GRADIENT(name, named variadic STOPS = black)
 static const int {{name}}[] = { {{STOPS}} };
-end
+@endmacro
 
 # Default:
 #?  DEFINE_GRADIENT(fade)

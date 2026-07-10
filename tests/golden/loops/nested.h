@@ -10,13 +10,13 @@
 
 /* uncursed-pp source:
  * # cartesian product of two seq params
- * macro CROSS(xs: seq<token>, ys: seq<token>)
+ * @macro CROSS(xs: seq<token>, ys: seq<token>)
  * @for x in xs
  * @for y in ys
  * pair({{x}}, {{y}});
  * @end
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_CROSS_EACH1(z, n, d) pair(BOOST_PP_TUPLE_ELEM(1, d), BOOST_PP_SEQ_ELEM(n, BOOST_PP_TUPLE_ELEM(0, d)));
 #define UNCURSED_PP_CROSS_EACH2(r, d, e) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(d), UNCURSED_PP_CROSS_EACH1, (d, e))
@@ -24,13 +24,13 @@
 
 /* uncursed-pp source:
  * # iterate a seq<seq<...>>: the inner iterable is the OUTER loop variable
- * macro MATRIX(grid: seq<seq<token>>)
+ * @macro MATRIX(grid: seq<seq<token>>)
  * @for row in grid
  * @for cell in row
  * cell({{cell}});
  * @end
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_MATRIX_EACH1(z, n, d) cell(BOOST_PP_SEQ_ELEM(n, d));
 #define UNCURSED_PP_MATRIX_EACH2(r, d, e) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(e), UNCURSED_PP_MATRIX_EACH1, e)
@@ -38,11 +38,11 @@
 
 /* uncursed-pp source:
  * # inline @join per outer element
- * macro CALL_ROWS(xs: seq<token>, ys: seq<token>)
+ * @macro CALL_ROWS(xs: seq<token>, ys: seq<token>)
  * @for x in xs
  * call({{x}}, @join ys as y with ", ": {{y}}@end);
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_CALL_ROWS_EACH1(z, n, d) BOOST_PP_COMMA_IF(n) BOOST_PP_SEQ_ELEM(n, d)
 #define UNCURSED_PP_CALL_ROWS_EACH2(r, d, e) call(e, BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(d), UNCURSED_PP_CALL_ROWS_EACH1, d));
@@ -50,7 +50,7 @@
 
 /* uncursed-pp source:
  * # full depth: 4 nested loops
- * macro QUAD(s1: seq<token>, s2: seq<token>, s3: seq<token>, s4: seq<token>)
+ * @macro QUAD(s1: seq<token>, s2: seq<token>, s3: seq<token>, s4: seq<token>)
  * @for a in s1
  * @for b in s2
  * @for c in s3
@@ -60,7 +60,7 @@
  * @end
  * @end
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_QUAD_EACH1(z, n, d) quad(BOOST_PP_TUPLE_ELEM(1, d), BOOST_PP_TUPLE_ELEM(2, d), BOOST_PP_TUPLE_ELEM(3, d), BOOST_PP_SEQ_ELEM(n, BOOST_PP_TUPLE_ELEM(0, d)));
 #define UNCURSED_PP_QUAD_EACH2(z, n, d) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_ELEM(1, d)), UNCURSED_PP_QUAD_EACH1, (BOOST_PP_TUPLE_ELEM(1, d), BOOST_PP_TUPLE_ELEM(2, d), BOOST_PP_TUPLE_ELEM(3, d), BOOST_PP_SEQ_ELEM(n, BOOST_PP_TUPLE_ELEM(0, d))))

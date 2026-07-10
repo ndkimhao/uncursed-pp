@@ -266,11 +266,11 @@
 #define UNCURSED_PP_LE4_256 0
 
 /* uncursed-pp source:
- * macro FIELDS4(fields: seq<tuple<t, n>>)
+ * @macro FIELDS4(fields: seq<tuple<t, n>>)
  * @for (t, n) in fields
  *   {{t}} {{n}};
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_FIELDS4_AP1(t, n) t n;
 #define UNCURSED_PP_FIELDS4_EACH1(r, d, e) UNCURSED_PP_FIELDS4_AP1 e

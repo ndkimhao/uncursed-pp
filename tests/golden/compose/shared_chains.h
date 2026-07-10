@@ -8,11 +8,11 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DECLARE_INTS(xs: seq<token>)
+ * @macro DECLARE_INTS(xs: seq<token>)
  * @for x in xs
  *   int {{x}};
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_SHARED_CHAINS_H1(r, d, e) int e;
 #define UNCURSED_PP_SHARED_CHAINS_HC2_1(e) int e;
@@ -37,11 +37,11 @@
 #define DECLARE_INTS(xs) UNCURSED_PP_DECLARE_INTS_PICK1(BOOST_PP_SEQ_SIZE(xs))(xs)
 
 /* uncursed-pp source:
- * macro DECLARE_MORE_INTS(ys: seq<token>)
+ * @macro DECLARE_MORE_INTS(ys: seq<token>)
  * @for y in ys
  *   int {{y}};
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DECLARE_MORE_INTS_SMALL1(seq) BOOST_PP_CAT(UNCURSED_PP_SHARED_CHAINS_HC2_, BOOST_PP_SEQ_SIZE(seq)) seq
 #define UNCURSED_PP_DECLARE_MORE_INTS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_DECLARE_MORE_INTS_SMALL1, UNCURSED_PP_DECLARE_MORE_INTS_BIG1)

@@ -7,8 +7,8 @@
 /* uncursed-pp source:
  * # Two inline @joins on one line expand independently; identity comma
  * # joins like these compile straight to SEQ_ENUM (no helpers needed).
- * macro ZIP(ks: seq<token>, vs: seq<token>)
+ * @macro ZIP(ks: seq<token>, vs: seq<token>)
  * k({{len(ks)}}): @join ks as k with ", ": {{k}}@end / v: @join vs as v with ", ": {{v}}@end
- * end
+ * @endmacro
  */
 #define ZIP(ks, vs) k(BOOST_PP_SEQ_SIZE(ks)): BOOST_PP_SEQ_ENUM(ks) / v: BOOST_PP_SEQ_ENUM(vs)

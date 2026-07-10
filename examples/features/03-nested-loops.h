@@ -8,13 +8,13 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 
 /* uncursed-pp source:
- * macro FILL_DISPATCH(modes: seq<token>, widths: seq<token>)
+ * @macro FILL_DISPATCH(modes: seq<token>, widths: seq<token>)
  * @for m in modes
  * @for w in widths
  *   table[{{m}}][{{w}}] = op_generic;
  * @end
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_FILL_DISPATCH_EACH1(z, n, d) table[BOOST_PP_TUPLE_ELEM(1, d)][BOOST_PP_SEQ_ELEM(n, BOOST_PP_TUPLE_ELEM(0, d))] = op_generic;
 #define UNCURSED_PP_FILL_DISPATCH_EACH2(r, d, e) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(d), UNCURSED_PP_FILL_DISPATCH_EACH1, (d, e))

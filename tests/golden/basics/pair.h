@@ -6,9 +6,9 @@
 
 /* uncursed-pp source:
  * # Maybe-paren stripping: wrap a comma-containing value at the call site.
- * macro PAIR(p: tuple<a, b>)
+ * @macro PAIR(p: tuple<a, b>)
  * S{ {{remove_parens(p.a)}} | {{p.b}} }
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_PAIR_BODY1(a, b) S{ BOOST_PP_REMOVE_PARENS(a) | b }
 #define UNCURSED_PP_PAIR_BODY1_D(...) UNCURSED_PP_PAIR_BODY1(__VA_ARGS__)

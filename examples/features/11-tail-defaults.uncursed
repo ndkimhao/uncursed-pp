@@ -10,9 +10,9 @@
 # Scenario: a retry wrapper where attempts and failure handler are
 # usually the defaults.
 
-macro RETRY(call, attempts = 3, on_fail = abort)
+@macro RETRY(call, attempts = 3, on_fail = abort)
 for (int i_ = 0; i_ < {{attempts}}; i_++) { if ({{call}}() == 0) break; if (i_ == {{attempts}} - 1) {{on_fail}}(); }
-end
+@endmacro
 
 #?  RETRY(connect)
 #=>     for (int i_ = 0; i_ < 3; i_++) { if (connect() == 0) break; if (i_ == 3 - 1) abort(); }
@@ -25,9 +25,9 @@ end
 
 # A default may be EMPTY — here `quals` disappears when omitted.
 
-macro EXPORT_FN(ret, fname, quals = )
+@macro EXPORT_FN(ret, fname, quals = )
 {{quals}} {{ret}} {{fname}}(void);
-end
+@endmacro
 
 #?  EXPORT_FN(int, get_version)
 #=>     int get_version(void);

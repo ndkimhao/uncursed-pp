@@ -7,13 +7,13 @@
 # Scenario: an init helper — pass `(args...)` to forward them, or a
 # single value to wrap it.
 
-macro INIT_CALL(fn, arg)
+@macro INIT_CALL(fn, arg)
 @if is_paren(arg)
   {{fn}}{{arg}};
 @else
   {{fn}}(({{arg}}));
 @end
-end
+@endmacro
 
 # A parenthesized argument pack is forwarded verbatim (juxtaposing the
 # name against the pack forms the call):

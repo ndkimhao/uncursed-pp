@@ -15,10 +15,10 @@
 /* uncursed-pp source:
  * # @let may capture an inline @join or @if; the rendered helper is reused
  * # at every use site. @let inside a loop body binds per element.
- * macro CALL2(fn, args: seq<tuple<type, argname>>)
+ * @macro CALL2(fn, args: seq<tuple<type, argname>>)
  * @let joined := @join args with ", ": {{argname}}@end
  * {{fn}}({{joined}}, {{joined}})
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_CALL2_AP1(type, argname) argname
 #define UNCURSED_PP_CALL2_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) UNCURSED_PP_CALL2_AP1 e
@@ -44,22 +44,22 @@
 #define CALL2(fn, args) fn(UNCURSED_PP_CALL2_PICK1(BOOST_PP_SEQ_SIZE(args))(args), UNCURSED_PP_CALL2_PICK1(BOOST_PP_SEQ_SIZE(args))(args))
 
 /* uncursed-pp source:
- * macro PICK(x)
+ * @macro PICK(x)
  * @let norm := @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end
  * g({{norm}})
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_PICK_THEN1(x) BOOST_PP_REMOVE_PARENS(x)
 #define UNCURSED_PP_PICK_ELSE1(x) x
 #define PICK(x) g(BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(x), UNCURSED_PP_PICK_THEN1, UNCURSED_PP_PICK_ELSE1)(x))
 
 /* uncursed-pp source:
- * macro PAIRS(xs: seq<token>)
+ * @macro PAIRS(xs: seq<token>)
  * @for x in xs
  * @let id := concat(x, _id)
  * int {{id}} = sizeof({{id}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_PAIRS_EACH1(r, d, e) int BOOST_PP_CAT(e, _id) = sizeof(BOOST_PP_CAT(e, _id));
 #define UNCURSED_PP_PAIRS_CH1_1(e) int BOOST_PP_CAT(e, _id) = sizeof(BOOST_PP_CAT(e, _id));

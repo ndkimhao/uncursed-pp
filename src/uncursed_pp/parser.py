@@ -1,7 +1,7 @@
 """Parse .uncursed source into the AST.
 
 Two-level strategy: a line-level pass recognizes macro headers, directive
-lines, `end` terminators and raw body text; lark mini-grammars (grammar.lark)
+lines, `@endmacro` terminators and raw body text; lark mini-grammars (grammar.lark)
 parse the structured fragments (signatures, directives, {{expr}} contents).
 Inline directives (@join / @if inside a body line) are handled by a small
 depth-aware scanner so they can nest.
@@ -400,7 +400,7 @@ def parse_file(source: str, filename: str) -> File:
                 pragmas[key] = value
             i += 1
             continue
-        if stripped.startswith("macro "):
+        if stripped.startswith("@macro ") or stripped == "@macro":
             start = i
             macro, i = _parse_macro(lines, i, filename)
             macro.source = "\n".join(attached + lines[start:i])
@@ -446,19 +446,30 @@ def _is_block_directive(stripped: str) -> bool:
 
 def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef, int]:
     header_line = start + 1  # 1-based
-    header = lines[start].strip()[len("macro ") :]
+    # the parameter list may span lines: accumulate until parens balance
+    # (signatures cannot contain nested parens - defaults exclude them)
+    header = lines[start].strip()[len("@macro") :].strip()
+    i = start + 1
+    while "(" not in header or header.count("(") > header.count(")"):
+        if i >= len(lines):
+            raise UncursedPpError(
+                "unclosed '@macro' parameter list", filename, header_line
+            )
+        header = f"{header} {lines[i].strip()}"
+        i += 1
     name, params = _parse_fragment("signature", header, filename, header_line)
 
     body: list[BodyNode] = []
     stack: list[_Block] = [_Block(body, None, "root")]
 
-    i = start + 1
     while i < len(lines):
         raw = lines[i]
         stripped = raw.strip()
         lineno = i + 1
 
-        if stripped == "end" and len(stack) == 1:
+        if stripped == "@endmacro":
+            if len(stack) > 1:
+                raise UncursedPpError(f"unclosed @{stack[-1].kind}", filename, lineno)
             return MacroDef(name=name, params=params, body=body, line=header_line), i + 1
 
         if stripped.startswith("#"):
@@ -495,7 +506,7 @@ def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef,
 
     if len(stack) > 1:
         raise UncursedPpError(f"unclosed @{stack[-1].kind}", filename, stack[-1].line)
-    raise UncursedPpError(f"missing 'end' for macro {name}", filename, header_line)
+    raise UncursedPpError(f"missing '@endmacro' for macro {name}", filename, header_line)
 
 
 _LET_RE = re.compile(r"let\s+([A-Za-z_]\w*)\s*:=\s*(.*)$")

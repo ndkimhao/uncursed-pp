@@ -1,7 +1,7 @@
 # Function prototype from a seq of (type, argname) tuples.
-macro PROTO(name, args: seq<tuple<type, argname>>)
+@macro PROTO(name, args: seq<tuple<type, argname>>)
 void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  PROTO(init, ((int, only)))

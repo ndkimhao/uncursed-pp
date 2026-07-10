@@ -10,39 +10,39 @@
 #   enum { Point_field_count = 2 };
 #   static void print_Point(const Point *v) { printf(... "%d" ..., v->x); ... }
 
-macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
+@macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
 typedef struct {
 @for (type, name, fmt) in fields
   {{type}} {{name}};
 @end
 } {{sname}};
-end
+@endmacro
 
-macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
+@macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
 static const uncursed_field {{concat(sname, _fields)}}[] = {
 @for (type, name, fmt) in fields
   { {{stringize(name)}}, {{stringize(type)}}, offsetof({{sname}}, {{name}}) },
 @end
 };
 enum { {{concat(sname, _field_count)}} = {{len(fields)}} };
-end
+@endmacro
 
-macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
+@macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
 static void {{concat(print_, sname)}}(const {{sname}} *v) {
 @for (type, name, fmt) in fields
   printf("  " {{stringize(name)}} " = " {{fmt}} "\n", v->{{name}});
 @end
 }
-end
+@endmacro
 
 # Generated macros compose: REFLECT fans out to the three above. Its
 # variadic<tuple<...>> parameter gives call sites single-paren elements;
 # VARIADIC_TO_SEQ hands the inner seq-typed macros their (e)(e) form.
-macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
+@macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
 DEFINE_STRUCT({{sname}}, {{fields}})
 DEFINE_FIELD_TABLE({{sname}}, {{fields}})
 DEFINE_PRINTER({{sname}}, {{fields}})
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  REFLECT(Point, (int, x, "%d"), (float, y, "%f"))

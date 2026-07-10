@@ -1,7 +1,7 @@
 # Maybe-paren stripping: wrap a comma-containing value at the call site.
-macro PAIR(p: tuple<a, b>)
+@macro PAIR(p: tuple<a, b>)
 S{ {{remove_parens(p.a)}} | {{p.b}} }
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  PAIR((a, b))

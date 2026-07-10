@@ -12,13 +12,13 @@
 /* uncursed-pp source:
  * # Branch helpers receive the union of both branches' free variables;
  * # branch bodies may contain commas safely (each lives in its own helper).
- * macro REPORT(a, b, xs: seq<token>)
+ * @macro REPORT(a, b, xs: seq<token>)
  * @if len(xs) == 1
  * one({{a}})
  * @else
  * many({{b}}, {{len(xs)}})
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_REPORT_THEN1(a, b, xs) one(a)
 #define UNCURSED_PP_REPORT_ELSE1(a, b, xs) many(b, BOOST_PP_SEQ_SIZE(xs))
@@ -26,7 +26,7 @@
 
 /* uncursed-pp source:
  * # Line-form @if nested in a @for: branch per element.
- * macro EMIT(xs: seq<tuple<kind, val>>)
+ * @macro EMIT(xs: seq<tuple<kind, val>>)
  * @for (kind, val) in xs
  * @if kind == 1
  * one({{val}});
@@ -34,7 +34,7 @@
  * other({{kind}}, {{val}});
  * @end
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_EMIT_THEN1(val, kind) one(val);
 #define UNCURSED_PP_EMIT_ELSE1(val, kind) other(kind, val);
@@ -63,14 +63,14 @@
 
 /* uncursed-pp source:
  * # Two sequential @ifs in one macro get independently numbered helpers.
- * macro SIZE_CLASS(xs: seq<token>)
+ * @macro SIZE_CLASS(xs: seq<token>)
  * @if len(xs) == 1
  * single
  * @end
  * @if len(xs) == 2
  * double
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_SIZE_CLASS_THEN1() single
 #define UNCURSED_PP_BRANCHES_H1()

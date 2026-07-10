@@ -19,13 +19,13 @@
 # Scenario: struct field descriptors — every field has a name and type,
 # SOME fields carry extra attributes.
 
-macro DECL(f: tuple<fname, ftype, token...>)
+@macro DECL(f: tuple<fname, ftype, token...>)
 @if is_empty(f)
   {{f.ftype}} {{f.fname}};
 @else
   {{f.ftype}} {{f.fname}} __attribute__((@join f as a with ", ": {{a}}@end));
 @end
-end
+@endmacro
 
 #?  DECL((flags, unsigned, packed))
 #=>     unsigned flags __attribute__((packed));
@@ -36,9 +36,9 @@ end
 
 # ── the head never counts: len()/[i] see only the tail ───────────────
 
-macro SUMMARY(f: tuple<owner, token...>)
+@macro SUMMARY(f: tuple<owner, token...>)
 {{f.owner}} has {{len(f)}} tags
-end
+@endmacro
 
 #?  SUMMARY((alice, admin, staff))
 #=>     alice has 2 tags

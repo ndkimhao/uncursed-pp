@@ -19,11 +19,11 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro CALL_ALL(fn, row: tuple)
+ * @macro CALL_ALL(fn, row: tuple)
  * @for x in row
  *   {{fn}}({{x}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_CALL_ALL_EACH1(r, d, e) d(e);
 #define UNCURSED_PP_CALL_ALL_LOOP1(row, fn) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_CALL_ALL_EACH1, fn, BOOST_PP_TUPLE_TO_SEQ(row))
@@ -33,13 +33,13 @@
 
 /* uncursed-pp source:
  * # is_empty() branches; len() reports 0 for ()
- * macro DESCRIBE(row: tuple)
+ * @macro DESCRIBE(row: tuple)
  * @if is_empty(row)
  *   nothing
  * @else
  *   {{len(row)}} items: @join row as x with " + ": {{x}}@end
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DESCRIBE_THEN1(row) nothing
 #define UNCURSED_PP_DESCRIBE_SEP1() +
@@ -70,11 +70,11 @@
 
 /* uncursed-pp source:
  * # typed elements: named pairs give single-paren call sites
- * macro SET_ALL(ps: tuple<tuple<key, value>...>)
+ * @macro SET_ALL(ps: tuple<tuple<key, value>...>)
  * @for (key, value) in ps
  *   cfg_set({{stringize(key)}}, {{value}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_SET_ALL_AP1(key, value) cfg_set(BOOST_PP_STRINGIZE(key), value);
 #define UNCURSED_PP_SET_ALL_EACH1(r, d, e) UNCURSED_PP_SET_ALL_AP1 e
@@ -105,11 +105,11 @@
  * # collapse interaction: two macros with identical no-free-var loop bodies
  * # share one helper family (chain members merge as a unit; small and empty
  * # inputs pin the CAT-dispatched paths - see docs/optimization.md round 3)
- * macro TRACE_ROW(row: tuple)
+ * @macro TRACE_ROW(row: tuple)
  * @for x in row
  *   trace({{x}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_ROWS_H3(r, d, e) trace(e);
 #define UNCURSED_PP_ROWS_HC4_1(e) trace(e);
@@ -135,11 +135,11 @@
 #define TRACE_ROW(row) BOOST_PP_IIF(UNCURSED_PP_ROWS_H1(row), UNCURSED_PP_ROWS_H2, UNCURSED_PP_TRACE_ROW_LOOP1)(row)
 
 /* uncursed-pp source:
- * macro AUDIT_ROW(row: tuple)
+ * @macro AUDIT_ROW(row: tuple)
  * @for x in row
  *   trace({{x}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_AUDIT_ROW_LOOP1(row) UNCURSED_PP_AUDIT_ROW_PICK1(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_TO_SEQ(row)))(BOOST_PP_TUPLE_TO_SEQ(row))
 #define UNCURSED_PP_AUDIT_ROW_SMALL1(seq) BOOST_PP_CAT(UNCURSED_PP_ROWS_HC4_, BOOST_PP_SEQ_SIZE(seq)) seq
@@ -149,11 +149,11 @@
 
 /* uncursed-pp source:
  * # nesting: a seq of variable-width rows; the inner tuple may be empty
- * macro FLATTEN(rows: seq<tuple<token...>>)
+ * @macro FLATTEN(rows: seq<tuple<token...>>)
  * @for row in rows
  *   { @join row as x with ", ": {{x}}@end }
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_FLATTEN_EACH1(z, n, d) BOOST_PP_COMMA_IF(n) BOOST_PP_SEQ_ELEM(n, d)
 #define UNCURSED_PP_FLATTEN_LOOP1(row) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_TO_SEQ(row)), UNCURSED_PP_FLATTEN_EACH1, BOOST_PP_TUPLE_TO_SEQ(row))

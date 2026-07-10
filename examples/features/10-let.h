@@ -6,11 +6,11 @@
 #include <boost/preprocessor/seq/size.hpp>
 
 /* uncursed-pp source:
- * macro COUNTED_ARRAY(name, elems: seq<token>)
+ * @macro COUNTED_ARRAY(name, elems: seq<token>)
  * @let n := len(elems)
  * static const int {{name}}[{{n}}] = { @join elems as e with ", ": {{e}}@end };
  * enum { {{concat(name, _len)}} = {{n}} };
- * end
+ * @endmacro
  */
 #define COUNTED_ARRAY(name, elems) \
     static const int name[BOOST_PP_SEQ_SIZE(elems)] = { BOOST_PP_SEQ_ENUM(elems) }; \

@@ -9,9 +9,9 @@
  * #   MAKE_WIDGET(w1)                          → struct widget w1 = { 100, 50, };
  * #   MAKE_WIDGET(w2, HEIGHT(80))              → struct widget w2 = { 100, 80, };
  * #   MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))  → struct widget w3 = { 20, 50, BOLD };
- * macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
+ * @macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
  * struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_MAKE_WIDGET_SET_WIDTH(v) 0, v
 #define UNCURSED_PP_MAKE_WIDGET_SET_HEIGHT(v) 1, v
@@ -37,9 +37,9 @@
 /* uncursed-pp source:
  * # 'named variadic' keyword values may contain bare commas: the generated
  * # setter captures __VA_ARGS__ and re-wraps, and {{COLORS}} auto-unwraps.
- * macro STYLE(name, named variadic COLORS = none)
+ * @macro STYLE(name, named variadic COLORS = none)
  * unsigned {{name}}[] = { {{COLORS}} };
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_STYLE_SET_COLORS(...) 0, (__VA_ARGS__)
 #define UNCURSED_PP_STYLE_STEP1(e, ...) UNCURSED_PP_STYLE_STEP_D(BOOST_PP_CAT(UNCURSED_PP_STYLE_SET_, e), __VA_ARGS__)

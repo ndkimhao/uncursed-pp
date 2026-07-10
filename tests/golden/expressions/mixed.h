@@ -14,27 +14,27 @@
 /* uncursed-pp source:
  * # Expressions over mixed data: concat of tuple fields, stringize of a
  * # seq element and of a computed len(), remove_parens per loop element.
- * macro FUSE(p: tuple<a, b>)
+ * @macro FUSE(p: tuple<a, b>)
  * {{concat(p.a, p.b)}}
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_FUSE_BODY1(a, b) BOOST_PP_CAT(a, b)
 #define UNCURSED_PP_FUSE_BODY1_D(...) UNCURSED_PP_FUSE_BODY1(__VA_ARGS__)
 #define FUSE(p) UNCURSED_PP_FUSE_BODY1_D(UNCURSED_PP_KW_SPREAD p)
 
 /* uncursed-pp source:
- * macro STR0(xs: seq<token>)
+ * @macro STR0(xs: seq<token>)
  * {{stringize(xs[0])}} / {{stringize(len(xs))}}
- * end
+ * @endmacro
  */
 #define STR0(xs) BOOST_PP_STRINGIZE(BOOST_PP_SEQ_ELEM(0, xs)) / BOOST_PP_STRINGIZE(BOOST_PP_SEQ_SIZE(xs))
 
 /* uncursed-pp source:
- * macro CLEAN(fields: seq<tuple<t, n>>)
+ * @macro CLEAN(fields: seq<tuple<t, n>>)
  * @for (t, n) in fields
  * {{remove_parens(t)}} {{n}};
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_CLEAN_AP1(t, n) BOOST_PP_REMOVE_PARENS(t) n;
 #define UNCURSED_PP_CLEAN_EACH1(r, d, e) UNCURSED_PP_CLEAN_AP1 e

@@ -9,13 +9,13 @@
 #include <boost/preprocessor/tuple/to_seq.hpp>
 
 /* uncursed-pp source:
- * macro DECL(f: tuple<fname, ftype, token...>)
+ * @macro DECL(f: tuple<fname, ftype, token...>)
  * @if is_empty(f)
  *   {{f.ftype}} {{f.fname}};
  * @else
  *   {{f.ftype}} {{f.fname}} __attribute__((@join f as a with ", ": {{a}}@end));
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DECL_THEN1(f) BOOST_PP_TUPLE_ELEM(1, f) BOOST_PP_TUPLE_ELEM(0, f);
 #define UNCURSED_PP_DECL_TL2(t) UNCURSED_PP_DECL_TL2_I t
@@ -27,9 +27,9 @@
 #define DECL(f) BOOST_PP_IIF(UNCURSED_PP_19_HYBRID_TUPLE_H1(UNCURSED_PP_DECL_TL2(f)), UNCURSED_PP_DECL_THEN1, UNCURSED_PP_DECL_ELSE1)(f)
 
 /* uncursed-pp source:
- * macro SUMMARY(f: tuple<owner, token...>)
+ * @macro SUMMARY(f: tuple<owner, token...>)
  * {{f.owner}} has {{len(f)}} tags
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_SUMMARY_TL1(t) UNCURSED_PP_SUMMARY_TL1_I t
 #define UNCURSED_PP_SUMMARY_TL1_I(f0, ...) (__VA_ARGS__)

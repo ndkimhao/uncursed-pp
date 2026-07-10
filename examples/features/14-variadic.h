@@ -11,11 +11,11 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro FREE_ALL(ptrs: variadic)
+ * @macro FREE_ALL(ptrs: variadic)
  * @for p in ptrs
  *   free({{p}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_FREE_ALL_EACH1(r, d, e) free(e);
 #define UNCURSED_PP_FREE_ALL_CH1_1(e) free(e);
@@ -40,11 +40,11 @@
 #define FREE_ALL(...) UNCURSED_PP_FREE_ALL_PICK1(BOOST_PP_SEQ_SIZE(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
 /* uncursed-pp source:
- * macro SET_DEFAULTS(pairs: variadic<tuple<key, value>>)
+ * @macro SET_DEFAULTS(pairs: variadic<tuple<key, value>>)
  * @for (key, value) in pairs
  *   config_set({{stringize(key)}}, {{value}});
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_SET_DEFAULTS_AP1(key, value) config_set(BOOST_PP_STRINGIZE(key), value);
 #define UNCURSED_PP_SET_DEFAULTS_EACH1(r, d, e) UNCURSED_PP_SET_DEFAULTS_AP1 e

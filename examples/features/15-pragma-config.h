@@ -9,11 +9,11 @@
 #include "acme_runtime.h"
 
 /* uncursed-pp source:
- * macro DECLARE_OPTIONS(opts: seq<tuple<otype, oname>>)
+ * @macro DECLARE_OPTIONS(opts: seq<tuple<otype, oname>>)
  * @for (otype, oname) in opts
  *   {{otype}} {{oname}};
  * @end
- * end
+ * @endmacro
  */
 #define ACME_DECLARE_OPTIONS_AP1(otype, oname) otype oname;
 #define ACME_DECLARE_OPTIONS_EACH1(r, d, e) ACME_DECLARE_OPTIONS_AP1 e

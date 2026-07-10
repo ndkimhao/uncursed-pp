@@ -9,14 +9,14 @@ from uncursed_pp.emitter import EmitConfig, compile_source, compile_template, ru
 from uncursed_pp.parser import UncursedPpError, parse_file
 
 # a macro that needs the shared runtime (spread tuple param -> KW_SPREAD)
-SPREAD_SRC = "macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n"
+SPREAD_SRC = "@macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\n@endmacro\n"
 
 
 def test_parse_pragmas():
     src = (
         "@pragma pp_prefix MYLIB_PP_\n"
         '@pragma pp_include "mylib/preprocessor.hpp"\n'
-        "macro ID(x)\n{{x}}\nend\n"
+        "@macro ID(x)\n{{x}}\n@endmacro\n"
     )
     file = parse_file(src, "t.uncursed")
     assert file.pragmas == {
@@ -27,7 +27,7 @@ def test_parse_pragmas():
 
 def test_unknown_pragma_is_error():
     with pytest.raises(UncursedPpError) as excinfo:
-        parse_file("@pragma nonsense abc\nmacro ID(x)\n{{x}}\nend\n", "t.uncursed")
+        parse_file("@pragma nonsense abc\n@macro ID(x)\n{{x}}\n@endmacro\n", "t.uncursed")
     assert "t.uncursed:1" in str(excinfo.value)
 
 
@@ -35,11 +35,11 @@ def test_pragma_pp_prefix_and_include():
     src = (
         "@pragma pp_prefix MYLIB_PP_\n"
         '@pragma pp_include "mylib/preprocessor.hpp"\n'
-        "macro DECL(fields: seq<tuple<type, name>>)\n"
+        "@macro DECL(fields: seq<tuple<type, name>>)\n"
         "@for (type, name) in fields\n"
         "  {{type}} {{name}};\n"
         "@end\n"
-        "end\n"
+        "@endmacro\n"
     )
     out = compile_source(src, "t.uncursed")
     assert "#include <mylib/preprocessor.hpp>" in out
@@ -49,7 +49,7 @@ def test_pragma_pp_prefix_and_include():
 
 
 def test_pragma_helper_prefix():
-    src = "@pragma helper_prefix VENDORED_\nmacro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+    src = "@pragma helper_prefix VENDORED_\n@macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     assert "#define VENDORED_D_EACH1(r, d, e) f(e);" in out
     assert "UNCURSED_PP_" not in out
@@ -57,19 +57,19 @@ def test_pragma_helper_prefix():
 
 def test_custom_pp_prefix_requires_include():
     with pytest.raises(UncursedPpError) as excinfo:
-        compile_source("@pragma pp_prefix MYPP_\nmacro ID(x)\n{{x}}\nend\n", "t.uncursed")
+        compile_source("@pragma pp_prefix MYPP_\n@macro ID(x)\n{{x}}\n@endmacro\n", "t.uncursed")
     assert "pp_include" in str(excinfo.value)
 
 
 def test_custom_pp_prefix_ok_with_custom_include_dir():
-    src = "@pragma pp_prefix MYPP_\n@pragma pp_include_dir vendored/pp\nmacro ID(x)\n{{x}}\nend\n"
+    src = "@pragma pp_prefix MYPP_\n@pragma pp_include_dir vendored/pp\n@macro ID(x)\n{{x}}\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     assert "MYPP_" not in out  # plain macro uses no primitives; compiles fine
 
 
 def test_extra_includes_via_config():
     out = compile_source(
-        "macro ID(x)\n{{x}}\nend\n",
+        "@macro ID(x)\n{{x}}\n@endmacro\n",
         "t.uncursed",
         config=EmitConfig(extra_includes=("myproj/types.h", "<stdio.h>")),
     )
@@ -81,14 +81,14 @@ def test_extra_includes_via_pragma_repeatable_ordered():
     src = (
         '@pragma include "first.h"\n'
         "@pragma include <second.h>\n"
-        "macro ID(x)\n{{x}}\nend\n"
+        "@macro ID(x)\n{{x}}\n@endmacro\n"
     )
     out = compile_source(src, "t.uncursed")
     assert out.index('#include "first.h"') < out.index("#include <second.h>")
 
 
 def test_pp_include_dir_rewrites_granular_includes():
-    src = "macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+    src = "@macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
     out = compile_source(src, "t.uncursed", config=EmitConfig(pp_include_dir="boost_foo/preprocessor"))
     assert "#include <boost_foo/preprocessor/seq/for_each.hpp>" in out
     assert "boost/preprocessor/" not in out
@@ -102,9 +102,9 @@ def test_runtime_is_self_contained():
 
 
 WIDGET_SRC = (
-    "macro W(name, named WIDTH = 100)\n"
+    "@macro W(name, named WIDTH = 100)\n"
     "struct widget {{name}} = { {{WIDTH}} };\n"
-    "end\n"
+    "@endmacro\n"
 )
 
 
@@ -126,7 +126,7 @@ def test_compile_template_reports_runtime_dependency():
     assert result.runtime is not None
     assert result.runtime_name == "uncursed_pp_runtime.h"
 
-    plain = compile_template("macro ID(x)\n{{x}}\nend\n", "id.uncursed")
+    plain = compile_template("@macro ID(x)\n{{x}}\n@endmacro\n", "id.uncursed")
     assert plain.runtime is None
 
 
@@ -157,7 +157,7 @@ def test_pp_include_dir_e2e_through_gcc(tmp_path):
 
     src = (
         "@pragma pp_include_dir acme_pp\n"
-        "macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+        "@macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
     )
     result = compile_template(src, "d.uncursed")
     assert "#include <acme_pp/seq/for_each.hpp>" in result.header

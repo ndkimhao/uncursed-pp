@@ -13,11 +13,11 @@
 #
 # Scenario: memory-mapped register declarations for a device driver.
 
-macro DECLARE_REGISTERS(regs: seq<tuple<ctype, regname>>)
+@macro DECLARE_REGISTERS(regs: seq<tuple<ctype, regname>>)
 @for (ctype, regname) in regs
   volatile {{ctype}} {{regname}};
 @end
-end
+@endmacro
 
 #?  DECLARE_REGISTERS(((uint32_t, CTRL))((uint16_t, STATUS))((uint16_t, DATA)))
 #=>     volatile uint32_t CTRL;

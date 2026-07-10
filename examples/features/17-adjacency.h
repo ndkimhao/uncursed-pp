@@ -4,10 +4,10 @@
 #include <boost/preprocessor/cat.hpp>
 
 /* uncursed-pp source:
- * macro SHOW_PASTE_RULE(prefix, name)
+ * @macro SHOW_PASTE_RULE(prefix, name)
  * int {{prefix}}{{name}} = 0;
  * int {{concat(prefix, name)}} = 1;
- * end
+ * @endmacro
  */
 #define SHOW_PASTE_RULE(prefix, name) \
     int prefix name = 0; \

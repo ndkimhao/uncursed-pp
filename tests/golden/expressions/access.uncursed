@@ -1,11 +1,11 @@
 # Element access: seq indexing and chained seq[i].field access.
-macro HEADTAIL(xs: seq<token>)
+@macro HEADTAIL(xs: seq<token>)
 {{xs[0]}} ... {{xs[1]}}
-end
+@endmacro
 
-macro SECOND_NAME(xs: seq<tuple<t, n>>)
+@macro SECOND_NAME(xs: seq<tuple<t, n>>)
 {{xs[1].n}}
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──
 #?  HEADTAIL((a)(b))

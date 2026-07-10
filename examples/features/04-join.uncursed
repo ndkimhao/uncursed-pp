@@ -8,9 +8,9 @@
 #
 # Scenario: a function prototype — the classic comma-separated list.
 
-macro DECLARE_FN(ret, fname, params: seq<tuple<ptype, pname>>)
+@macro DECLARE_FN(ret, fname, params: seq<tuple<ptype, pname>>)
 {{ret}} {{fname}}(@join params with ", ": {{ptype}} {{pname}}@end);
-end
+@endmacro
 
 #?  DECLARE_FN(int, clamp, ((int, v))((int, lo))((int, hi)))
 #=>     int clamp(int v, int lo, int hi);
@@ -22,9 +22,9 @@ end
 # Separators are arbitrary text, not just commas. `as f` names the
 # element explicitly.
 
-macro ANY_FLAG_SET(mask, flags: seq<token>)
+@macro ANY_FLAG_SET(mask, flags: seq<token>)
 (@join flags as f with " || ": ({{mask}} & {{f}})@end)
-end
+@endmacro
 
 #?  ANY_FLAG_SET(m, (F_DIRTY)(F_LOCKED))
 #=>     ((m & F_DIRTY) || (m & F_LOCKED))

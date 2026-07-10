@@ -5,11 +5,11 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 
 /* uncursed-pp source:
- * macro FIELDS_OFF(fields: seq<tuple<t, n>>)
+ * @macro FIELDS_OFF(fields: seq<tuple<t, n>>)
  * @for (t, n) in fields
  *   {{t}} {{n}};
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_FIELDS_OFF_AP1(t, n) t n;
 #define UNCURSED_PP_FIELDS_OFF_EACH1(r, d, e) UNCURSED_PP_FIELDS_OFF_AP1 e

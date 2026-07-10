@@ -16,73 +16,73 @@ C compile time.
 # tuple / tuple<T...> (unbounded: variable count of T elements), variadic.
 
 # ── 1. Loop over a seq of tuples ────────────────────────────────────
-macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
+@macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
 @for (type, name) in fields
   {{type}} {{name}};
 @end
-end
+@endmacro
 #   DECLARE_FIELDS(((int, x))((float, y)))  →  int x; float y;
 
 # ── 2. Inline @join — separator between items ───────────────────────
-macro PROTO(name, args: seq<tuple<type, argname>>)
+@macro PROTO(name, args: seq<tuple<type, argname>>)
 void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
-end
+@endmacro
 #   PROTO(draw, ((struct ctx *, ctx))((int, flags)))
 #     →  void draw(struct ctx * ctx, int flags);
 
 # ── 3. Element access: named for tuples, indexed for seqs ───────────
-macro GETTER(field: tuple<type, name>)
+@macro GETTER(field: tuple<type, name>)
 @let getter := concat(get_, field.name)
 {{field.type}} {{getter}}(const struct self *s) {
   return s->{{field.name}};
 }
-end
+@endmacro
 # concat() is EXPLICIT token pasting (BOOST_PP_CAT); adjacent text never
 # pastes implicitly. @let binds a generation-time name to an expression;
 # {{getter}} inlines it. Scope: enclosing block. In expressions, a bare
 # name resolves to a param/loop var/let if one is in scope, else it is a
 # literal token (like get_ above).
 
-macro FIRST_TWO(xs: seq<token>)
+@macro FIRST_TWO(xs: seq<token>)
 {{xs[0]}}, {{xs[1]}}
-end
+@endmacro
 
 # ── 4. Default tail arguments (positional, arity dispatch) ──────────
-macro LOG(msg, level = INFO, out = stderr)
+@macro LOG(msg, level = INFO, out = stderr)
 fprintf({{out}}, "[" #level "] %s\n", {{msg}});
-end
+@endmacro
 #   LOG(m) / LOG(m, WARN) / LOG(m, WARN, stdout) all valid.
-#   Default may be empty:  macro ATTR(name, qualifiers = )
+#   Default may be empty:  @macro ATTR(name, qualifiers = )
 
 # ── 5. Named arguments — any order, any subset ──────────────────────
-macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
+@macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
 struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };
-end
+@endmacro
 #   MAKE_WIDGET(w1)
 #   MAKE_WIDGET(w2, HEIGHT(80))
 #   MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))
 
 # ── 6. Maybe-paren stripping (comma protection) ─────────────────────
-macro PAIR(p: tuple<a, b>)
+@macro PAIR(p: tuple<a, b>)
 S{ {{remove_parens(p.a)}} | {{p.b}} }
-end
+@endmacro
 #   PAIR((a, b))                → S{ a | b }
 #   PAIR(((pair<int,int>), b))  → S{ pair<int,int> | b }
 
 # ── 7. Variadic parameter + is_paren() ──────────────────────────────
-macro FOO(items: variadic)
+@macro FOO(items: variadic)
 S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @end@end }
-end
+@endmacro
 #   FOO(a, (b,c), d)  →  S{ (a, omit), (b, c), (d, omit) }
 
 # ── 8. Conditionals: len() tests and integer equality ───────────────
-macro CTOR(name, args: seq<tuple<type, argname>>)
+@macro CTOR(name, args: seq<tuple<type, argname>>)
 @if len(args) == 1
   explicit_single_arg_init({{name}})
 @else
   {{concat(name, _init)}}(@join args with ", ": {{argname}}@end)
 @end
-end
+@endmacro
 
 # ── 9. Per-file pragmas (override CLI) ──────────────────────────────
 @pragma pp_prefix  MYLIB_PP_
@@ -197,7 +197,7 @@ compiling to nested `BOOST_PP_CAT` calls.
 ## Architecture & project layout
 
 Pipeline: source → line-level pass (pragmas, macro headers, body/directive
-lines, `end` matching; builds a line map for errors) → lark mini-grammars parse
+lines, `@endmacro` matching; builds a line map for errors) → lark mini-grammars parse
 the structured fragments (macro signatures, directive lines, `{{expr}}`
 contents) → dataclass AST → semantic checks → emitter → header text.
 Rationale: raw C body text makes a single whole-file grammar awkward; the

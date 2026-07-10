@@ -9,11 +9,11 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DECLARE_REGISTERS(regs: seq<tuple<ctype, regname>>)
+ * @macro DECLARE_REGISTERS(regs: seq<tuple<ctype, regname>>)
  * @for (ctype, regname) in regs
  *   volatile {{ctype}} {{regname}};
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DECLARE_REGISTERS_AP1(ctype, regname) volatile ctype regname;
 #define UNCURSED_PP_DECLARE_REGISTERS_EACH1(r, d, e) UNCURSED_PP_DECLARE_REGISTERS_AP1 e

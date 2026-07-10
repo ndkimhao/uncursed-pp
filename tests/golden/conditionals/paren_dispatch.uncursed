@@ -1,13 +1,13 @@
 # A named value's SHAPE picks the branch: parenthesized initializers
 # become brace lists, bare tokens plain assignments, and the empty
 # default falls through to a declaration.
-macro DECL(name, named INIT = )
+@macro DECL(name, named INIT = )
 @if is_paren(INIT)
 pair {{name}} = { {{remove_parens(INIT)}} };
 @else
 int {{name}} = {{INIT}};
 @end
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──
 #?  DECL(v, INIT((1, 2)))

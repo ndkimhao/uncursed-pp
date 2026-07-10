@@ -7,13 +7,13 @@
 #
 # Scenario: an error-name table indexed by the enum value itself.
 
-macro DEFINE_ERROR_NAMES(codes: seq<token>)
+@macro DEFINE_ERROR_NAMES(codes: seq<token>)
 static const char *error_name[] = {
 @for c in codes
   [{{c}}] = {{stringize(c)}},
 @end
 };
-end
+@endmacro
 
 #?  DEFINE_ERROR_NAMES((E_OK)(E_IO)(E_NOMEM))
 #=>     static const char *error_name[] = {

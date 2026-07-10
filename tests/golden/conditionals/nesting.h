@@ -14,7 +14,7 @@
 
 /* uncursed-pp source:
  * # @for inside an @else branch
- * macro OPT(xs: seq<token>)
+ * @macro OPT(xs: seq<token>)
  * @if len(xs) == 1
  * solo({{xs[0]}})
  * @else
@@ -22,7 +22,7 @@
  * many({{x}});
  * @end
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_OPT_THEN1(xs) solo(BOOST_PP_SEQ_ELEM(0, xs))
 #define UNCURSED_PP_OPT_EACH1(r, d, e) many(e);
@@ -50,7 +50,7 @@
 
 /* uncursed-pp source:
  * # @if inside an @if branch
- * macro GRADE(xs: seq<token>)
+ * @macro GRADE(xs: seq<token>)
  * @if len(xs) < 3
  * @if len(xs) == 1
  * tiny
@@ -60,7 +60,7 @@
  * @else
  * big
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_GRADE_THEN1() tiny
 #define UNCURSED_PP_GRADE_ELSE1() small
@@ -70,7 +70,7 @@
 
 /* uncursed-pp source:
  * # three levels: @if -> @for -> @if
- * macro TRIAGE(xs: seq<tuple<kind, val>>)
+ * @macro TRIAGE(xs: seq<tuple<kind, val>>)
  * @if len(xs) == 1
  * only({{xs[0].val}});
  * @else
@@ -82,7 +82,7 @@
  * @end
  * @end
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_TRIAGE_THEN1(xs) only(BOOST_PP_TUPLE_ELEM(1, BOOST_PP_SEQ_ELEM(0, xs)));
 #define UNCURSED_PP_TRIAGE_THEN2(val, kind) urgent(val);

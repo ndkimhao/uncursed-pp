@@ -11,13 +11,13 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
+ * @macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
  * typedef struct {
  * @for (type, name, fmt) in fields
  *   {{type}} {{name}};
  * @end
  * } {{sname}};
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_STRUCT_AP1(type, name, fmt) type name;
 #define UNCURSED_PP_REFLECT_H1(r, d, e) d e
@@ -46,14 +46,14 @@
     } sname;
 
 /* uncursed-pp source:
- * macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
+ * @macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
  * static const uncursed_field {{concat(sname, _fields)}}[] = {
  * @for (type, name, fmt) in fields
  *   { {{stringize(name)}}, {{stringize(type)}}, offsetof({{sname}}, {{name}}) },
  * @end
  * };
  * enum { {{concat(sname, _field_count)}} = {{len(fields)}} };
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_FIELD_TABLE_AP1(sname, type, name, fmt) { BOOST_PP_STRINGIZE(name), BOOST_PP_STRINGIZE(type), offsetof(sname, name) },
 #define UNCURSED_PP_DEFINE_FIELD_TABLE_AP1_D(...) UNCURSED_PP_DEFINE_FIELD_TABLE_AP1(__VA_ARGS__)
@@ -65,13 +65,13 @@
     enum { BOOST_PP_CAT(sname, _field_count) = BOOST_PP_SEQ_SIZE(fields) };
 
 /* uncursed-pp source:
- * macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
+ * @macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
  * static void {{concat(print_, sname)}}(const {{sname}} *v) {
  * @for (type, name, fmt) in fields
  *   printf("  " {{stringize(name)}} " = " {{fmt}} "\n", v->{{name}});
  * @end
  * }
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_PRINTER_AP1(type, name, fmt) printf("  " BOOST_PP_STRINGIZE(name) " = " fmt "\n", v->name);
 #define UNCURSED_PP_DEFINE_PRINTER_CH1_1(e) UNCURSED_PP_DEFINE_PRINTER_AP1 e
@@ -102,11 +102,11 @@
  * # Generated macros compose: REFLECT fans out to the three above. Its
  * # variadic<tuple<...>> parameter gives call sites single-paren elements;
  * # VARIADIC_TO_SEQ hands the inner seq-typed macros their (e)(e) form.
- * macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
+ * @macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
  * DEFINE_STRUCT({{sname}}, {{fields}})
  * DEFINE_FIELD_TABLE({{sname}}, {{fields}})
  * DEFINE_PRINTER({{sname}}, {{fields}})
- * end
+ * @endmacro
  */
 #define REFLECT(sname, ...) \
     DEFINE_STRUCT(sname, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \

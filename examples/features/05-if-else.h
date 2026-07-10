@@ -14,13 +14,13 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DECLARE_BUFFER(name, dims: seq<token>)
+ * @macro DECLARE_BUFFER(name, dims: seq<token>)
  * @if len(dims) == 1
  *   static char {{name}}[{{dims[0]}}];
  * @else
  *   static char {{name}}[@join dims as d with " * ": {{d}}@end];
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DECLARE_BUFFER_THEN1(name, dims) static char name[BOOST_PP_SEQ_ELEM(0, dims)];
 #define UNCURSED_PP_DECLARE_BUFFER_SEP1() *
@@ -48,13 +48,13 @@
 #define DECLARE_BUFFER(name, dims) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(dims), 1), UNCURSED_PP_DECLARE_BUFFER_THEN1, UNCURSED_PP_DECLARE_BUFFER_ELSE1)(name, dims)
 
 /* uncursed-pp source:
- * macro PICK_SEARCH(xs: seq<token>)
+ * @macro PICK_SEARCH(xs: seq<token>)
  * @if len(xs) <= 3
  *   linear_scan
  * @else
  *   binary_search
  * @end
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_PICK_SEARCH_THEN1() linear_scan
 #define UNCURSED_PP_PICK_SEARCH_ELSE1() binary_search

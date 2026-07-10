@@ -5,9 +5,9 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DEFINE_GRADIENT(name, named variadic STOPS = black)
+ * @macro DEFINE_GRADIENT(name, named variadic STOPS = black)
  * static const int {{name}}[] = { {{STOPS}} };
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_GRADIENT_SET_STOPS(...) 0, (__VA_ARGS__)
 #define UNCURSED_PP_DEFINE_GRADIENT_STEP1(e, ...) UNCURSED_PP_DEFINE_GRADIENT_STEP_D(BOOST_PP_CAT(UNCURSED_PP_DEFINE_GRADIENT_SET_, e), __VA_ARGS__)

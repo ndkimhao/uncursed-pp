@@ -5,9 +5,9 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DECLARE_MEMBER(m: tuple<mtype, mname>)
+ * @macro DECLARE_MEMBER(m: tuple<mtype, mname>)
  * {{remove_parens(m.mtype)}} {{m.mname}};
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DECLARE_MEMBER_BODY1(mtype, mname) BOOST_PP_REMOVE_PARENS(mtype) mname;
 #define UNCURSED_PP_DECLARE_MEMBER_BODY1_D(...) UNCURSED_PP_DECLARE_MEMBER_BODY1(__VA_ARGS__)

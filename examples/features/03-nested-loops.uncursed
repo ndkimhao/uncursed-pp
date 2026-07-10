@@ -11,13 +11,13 @@
 #
 # Scenario: a dispatch table over every (mode x width) combination.
 
-macro FILL_DISPATCH(modes: seq<token>, widths: seq<token>)
+@macro FILL_DISPATCH(modes: seq<token>, widths: seq<token>)
 @for m in modes
 @for w in widths
   table[{{m}}][{{w}}] = op_generic;
 @end
 @end
-end
+@endmacro
 
 #?  FILL_DISPATCH((MODE_R)(MODE_W), (W8)(W16))
 #=>     table[MODE_R][W8] = op_generic;

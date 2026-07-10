@@ -9,7 +9,7 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * macro DEFINE_FSM(fsm, states: seq<token>, transitions: seq<tuple<src, evt, dst>>)
+ * @macro DEFINE_FSM(fsm, states: seq<token>, transitions: seq<tuple<src, evt, dst>>)
  * enum {{concat(fsm, _state)}} {
  * @for s in states
  *   {{s}},
@@ -21,7 +21,7 @@
  * @end
  *   return s;
  * }
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_FSM_EACH1(r, d, e) e,
 #define UNCURSED_PP_DEFINE_FSM_CH1_1(e) e,

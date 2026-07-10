@@ -13,7 +13,7 @@
  * # Composition: typed variadic + loops with free vars + nested concat +
  * # stringize + len. One entry list yields an enum, a to-string helper,
  * # and a count.
- * macro DEFINE_ENUM(ename, entries: variadic<tuple<name, value>>)
+ * @macro DEFINE_ENUM(ename, entries: variadic<tuple<name, value>>)
  * typedef enum {
  * @for (name, value) in entries
  *   {{concat(ename, concat(_, name))}} = {{value}},
@@ -28,7 +28,7 @@
  *   return "?";
  * }
  * enum { {{concat(ename, _count)}} = {{len(entries)}} };
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_DEFINE_ENUM_AP1(ename, name, value) BOOST_PP_CAT(ename, BOOST_PP_CAT(_, name)) = value,
 #define UNCURSED_PP_DEFINE_ENUM_AP1_D(...) UNCURSED_PP_DEFINE_ENUM_AP1(__VA_ARGS__)

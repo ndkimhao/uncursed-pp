@@ -4,9 +4,9 @@
 #include <boost/preprocessor/cat.hpp>
 
 /* uncursed-pp source:
- * macro OPEN_WINDOW(title, named W = 640, named H = 480, named MONITOR = 0)
+ * @macro OPEN_WINDOW(title, named W = 640, named H = 480, named MONITOR = 0)
  * open_window({{title}}, {{W}}, {{H}}, {{MONITOR}});
- * end
+ * @endmacro
  */
 #define UNCURSED_PP_OPEN_WINDOW_SET_W(v) 0, v
 #define UNCURSED_PP_OPEN_WINDOW_SET_H(v) 1, v

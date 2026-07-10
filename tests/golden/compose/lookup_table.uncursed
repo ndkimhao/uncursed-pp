@@ -1,10 +1,10 @@
 # Composition: @let of len() and @let of an inline @join, each reused.
-macro LOOKUP_TABLE(tname, keys: seq<token>)
+@macro LOOKUP_TABLE(tname, keys: seq<token>)
 @let n := len(keys)
 @let strings := @join keys as k with ", ": {{stringize(k)}}@end
 static const char *{{tname}}[{{n}}] = { {{strings}} };
 enum { {{concat(tname, _len)}} = {{n}} };
-end
+@endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──
 #?  LOOKUP_TABLE(names, (alpha)(beta))
