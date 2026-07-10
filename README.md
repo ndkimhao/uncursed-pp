@@ -29,12 +29,8 @@ You describe a macro like a web render template; uncursed-pp emits the cursed
 DECLARE_FIELDS((int, x), (float, y))   /* -> int x; float y; */
 ```
 
-This exact example lives at [`examples/00-readme.uncursed`](examples/00-readme.uncursed)
-with its generated header committed beside it — its `#?` specs run through the
-real preprocessor in the test suite, so the README cannot silently drift from
-what the compiler does. (Without the pragma, loops additionally compile to
-consumption chains — ~25x cheaper to preprocess, at ~17 more lines per loop;
-see [docs/optimization.md](docs/optimization.md).)
+Runnable version: [`examples/00-readme.uncursed`](examples/00-readme.uncursed).
+More examples, one feature per file: [`examples/`](examples/).
 
 ## Install & use
 
@@ -48,11 +44,9 @@ uv run uncursed-pp-check input.uncursed -- -I .boost-pp/include   # verify its #
 uv run uncursed-pp-check examples/ -- -I .boost-pp/include        # or a whole directory
 ```
 
-Golden templates in `tests/golden/` are self-testing — each carries spec
-comments that the suite discovers and verifies through the real preprocessor
-(`uncursed-pp-check` runs the same verification standalone on any template;
-`--cc` picks the compiler, flags after `--` go to it verbatim, `--work-dir`
-keeps the generated artifacts for debugging):
+Templates can carry their own tests — `#? INVOCATION` / `#=> expansion`
+comments that `uncursed-pp-check` verifies through your real preprocessor
+(`--cc` picks the compiler, flags after `--` go to it verbatim):
 
 ```text
 #?  MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))
@@ -105,25 +99,14 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 
 Within a loop over `seq<tuple<...>>`, the tuple's element names are bound
 automatically (`@join args with ", ": {{type}} {{argname}}@end`). Loop bodies
-may reference outer parameters freely — they travel through `FOR_EACH`'s data
-slot. See `tests/golden/compose/reflect.uncursed` for a worked example: a
-reflection system where one field list generates a struct, a name/type/offset
-metadata table, and a debug printer. New to the DSL? Start with the
-annotated, spec-verified walkthroughs in `examples/` — one feature per
-file, in reading order.
+may reference outer parameters freely. See [`examples/combined/`](examples/combined/) for worked examples: e.g. a
+reflection system where one field list generates a struct, a metadata table,
+and a debug printer.
 
-Identical generated helpers are deduplicated across the file into shared
-`UNCURSED_PP_<FILESTEM>_H<n>` macros; loop bodies differing by one constant
-token share a helper with the constant passed through `FOR_EACH`'s data slot.
-
-Common utilities (currently the `KW_SPREAD` tuple-unpacking helper and the
-loop-chain size table) are not inlined: headers that need them
-`#include "uncursed_pp_runtime.h"`, a small companion file written next to
-the output when you pass `--emit-runtime` (by default nothing extra is
-written; a header that needs the companion gets a stderr note, silenced by
-`--no-emit-runtime`). Multiple generated headers share the one runtime file.
-Its name defaults to `<helper_prefix>_runtime.h` and is customizable via
-`@pragma runtime_name "acme_common.h"`.
+Some headers need a small shared companion, `uncursed_pp_runtime.h`: pass
+`--emit-runtime` to write it next to the output (you get a stderr note when
+it's needed; several generated headers share the one file). Its name and
+include line are configurable (`@pragma runtime_name` / `runtime_include`).
 
 ## Call-site rules (C is still C)
 
@@ -152,8 +135,9 @@ Its name defaults to `<helper_prefix>_runtime.h` and is customizable via
   freely at any depth. Don't call another looping generated macro from a
   loop body (uncursed-pp can't see call sites to guard it).
 
-## Architecture
+## More
 
-`parser.py` (line pass + lark mini-grammars in `grammar.lark`) → dataclass AST
-(`nodes.py`) → emitter with typed environments (`emitter.py`) → helper
-dedup/factoring (`collapse.py`) → header text. Design spec: `docs/design.md`.
+- [`docs/guide.md`](docs/guide.md) — full language reference
+- [`examples/`](examples/) — spec-verified feature walkthroughs
+- [`docs/design.md`](docs/design.md) — architecture & design spec
+- [`docs/optimization.md`](docs/optimization.md) — generated-code performance notes
