@@ -1,14 +1,21 @@
-"""Shared helpers: the gcc e2e harness and golden-tree discovery."""
+"""Shared helpers: the gcc e2e harness and golden-tree discovery.
+
+The heavy lifting (token canonicalization, spec parsing, the capped
+preprocessor runner) lives in uncursed_pp.speccheck - one implementation
+shared with the `uncursed-pp-check` CLI. This file adds the pytest-side
+conveniences: the vendored-boost flags, skip markers, and discovery.
+"""
 
 import os
-import re
 import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from uncursed_pp.emitter import C_LITERAL_PATTERN, compile_template
+from uncursed_pp import speccheck
+from uncursed_pp.emitter import compile_template
+from uncursed_pp.speccheck import canon as canon  # re-export for tests
 
 GOLDEN = Path(__file__).parent / "golden"
 EXAMPLES = Path(__file__).parent.parent / "examples"
@@ -46,70 +53,14 @@ requires_boost = pytest.mark.skipif(
 )
 
 
-_C_TOKEN = re.compile(
-    C_LITERAL_PATTERN      # raw/prefixed string and char literals, verbatim
-    + r"|[A-Za-z_]\w*"     # identifier
-    + r"|\d[\w.]*"        # number
-    + r"|\S",              # any punctuation char
-    re.S,
-)
-
-
-def canon(text: str) -> str:
-    """Token-exact canonical form: whitespace BETWEEN C tokens is
-    insignificant and normalized away, but string/char literal interiors
-    (including C++ raw strings) are preserved verbatim - two expansions
-    compare equal iff their token streams are identical."""
-    return " ".join(m.group(0) for m in _C_TOKEN.finditer(text))
-
-
-# Pathological macro expansions can eat the whole host (an unguarded
-# preprocessor bomb nearly OOMed a 15G machine): cap every cc invocation.
-# The cap derives from the HOST's memory - an eighth of physical RAM,
-# clamped to [256 MiB, 2 GiB] - so small machines stay safe and big ones
-# don't fail legitimate tests.
-
-
-def _host_mem_bytes() -> int:
-    try:
-        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
-    except (ValueError, OSError):
-        return 8 << 30  # sensible default when the probe is unavailable
-
-
-CPP_MEM_LIMIT_BYTES = max(256 << 20, min(2 << 30, _host_mem_bytes() // 8))
-CPP_TIMEOUT_S = 60
-
-
-def _limit_cpp_resources() -> None:
-    import resource
-
-    resource.setrlimit(resource.RLIMIT_AS, (CPP_MEM_LIMIT_BYTES, CPP_MEM_LIMIT_BYTES))
-
-
 def run_cpp(c_file: Path, *extra_flags: str) -> str:
-    """Preprocess a C file; failures surface the compiler's stderr instead
-    of an opaque CalledProcessError. Memory- and time-capped so runaway
-    expansions fail the test instead of the machine."""
+    """Preprocess against the vendored boost; spec failures surface as
+    AssertionError so pytest.raises(..., match=...) keeps working."""
     assert CC is not None, "requires_boost should have skipped this test"
-    cmd = [CC, "-E", "-P", *BOOST_FLAGS, *extra_flags, str(c_file)]
     try:
-        run = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=CPP_TIMEOUT_S,
-            preexec_fn=_limit_cpp_resources,
-        )
-    except subprocess.TimeoutExpired:
-        raise AssertionError(
-            f"preprocessing timed out after {CPP_TIMEOUT_S}s: {' '.join(cmd)}"
-        ) from None
-    if run.returncode != 0:
-        raise AssertionError(
-            f"preprocessing failed: {' '.join(cmd)}\n--- compiler stderr ---\n{run.stderr}"
-        )
-    return run.stdout
+        return speccheck.run_cpp(c_file, cc=CC, flags=[*BOOST_FLAGS, *extra_flags])
+    except speccheck.CppError as exc:
+        raise AssertionError(str(exc)) from None
 
 
 def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> str:

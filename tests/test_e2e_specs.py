@@ -19,40 +19,7 @@ from typing import Any
 import pytest
 
 from conftest import canon, golden_id, golden_templates, preprocess_src, requires_boost
-
-
-def parse_specs(text: str) -> list[tuple[str, list[str], bool]]:
-    """(invocation, [expected, ...], expect_failure) cases from spec comments."""
-    cases: list[tuple[str, list[str], bool]] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("#?!"):
-            invocation = stripped[3:].strip()
-            if not invocation:
-                raise ValueError("empty '#?!' invocation")
-            cases.append((invocation, [], True))
-        elif stripped.startswith("#?"):
-            invocation = stripped[2:].strip()
-            if not invocation:
-                raise ValueError("empty '#?' invocation")
-            if "=>" in invocation:
-                raise ValueError(
-                    f"put the expectation on its own '#=>' line: {stripped!r}"
-                )
-            cases.append((invocation, [], False))
-        elif stripped.startswith("#=>"):
-            if not cases:
-                raise ValueError("#=> before any #? line")
-            expected = stripped[3:].strip()
-            if not expected:
-                raise ValueError("empty '#=>' expectation line")
-            cases[-1][1].append(expected)
-    for invocation, expecteds, expect_failure in cases:
-        if expect_failure and expecteds:
-            raise ValueError(f"'#?!' spec {invocation!r} must not have #=> lines")
-        if not expect_failure and not expecteds:
-            raise ValueError(f"spec {invocation!r} has no expected output")
-    return cases
+from uncursed_pp.speccheck import parse_specs as parse_specs  # re-export for test_harness
 
 
 def spec_params() -> list[Any]:

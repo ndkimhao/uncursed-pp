@@ -36,10 +36,14 @@ make test           # pytest incl. real `gcc -E` e2e specs (vendored boost)
 make typecheck      # mypy --strict
 
 uv run uncursed-pp input.uncursed -o output.h
+uv run uncursed-pp-check input.uncursed -- -I .boost-pp/include   # verify its #? specs
 ```
 
 Golden templates in `tests/golden/` are self-testing — each carries spec
-comments that the suite discovers and verifies through the real preprocessor:
+comments that the suite discovers and verifies through the real preprocessor
+(`uncursed-pp-check` runs the same verification standalone on any template;
+`--cc` picks the compiler, flags after `--` go to it verbatim, `--work-dir`
+keeps the generated artifacts for debugging):
 
 ```text
 #?  MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))

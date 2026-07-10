@@ -396,6 +396,17 @@ if compilation succeeds.
 
 ## 12. Testing templates: invocation specs
 
+Any template's specs can be verified outside pytest with the standalone
+checker — the same canonicalizer and runner the suite uses:
+
+```sh
+uv run uncursed-pp-check fields.uncursed --cc clang --work-dir /tmp/dbg -- -I .boost-pp/include
+```
+
+Exit codes: 0 all specs pass, 1 a spec failed, 2 setup problems (no
+specs, unknown compiler, template errors). `--work-dir` keeps the
+generated header and one numbered `.c` snippet per spec for inspection.
+
 Golden templates are self-testing. Append spec comments — the invocation and
 its expectations always sit on separate lines:
 
