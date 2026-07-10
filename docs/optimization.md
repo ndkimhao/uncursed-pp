@@ -183,7 +183,14 @@ with both enabled.
   a trivial-body 200-element loop costs ~22M allocs per call there. For
   free-variable-free loops this cost is retired by Round 3's chains.
 - Boost.PP magnitude limits: seqs ≤ 256 elements, comparisons/`len()`
-  operands 0–256, kwarg count ≤ 64 (documented call-site rules).
+  operands 0–256, kwarg count ≤ 64, unbounded tuples ≤ 64 elements
+  (documented call-site rules).
+- Unbounded tuples lower through a per-loop `TUPLE_TO_SEQ` (the refuted
+  `VARIADIC_TO_SEQ`-hoist finding applies: one conversion is ~2% of the
+  consuming loop) plus an `IS_EMPTY` gate per loop/`len` so `()` means
+  zero elements — correctness, not subject to the ≥1.3x bar. A direct
+  comma-consumption chain that skips the conversion is a possible LATER
+  measured experiment.
 - Per-arity/per-slot generated defines trade header size for expansion count.
   Definition-time cost doesn't scale with invocation count; invocation cost
   does.

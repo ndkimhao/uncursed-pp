@@ -74,10 +74,11 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 
 | Feature | Syntax |
 |---|---|
-| Types | `token` (default), `seq<T>`, `tuple<name, ...>`, `variadic` / `variadic<T>` |
+| Types | `token` (default), `seq<T>`, `tuple<name, ...>`, `tuple` / `tuple<T...>` (unbounded), `variadic` / `variadic<T>` |
 | Loop | `@for (a, b) in xs` / `@for x in xs` ... `@end` |
 | Join | `@join xs with ", ": body @end` (inline) or block form; `as x` binds the element |
-| Conditional | `@if len(xs) == 1` / `@if is_paren(x)` ... `@else` ... `@end` (ops: `== != < > <= >=`) |
+| Conditional | `@if len(xs) == 1` / `@if is_paren(x)` / `@if is_empty(x)` ... `@else` ... `@end` (ops: `== != < > <= >=`) |
+| Unbounded tuple | `row: tuple<T...>` (bare `tuple` = `tuple<token...>`) — call `F((a, b, c))`; loops/`len()` see N elements and `()` means zero |
 | Element access | `{{t.field}}` (tuple, by name), `{{xs[0]}}` (seq, by index) |
 | Paste | `{{concat(get_, f.name)}}` → `BOOST_PP_CAT` — pasting is never implicit |
 | Stringize | `{{stringize(f.name)}}` → `BOOST_PP_STRINGIZE` — works on computed tokens |
@@ -120,7 +121,10 @@ Its name defaults to `<helper_prefix>_runtime.h` and is customizable via
   passing through verbatim (plain `named` keeps the strict one-token value;
   `FLAGS(a, b)` there is a compile error naming the keyword's setter).
 - **Seq/variadic arguments must be non-empty** — Boost.PP seqs cannot be empty —
-  and cap at **256 elements** (`BOOST_PP_LIMIT_SEQ`).
+  and cap at **256 elements** (`BOOST_PP_LIMIT_SEQ`). Unbounded tuples DO
+  accept `()` (zero elements) but cap at **64** (`BOOST_PP_VARIADIC_SIZE`),
+  and their emptiness probe can misdetect a value that is itself the name of
+  a function-like macro (same family as the keyword rule below).
 - **Named-argument keywords** (`WIDTH`, ...) must not be `#define`d at the call
   site, or they expand before detection.
 - **Defaults/named macros need ≥1 required parameter** — C can't overload on

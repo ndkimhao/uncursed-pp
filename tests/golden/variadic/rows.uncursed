@@ -1,0 +1,80 @@
+# Unbounded tuples: `tuple<T...>` (bare `tuple` = `tuple<token...>`) hold
+# a VARIABLE number of elements in one pair of parens - commas between
+# elements, unlike a seq's (a)(b)(c). Loops and len() are emptiness-gated:
+# () means zero elements. Elements cap at 64 (BOOST_PP_VARIADIC_SIZE).
+
+macro CALL_ALL(fn, row: tuple)
+@for x in row
+  {{fn}}({{x}});
+@end
+end
+
+#?  CALL_ALL(handle, (a, b, c))
+#=>     handle(a); handle(b); handle(c);
+
+# () iterates ZERO times - the markers prove nothing stray is emitted
+#?  begin CALL_ALL(handle, ()) end
+#=>     begin end
+
+# is_empty() branches; len() reports 0 for ()
+macro DESCRIBE(row: tuple)
+@if is_empty(row)
+  nothing
+@else
+  {{len(row)}} items: @join row as x with " + ": {{x}}@end
+@end
+end
+
+#?  DESCRIBE((p, q))
+#=>     2 items: p + q
+
+#?  DESCRIBE(())
+#=>     nothing
+
+# typed elements: named pairs give single-paren call sites
+macro SET_ALL(ps: tuple<tuple<key, value>...>)
+@for (key, value) in ps
+  cfg_set({{stringize(key)}}, {{value}});
+@end
+end
+
+#?  SET_ALL(((retries, 3), (timeout, 30)))
+#=>     cfg_set("retries", 3);
+#=>     cfg_set("timeout", 30);
+
+#?  begin SET_ALL(()) end
+#=>     begin end
+
+# collapse interaction: two macros with identical no-free-var loop bodies
+# share one helper family (chain members merge as a unit; small and empty
+# inputs pin the CAT-dispatched paths - see docs/optimization.md round 3)
+macro TRACE_ROW(row: tuple)
+@for x in row
+  trace({{x}});
+@end
+end
+
+macro AUDIT_ROW(row: tuple)
+@for x in row
+  trace({{x}});
+@end
+end
+
+#?  TRACE_ROW((a, b))
+#=>     trace(a); trace(b);
+
+#?  AUDIT_ROW((z))
+#=>     trace(z);
+
+#?  begin AUDIT_ROW(()) end
+#=>     begin end
+
+# nesting: a seq of variable-width rows; the inner tuple may be empty
+macro FLATTEN(rows: seq<tuple<token...>>)
+@for row in rows
+  { @join row as x with ", ": {{x}}@end }
+@end
+end
+
+#?  FLATTEN(((a, b))((c))(()))
+#=>     { a, b } { c } { }

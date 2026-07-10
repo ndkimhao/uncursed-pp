@@ -17,6 +17,7 @@ from .nodes import (
     ForEach,
     If,
     Interp,
+    IsEmpty,
     IsParen,
     Join,
     Len,
@@ -32,6 +33,7 @@ from .nodes import (
     Type,
     VariadicT,
     VarRef,
+    VarTupleT,
 )
 from .parser import UncursedPpError, parse_file
 
@@ -66,6 +68,9 @@ _PP_HEADERS = {
     "COMMA": "punctuation/comma.hpp",
     "REMOVE_PARENS": "punctuation/remove_parens.hpp",
     "IS_BEGIN_PARENS": "punctuation/is_begin_parens.hpp",
+    "IS_EMPTY": "facilities/is_empty_variadic.hpp",
+    "TUPLE_TO_SEQ": "tuple/to_seq.hpp",
+    "TUPLE_SIZE": "tuple/size.hpp",
     "IF": "control/if.hpp",
     "IIF": "control/iif.hpp",
     "EMPTY": "facilities/empty.hpp",
@@ -425,17 +430,39 @@ class _MacroEmitter:
             return _Binding(f"{self.pp('STRINGIZE')}({inner.c_expr})", TokenT())
         if isinstance(expr, Len):
             inner = self._resolve(expr.arg, env, line)
+            if isinstance(inner.type, VarTupleT):
+                # raw TUPLE_SIZE coerces () to 1 (an empty tuple IS one
+                # empty element to the preprocessor); gate so len(()) == 0
+                return _Binding(
+                    f"{self.pp('IIF')}({self._isnil()}({inner.c_expr}), 0, "
+                    f"{self.pp('TUPLE_SIZE')}({inner.c_expr}))",
+                    TokenT(),
+                )
             if not isinstance(inner.type, SeqT):
-                raise UncursedPpError("len() needs a seq-typed value", self.filename, line)
+                raise UncursedPpError(
+                    "len() needs a seq- or tuple-typed value", self.filename, line
+                )
             return _Binding(f"{self.pp('SEQ_SIZE')}({inner.c_expr})", TokenT())
         if isinstance(expr, IsParen):
             inner = self._resolve(expr.arg, env, line)
             return _Binding(f"{self.pp('IS_BEGIN_PARENS')}({inner.c_expr})", TokenT())
+        if isinstance(expr, IsEmpty):
+            inner = self._resolve(expr.arg, env, line)
+            if isinstance(inner.type, VarTupleT):
+                return _Binding(f"{self._isnil()}({inner.c_expr})", TokenT())
+            return _Binding(f"{self.pp('IS_EMPTY')}({inner.c_expr})", TokenT())
         raise NotImplementedError(f"cannot emit expression {expr!r}")  # pragma: no cover
 
     def _resolve_access(self, expr: ElemAccess, env: _Env, line: int) -> _Binding:
         base = self._resolve(expr.base, env, line)
         if isinstance(expr.accessor, str):
+            if isinstance(base.type, VarTupleT):
+                raise UncursedPpError(
+                    f"an unbounded tuple has no named elements; index it: "
+                    f"'[0]' instead of '.{expr.accessor}'",
+                    self.filename,
+                    line,
+                )
             if not isinstance(base.type, TupleT):
                 raise UncursedPpError(
                     f"named element access '.{expr.accessor}' needs a tuple-typed value",
@@ -452,9 +479,13 @@ class _MacroEmitter:
                 return _Binding(expr.accessor, TokenT())
             idx = base.type.names.index(expr.accessor)
             return _Binding(f"{self.pp('TUPLE_ELEM')}({idx}, {base.c_expr})", TokenT())
+        if isinstance(base.type, VarTupleT):
+            return _Binding(
+                f"{self.pp('TUPLE_ELEM')}({expr.accessor}, {base.c_expr})", base.type.elem
+            )
         if not isinstance(base.type, SeqT):
             raise UncursedPpError(
-                f"indexed access '[{expr.accessor}]' needs a seq-typed value",
+                f"indexed access '[{expr.accessor}]' needs a seq- or tuple-typed value",
                 self.filename,
                 line,
             )
@@ -506,7 +537,7 @@ class _MacroEmitter:
         is 1 iff x > k, so > / >= read it directly and < / <= swap branches;
         k below zero constant-folds ("0"/"1" sentinel = always else/then).
         """
-        if isinstance(cond, IsParen):
+        if isinstance(cond, (IsParen, IsEmpty)):
             return self._resolve(cond, env, line).c_expr, False
         if not 0 <= cond.value <= 256:
             raise UncursedPpError(
@@ -543,7 +574,7 @@ class _MacroEmitter:
             elif isinstance(e, Concat):
                 for a in e.args:
                     walk_expr(a)
-            elif isinstance(e, (RemoveParens, Stringize, Len, IsParen)):
+            elif isinstance(e, (RemoveParens, Stringize, Len, IsParen, IsEmpty)):
                 walk_expr(e.arg)
 
         def loop_names(n: ForEach | Join) -> set[str]:
@@ -555,7 +586,7 @@ class _MacroEmitter:
             elif var:
                 names.add(var)
             binding = env.get(n.iterable)
-            if not unpack and binding and isinstance(binding.type, SeqT):
+            if not unpack and binding and isinstance(binding.type, (SeqT, VarTupleT)):
                 if isinstance(binding.type.elem, TupleT):
                     names.update(binding.type.elem.names)
             return names
@@ -575,7 +606,7 @@ class _MacroEmitter:
                     add(n.iterable)
                     walk(n.body, local_bound | loop_names(n))
                 elif isinstance(n, If):
-                    if isinstance(n.cond, IsParen):
+                    if isinstance(n.cond, (IsParen, IsEmpty)):
                         walk_expr(n.cond.arg)
                     else:
                         walk_expr(n.cond.lhs)
@@ -802,7 +833,51 @@ class _MacroEmitter:
             and not _contains_loop(node.body)
         )
 
+    def _isnil(self) -> str:
+        """0/1 emptiness probe for a parenthesized value. The argument is
+        macro-expanded before substitution, then juxtaposition makes its
+        own parens IS_EMPTY's call parens — safe for computed values
+        (TUPLE_ELEM(...)-shaped) where bare juxtaposition would misfire."""
+        name = f"{self.config.helper_prefix}{self.macro.name}_ISNIL"
+        if not any(h.name == name for h in self.out.helpers):
+            self.out.helpers.append(
+                _Helper(name=name, params="x", body=f"{self.pp('IS_EMPTY')} x")
+            )
+        return name
+
+    def _gate_var_tuple(self, node: ForEach | Join, env: _Env) -> str | None:
+        """A loop over an unbounded tuple: () must iterate ZERO times, but
+        to the preprocessor () is one empty element. Wrap the
+        TUPLE_TO_SEQ-lowered loop in an emptiness gate using the
+        selected-then-invoked branch pattern (commas in the loop call
+        stay legal). Inside the branch helper the iterable is seq-typed,
+        so the recursive render takes the normal loop path."""
+        binding = env.get(node.iterable)
+        if binding is None or not isinstance(binding.type, VarTupleT):
+            return None
+        free = self._free_vars([node], env, set())
+        self._guard_fragile(free, env, node.line)
+        branch_env = {n: _Binding(n, env[n].type) for n in free}
+        branch_env[node.iterable] = _Binding(
+            f"{self.pp('TUPLE_TO_SEQ')}({node.iterable})", SeqT(binding.type.elem)
+        )
+        if isinstance(node, ForEach):
+            body = self._render_foreach(node, branch_env)
+        else:
+            body = self._render_join(node, branch_env)
+        params = ", ".join(free)
+        loop_helper = self._add_helper("LOOP", params, _collapse_ws(body))
+        nil_helper = self._add_helper("NIL", params, "")
+        args = ", ".join(env[n].c_expr for n in free)
+        return (
+            f"{self.pp('IIF')}({self._isnil()}({binding.c_expr}), "
+            f"{nil_helper}, {loop_helper})({args})"
+        )
+
     def _render_foreach(self, loop: ForEach, env: _Env) -> str:
+        gated = self._gate_var_tuple(loop, env)
+        if gated is not None:
+            return gated
         seq_expr, elem_type = self._iterable_binding(loop.iterable, env, loop)
         if self._loop_depth:
             return self._render_inner_loop(loop, env, seq_expr, elem_type, sep=None)
@@ -818,6 +893,9 @@ class _MacroEmitter:
         return f"{each_call}{seq_expr})"
 
     def _render_join(self, join: Join, env: _Env) -> str:
+        gated = self._gate_var_tuple(join, env)
+        if gated is not None:
+            return gated
         seq_expr, elem_type = self._iterable_binding(join.iterable, env, join)
         if self._loop_depth:
             return self._render_inner_loop(join, env, seq_expr, elem_type, sep=join.sep.strip())
@@ -913,7 +991,9 @@ def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
                 if n.iterable == name or walk(n.body):
                     return True
             if isinstance(n, If):
-                cond_expr = n.cond.arg if isinstance(n.cond, IsParen) else n.cond.lhs
+                cond_expr = (
+                    n.cond.arg if isinstance(n.cond, (IsParen, IsEmpty)) else n.cond.lhs
+                )
                 if expr_whole(cond_expr) or walk(n.then) or walk(n.else_):
                     return True
         return False

@@ -27,6 +27,7 @@ from .nodes import (
     ForEach,
     If,
     Interp,
+    IsEmpty,
     IsParen,
     Join,
     Len,
@@ -41,6 +42,7 @@ from .nodes import (
     TupleT,
     VariadicT,
     VarRef,
+    VarTupleT,
 )
 
 
@@ -68,7 +70,7 @@ _STRAY_TOKEN_RE = re.compile(r"@(else|end)\b")
 _CMP = r"(?:==|!=|<=|>=|<|>)"
 _COND_PATTERNS = [
     re.compile(rf"len\(\s*\w+\s*\)\s*{_CMP}\s*\d+"),
-    re.compile(rf"is_paren\((?:[^()]|\([^()]*\))*\)(?:\s*{_CMP}\s*\d+)?"),
+    re.compile(rf"(?:is_paren|is_empty)\((?:[^()]|\([^()]*\))*\)(?:\s*{_CMP}\s*\d+)?"),
     re.compile(rf"[A-Za-z_][\w.\[\]]*\s*{_CMP}\s*\d+"),
 ]
 
@@ -109,6 +111,12 @@ class _Ast(Transformer[Any, Any]):
     def tuple_type(self, items: list[Any]) -> TupleT:
         return TupleT(items[0])
 
+    def var_tuple_type(self, items: list[Any]) -> VarTupleT:
+        return VarTupleT(items[0])
+
+    def bare_var_tuple_type(self, _items: list[Any]) -> VarTupleT:
+        return VarTupleT(TokenT())
+
     def token_type(self, _items: list[Any]) -> TokenT:
         return TokenT()
 
@@ -116,8 +124,8 @@ class _Ast(Transformer[Any, Any]):
         elem = items[0]
         if elem is None:
             return VariadicT()
-        if not isinstance(elem, (TupleT, TokenT)):
-            raise ValueError("variadic elements must be token or tuple<...>")
+        if not isinstance(elem, (TupleT, TokenT, VarTupleT)):
+            raise ValueError("variadic elements must be token, tuple<...> or tuple<T...>")
         return VariadicT(elem)
 
     def name_list(self, items: list[Any]) -> tuple[str, ...]:
@@ -149,8 +157,10 @@ class _Ast(Transformer[Any, Any]):
     def cond(self, items: list[Any]) -> Cond:
         lhs, op, value = items
         if op is None:
-            if not isinstance(lhs, IsParen):
-                raise ValueError("@if condition must be a comparison or is_paren()")
+            if not isinstance(lhs, (IsParen, IsEmpty)):
+                raise ValueError(
+                    "@if condition must be a comparison, is_paren() or is_empty()"
+                )
             return lhs
         return Cmp(lhs, str(op), int(value))
 
@@ -196,7 +206,11 @@ def _build_call(name: str, args: tuple[Expr, ...]) -> Expr:
         if len(args) != 1:
             raise ValueError("is_paren() takes exactly one argument")
         return IsParen(args[0])
-    known = "concat, is_paren, len, remove_parens, stringize"
+    if name == "is_empty":
+        if len(args) != 1:
+            raise ValueError("is_empty() takes exactly one argument")
+        return IsEmpty(args[0])
+    known = "concat, is_empty, is_paren, len, remove_parens, stringize"
     raise ValueError(f"unknown function: {name}() (known: {known})")
 
 

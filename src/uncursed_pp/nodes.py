@@ -19,18 +19,28 @@ class TupleT:
 
 
 @dataclass(frozen=True)
+class VarTupleT:
+    """Unbounded tuple `tuple<T...>` (bare `tuple` = `tuple<token...>`):
+    a parenthesized comma list with a variable element count, all of one
+    element type. Loops/len are emptiness-gated so `()` means zero
+    elements; capped at 64 elements (BOOST_PP_VARIADIC_SIZE)."""
+
+    elem: "Type" = TokenT()
+
+
+@dataclass(frozen=True)
 class SeqT:
-    elem: TupleT | TokenT
+    elem: "Type"
 
 
 @dataclass(frozen=True)
 class VariadicT:
     """Trailing ... parameter; body sees it as a seq of `elem` values."""
 
-    elem: TupleT | TokenT = TokenT()
+    elem: "Type" = TokenT()
 
 
-Type = TokenT | TupleT | SeqT | VariadicT
+Type = TokenT | TupleT | VarTupleT | SeqT | VariadicT
 
 
 # ── Expressions (inside {{...}} and conditions) ──────────────────────
@@ -72,7 +82,12 @@ class IsParen:
     arg: "Expr"
 
 
-Expr = VarRef | ElemAccess | Concat | RemoveParens | Stringize | Len | IsParen
+@dataclass(frozen=True)
+class IsEmpty:
+    arg: "Expr"
+
+
+Expr = VarRef | ElemAccess | Concat | RemoveParens | Stringize | Len | IsParen | IsEmpty
 
 
 # ── Conditions ───────────────────────────────────────────────────────
@@ -85,7 +100,7 @@ class Cmp:
     value: int
 
 
-Cond = Cmp | IsParen
+Cond = Cmp | IsParen | IsEmpty
 
 
 # ── Body nodes ───────────────────────────────────────────────────────

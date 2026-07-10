@@ -80,12 +80,20 @@ macro M(a, xs: seq<token>, f: tuple<type, name>, rest: variadic)
 |---|---|---|
 | *(none)* / `token` | a single preprocessor token-sequence | `foo`, `123`, `(wrapped, commas)` |
 | `tuple<n1, n2, ...>` | a parenthesized tuple with **named** elements | `(int, x)` |
-| `seq<T>` | a Boost.PP seq of `T` (`T` = `token` or `tuple<...>`) | `(a)(b)(c)` or `((int,x))((float,y))` |
+| `tuple` / `tuple<T...>` | an **unbounded** tuple: variable element count, all of type `T` (bare `tuple` = `tuple<token...>`) | `(a, b, c)`; `()` = zero elements |
+| `seq<T>` | a Boost.PP seq of `T` | `(a)(b)(c)` or `((int,x))((float,y))` |
 | `variadic` / `variadic<T>` | the trailing `...`; the body sees it as `seq<T>` | `a, b, c` or `(int,x), (float,y)` |
 
 Notes:
 
 - `tuple` element names are how you access elements: `{{f.type}}`, `{{f.name}}`.
+- **Unbounded tuples** (`tuple<T...>` — the ellipsis is what distinguishes
+  them from a name list, so `tuple<token>` is still a 1-tuple whose element
+  is *named* "token") support `len()`, `[i]` indexing, iteration
+  (`@for`/`@join`, with unpacking when `T` is `tuple<...>`), and
+  `is_empty()`. Loops and `len()` are emptiness-gated, so `()` means zero
+  elements. Elements cap at **64** (vs 256 for seqs); named access is a
+  compile error — index instead.
 - Names bound in scope — parameters, `@for` unpack names, tuple element
   names — compile to macro parameters, so they substitute wherever they
   appear in the body, **including literal C text**. Don't reuse a bound name
@@ -153,8 +161,9 @@ parameter (C cannot overload on a zero-argument call).
 | `concat(a, b, ...)` | **explicit** token pasting (≥2 args) | nested `BOOST_PP_CAT` |
 | `stringize(x)` | make a C string literal from tokens | `BOOST_PP_STRINGIZE(x)` |
 | `remove_parens(x)` | strip ONE paren layer iff present | `BOOST_PP_REMOVE_PARENS(x)` |
-| `len(xs)` | element count of a seq/variadic | `BOOST_PP_SEQ_SIZE(xs)` |
+| `len(xs)` | element count of a seq/variadic/unbounded tuple | `BOOST_PP_SEQ_SIZE(xs)`; tuples: emptiness-gated `BOOST_PP_TUPLE_SIZE` (so `len(()) == 0`) |
 | `is_paren(x)` | 1 if `x` is parenthesized else 0 | `BOOST_PP_IS_BEGIN_PARENS(x)` |
+| `is_empty(x)` | 1 if `x` has no tokens (unbounded tuple: no elements) | `BOOST_PP_IS_EMPTY`; conditions, like `is_paren` |
 
 Three rules that surprise newcomers:
 

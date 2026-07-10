@@ -12,7 +12,8 @@ C compile time.
 
 ```text
 # Comments start with '#'. A file holds any number of macro definitions.
-# Arg types: token (default), seq<T>, tuple<name, ...> (named elems), variadic.
+# Arg types: token (default), seq<T>, tuple<name, ...> (named elems),
+# tuple / tuple<T...> (unbounded: variable count of T elements), variadic.
 
 # ── 1. Loop over a seq of tuples ────────────────────────────────────
 macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
@@ -101,7 +102,11 @@ end
   section, variadic}. Variadic must be last.
 - Seq/variadic args must be non-empty at C call sites (Boost.PP limitation, documented).
 - Conditions: `len(seq) == N` (and <, >, etc.), integer equality (0–256 range),
-  `is_paren(x)`.
+  `is_paren(x)`, `is_empty(x)`.
+- Unbounded tuples (`tuple<T...>`; bare `tuple` = `tuple<token...>`): call
+  site `(a, b, c)`, `()` = zero elements, ≤64 elements. Support `len`,
+  `[i]`, iteration/unpacking, `is_empty`; no named access. Allowed as
+  parameter, seq element, and variadic element types.
 - Call-site caveats (documented in README): args with bare commas must be
   parenthesized; named-arg keywords must not be `#define`d at the call site.
 
@@ -119,6 +124,8 @@ All `BOOST_PP_` occurrences below use the configured prefix
 | `@if/@else` | branch bodies emitted as separate helper macros, selected by `BOOST_PP_IIF(cond, THEN, ELSE)` then invoked — branch text may contain commas |
 | `len(xs) == n` etc. | `BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), n)` for ==/!=; relationals compile to saturating `BOOL(DEC^k(lhs))` chains with branch swap for </<= (the LESS/GREATER family hides a WHILE-based SUB) |
 | `is_paren(x)` | `BOOST_PP_IS_BEGIN_PARENS(x)` |
+| `is_empty(x)` | `BOOST_PP_IS_EMPTY(x)`; on unbounded tuples via the shared `ISNIL(x) = IS_EMPTY x` probe (argument expands first, then its own parens become the call — safe for computed values) |
+| unbounded-tuple loop/`len` | emptiness gate `IIF(ISNIL(t), NIL/0, ...)` (selected-then-invoked, like @if branches) around `TUPLE_TO_SEQ(t)` + the normal seq machinery / `TUPLE_SIZE(t)`; `()` iterates zero times and measures 0 |
 | `remove_parens(x)` | `BOOST_PP_REMOVE_PARENS(x)` |
 | `concat(a, b, ...)` | nested `BOOST_PP_CAT(a, BOOST_PP_CAT(b, ...))` |
 | `stringize(x)` | `BOOST_PP_STRINGIZE(x)` (stringizes computed tokens; plain `#` only works on direct macro params) |
