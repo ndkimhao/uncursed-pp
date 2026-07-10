@@ -283,3 +283,39 @@ def test_attached_comment_is_not_duplicated():
     src = '# doc\n@macro A($x)\n{{$x}}\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
     assert out.count("# doc") == 1  # lives in the macro's source block only
+
+
+# ── C /* */ comments: preserved in defines, escaped in comment blocks ──
+
+
+def test_body_c_comment_survives_into_the_define():
+    out = compile_source("@macro P($x)\nf({{$x}}); /* keep me */\n@endmacro\n", "t.uncursed")
+    assert "#define P(x) f(x); /* keep me */" in out
+
+
+def test_comment_only_body_line_survives_into_the_define():
+    src = "@macro Q($x)\npre();\n/* standalone note */\n{{$x}};\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    assert "/* standalone note */ \\" in out  # its own continuation line
+
+
+def test_body_c_comment_replicates_into_loop_helpers():
+    src = "@macro L($xs: seq<token>)\n@for $x in $xs\ng({{$x}}); /* per-item */\n@end\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    assert "#define UNCURSED_PP_L_EACH1(r, d, e) g(e); /* per-item */\n" in out
+    assert "#define UNCURSED_PP_L_CH1_1(e) g(e); /* per-item */\n" in out
+
+
+def test_standalone_comment_block_escapes_terminator():
+    # a top-level DSL comment containing */ must not close the emitted
+    # C comment block early
+    src = "# has */ inside\n\n@macro R($x)\n{{$x}}\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    assert "/* # has * / inside */" in out
+    assert "*/ inside" not in out
+
+
+def test_eof_comment_terminator_is_escaped_too():
+    src = "@macro R($x)\n{{$x}}\n@endmacro\n\n# trailing */ note\n"
+    out = compile_source(src, "t.uncursed")
+    assert "/* # trailing * / note */" in out
