@@ -50,7 +50,30 @@ class RemoveParens:
     arg: "Expr"
 
 
-Expr = VarRef | ElemAccess | Concat | RemoveParens
+@dataclass(frozen=True)
+class Len:
+    arg: "Expr"
+
+
+@dataclass(frozen=True)
+class IsParen:
+    arg: "Expr"
+
+
+Expr = VarRef | ElemAccess | Concat | RemoveParens | Len | IsParen
+
+
+# ── Conditions ───────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class Cmp:
+    lhs: Expr
+    op: str  # ==, !=, <, >, <=, >=
+    value: int
+
+
+Cond = Cmp | IsParen
 
 
 # ── Body nodes ───────────────────────────────────────────────────────
@@ -92,7 +115,15 @@ class Let:
     line: int = 0
 
 
-BodyNode = Text | Interp | ForEach | Join | Let
+@dataclass
+class If:
+    cond: Cond
+    then: list[BodyNode] = field(default_factory=list)
+    else_: list[BodyNode] = field(default_factory=list)
+    line: int = 0
+
+
+BodyNode = Text | Interp | ForEach | Join | Let | If
 
 
 # ── Top level ────────────────────────────────────────────────────────

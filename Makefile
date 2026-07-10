@@ -1,6 +1,8 @@
 MISE := mise exec --
 
-.PHONY: setup test test-unit test-integration example clean
+.PHONY: setup check test test-unit test-integration typecheck example clean
+
+check: typecheck test
 
 setup:
 	mise trust --quiet || true
@@ -15,6 +17,9 @@ test-unit:
 
 test-integration:
 	$(MISE) uv run pytest tests/test_integration.py
+
+typecheck:
+	$(MISE) uv run mypy
 
 example:
 	$(MISE) uv run cursedpp examples/example.cursed -o /tmp/example.h

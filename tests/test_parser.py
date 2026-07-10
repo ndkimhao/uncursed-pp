@@ -1,11 +1,15 @@
 import pytest
 
 from cursedpp.nodes import (
+    Cmp,
     Concat,
     ElemAccess,
     ForEach,
+    If,
     Interp,
+    IsParen,
     Join,
+    Len,
     Let,
     RemoveParens,
     SeqT,
@@ -119,3 +123,46 @@ def test_inline_join_missing_end_is_error():
     with pytest.raises(CursedppError) as excinfo:
         parse_file(src, "t.cursed")
     assert "t.cursed:2" in str(excinfo.value)
+
+
+def test_parse_line_form_if_else():
+    src = (
+        "macro CTOR(name, args: seq<tuple<type, argname>>)\n"
+        "@if len(args) == 1\n"
+        "  one({{name}})\n"
+        "@else\n"
+        "  many({{name}})\n"
+        "@end\n"
+        "end\n"
+    )
+    [macro] = parse_file(src, "t.cursed").macros
+    cond = next(n for n in macro.body if isinstance(n, If))
+    assert cond.cond == Cmp(Len(VarRef("args")), "==", 1)
+    assert any(isinstance(n, Interp) for n in cond.then)
+    assert any(isinstance(n, Interp) for n in cond.else_)
+
+
+def test_parse_inline_if_with_is_paren():
+    src = "macro NORM(x)\n@if is_paren(x) {{remove_parens(x)}} @else {{x}} @end\nend\n"
+    [macro] = parse_file(src, "t.cursed").macros
+    cond = next(n for n in macro.body if isinstance(n, If))
+    assert cond.cond == IsParen(VarRef("x"))
+    assert cond.then and cond.else_
+
+
+def test_parse_nested_inline_if_inside_inline_join():
+    src = (
+        "macro FOO(items: seq<token>)\n"
+        'S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @end@end }\n'
+        "end\n"
+    )
+    [macro] = parse_file(src, "t.cursed").macros
+    join = next(n for n in macro.body if isinstance(n, Join))
+    inner_if = next(n for n in join.body if isinstance(n, If))
+    assert inner_if.cond == IsParen(VarRef("it"))
+
+
+def test_parse_if_without_comparison_rejects_plain_expr():
+    src = "macro F(x)\n@if x\nbody\n@end\nend\n"
+    with pytest.raises(CursedppError):
+        parse_file(src, "t.cursed")

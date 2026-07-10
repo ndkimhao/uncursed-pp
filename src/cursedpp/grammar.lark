@@ -18,6 +18,9 @@ join_header: "join" CNAME ["as" CNAME] "with" ESCAPED_STRING
 
 let_line: "let" CNAME ":=" expr
 
+cond: expr [CMP INT]
+CMP: "==" | "!=" | "<=" | ">=" | "<" | ">"
+
 expr: CNAME "(" expr ("," expr)* ")" -> func_call
     | postfix
 postfix: CNAME accessor*

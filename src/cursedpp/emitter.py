@@ -6,12 +6,18 @@ import re
 from dataclasses import dataclass, field
 
 from .nodes import (
+    BodyNode,
     Concat,
+    Cond,
     ElemAccess,
+    Expr,
     File,
     ForEach,
+    If,
     Interp,
+    IsParen,
     Join,
+    Len,
     Let,
     MacroDef,
     RemoveParens,
@@ -28,7 +34,44 @@ from .parser import CursedppError, parse_file
 @dataclass
 class EmitConfig:
     pp_prefix: str = "BOOST_PP_"
-    pp_include: str = "boost/preprocessor.hpp"
+    pp_include: str | None = None  # None = granular boost includes from usage
+    helper_prefix: str = "CURSEDPP_"
+
+
+# Header (under boost/preprocessor/) providing each primitive we may emit.
+_PP_HEADERS = {
+    "CAT": "cat.hpp",
+    "SEQ_FOR_EACH": "seq/for_each.hpp",
+    "SEQ_FOR_EACH_I": "seq/for_each_i.hpp",
+    "SEQ_ELEM": "seq/elem.hpp",
+    "SEQ_SIZE": "seq/size.hpp",
+    "SEQ_FOLD_LEFT": "seq/fold_left.hpp",
+    "TUPLE_ELEM": "tuple/elem.hpp",
+    "COMMA_IF": "punctuation/comma_if.hpp",
+    "COMMA": "punctuation/comma.hpp",
+    "REMOVE_PARENS": "punctuation/remove_parens.hpp",
+    "IS_BEGIN_PARENS": "punctuation/is_begin_parens.hpp",
+    "IF": "control/if.hpp",
+    "IIF": "control/iif.hpp",
+    "EMPTY": "facilities/empty.hpp",
+    "OVERLOAD": "facilities/overload.hpp",
+    "EQUAL": "comparison/equal.hpp",
+    "NOT_EQUAL": "comparison/not_equal.hpp",
+    "LESS": "comparison/less.hpp",
+    "GREATER": "comparison/greater.hpp",
+    "LESS_EQUAL": "comparison/less_equal.hpp",
+    "GREATER_EQUAL": "comparison/greater_equal.hpp",
+    "VARIADIC_TO_SEQ": "variadic/to_seq.hpp",
+}
+
+_OP_TO_PP = {
+    "==": "EQUAL",
+    "!=": "NOT_EQUAL",
+    "<": "LESS",
+    ">": "GREATER",
+    "<=": "LESS_EQUAL",
+    ">=": "GREATER_EQUAL",
+}
 
 
 @dataclass
@@ -47,20 +90,25 @@ class _MacroOut:
 @dataclass(frozen=True)
 class _Binding:
     c_expr: str
-    type: Type | None  # None = plain token, arity/shape unknown
+    type: Type | None  # None/TokenT = plain token, arity/shape unknown
+
+
+_Env = dict[str, _Binding]
 
 
 class _MacroEmitter:
     """Emits one macro: a main #define plus any generated helper macros."""
 
-    def __init__(self, macro: MacroDef, config: EmitConfig, filename: str):
+    def __init__(self, macro: MacroDef, config: EmitConfig, filename: str, used: set[str]):
         self.macro = macro
         self.config = config
         self.filename = filename
+        self.used = used
         self.out = _MacroOut()
         self._helper_counts: dict[str, int] = {}
 
     def pp(self, name: str) -> str:
+        self.used.add(name)
         return f"{self.config.pp_prefix}{name}"
 
     def emit(self) -> _MacroOut:
@@ -72,7 +120,7 @@ class _MacroEmitter:
 
     # ── rendering ────────────────────────────────────────────────────
 
-    def _render_block(self, nodes: list, env: dict[str, _Binding]) -> str:
+    def _render_block(self, nodes: list[BodyNode], env: _Env) -> str:
         env = dict(env)  # @let bindings stay local to this block
         parts: list[str] = []
         for node in nodes:
@@ -85,13 +133,15 @@ class _MacroEmitter:
                 parts.append("\n")
             elif isinstance(node, Join):
                 parts.append(self._render_join(node, env))
+            elif isinstance(node, If):
+                parts.append(self._render_if(node, env))
             elif isinstance(node, Let):
                 env[node.name] = self._resolve(node.expr, env, node.line)
             else:  # pragma: no cover - future node kinds
                 raise NotImplementedError(f"cannot emit {node!r}")
         return "".join(parts)
 
-    def _resolve(self, expr, env: dict[str, _Binding], line: int, allow_literal: bool = False) -> _Binding:
+    def _resolve(self, expr: Expr, env: _Env, line: int, allow_literal: bool = False) -> _Binding:
         if isinstance(expr, VarRef):
             if expr.name in env:
                 return env[expr.name]
@@ -109,9 +159,17 @@ class _MacroEmitter:
         if isinstance(expr, RemoveParens):
             inner = self._resolve(expr.arg, env, line)
             return _Binding(f"{self.pp('REMOVE_PARENS')}({inner.c_expr})", TokenT())
+        if isinstance(expr, Len):
+            inner = self._resolve(expr.arg, env, line)
+            if not isinstance(inner.type, SeqT):
+                raise CursedppError("len() needs a seq-typed value", self.filename, line)
+            return _Binding(f"{self.pp('SEQ_SIZE')}({inner.c_expr})", TokenT())
+        if isinstance(expr, IsParen):
+            inner = self._resolve(expr.arg, env, line)
+            return _Binding(f"{self.pp('IS_BEGIN_PARENS')}({inner.c_expr})", TokenT())
         raise NotImplementedError(f"cannot emit expression {expr!r}")  # pragma: no cover
 
-    def _resolve_access(self, expr: ElemAccess, env: dict[str, _Binding], line: int) -> _Binding:
+    def _resolve_access(self, expr: ElemAccess, env: _Env, line: int) -> _Binding:
         base = self._resolve(expr.base, env, line)
         if isinstance(expr.accessor, str):
             if not isinstance(base.type, TupleT):
@@ -126,9 +184,8 @@ class _MacroEmitter:
                     self.filename,
                     line,
                 )
-            arity = len(base.type.names)
             idx = base.type.names.index(expr.accessor)
-            return _Binding(f"{self.pp('TUPLE_ELEM')}({arity}, {idx}, {base.c_expr})", TokenT())
+            return _Binding(f"{self.pp('TUPLE_ELEM')}({idx}, {base.c_expr})", TokenT())
         if not isinstance(base.type, SeqT):
             raise CursedppError(
                 f"indexed access '[{expr.accessor}]' needs a seq-typed value",
@@ -137,16 +194,97 @@ class _MacroEmitter:
             )
         return _Binding(f"{self.pp('SEQ_ELEM')}({expr.accessor}, {base.c_expr})", base.type.elem)
 
+    # ── conditionals ─────────────────────────────────────────────────
+
+    def _render_if(self, node: If, env: _Env) -> str:
+        free = self._free_vars(node.then, env, set())
+        for name in self._free_vars(node.else_, env, set()):
+            if name not in free:
+                free.append(name)
+        branch_env = {n: _Binding(n, env[n].type) for n in free}
+        params = ", ".join(free)
+
+        then_helper = self._add_helper(
+            "THEN", params, _collapse_ws(self._render_block(node.then, branch_env))
+        )
+        else_helper = self._add_helper(
+            "ELSE", params, _collapse_ws(self._render_block(node.else_, branch_env))
+        )
+        cond = self._render_cond(node.cond, env, node.line)
+        args = ", ".join(env[n].c_expr for n in free)
+        return f"{self.pp('IIF')}({cond}, {then_helper}, {else_helper})({args})"
+
+    def _render_cond(self, cond: Cond, env: _Env, line: int) -> str:
+        if isinstance(cond, IsParen):
+            return self._resolve(cond, env, line).c_expr
+        lhs = self._resolve(cond.lhs, env, line).c_expr
+        return f"{self.pp(_OP_TO_PP[cond.op])}({lhs}, {cond.value})"
+
+    def _free_vars(self, nodes: list[BodyNode], env: _Env, bound: set[str]) -> list[str]:
+        """Names from `env` referenced by `nodes`, in first-use order."""
+        out: list[str] = []
+
+        def add(name: str) -> None:
+            if name in env and name not in bound and name not in out:
+                out.append(name)
+
+        def walk_expr(e: Expr) -> None:
+            if isinstance(e, VarRef):
+                add(e.name)
+            elif isinstance(e, ElemAccess):
+                walk_expr(e.base)
+            elif isinstance(e, Concat):
+                for a in e.args:
+                    walk_expr(a)
+            elif isinstance(e, (RemoveParens, Len, IsParen)):
+                walk_expr(e.arg)
+
+        def loop_names(n: ForEach | Join) -> set[str]:
+            names: set[str] = set()
+            unpack = n.unpack if isinstance(n, ForEach) else None
+            var = n.var
+            if unpack:
+                names.update(unpack)
+            elif var:
+                names.add(var)
+            binding = env.get(n.iterable)
+            if not unpack and binding and isinstance(binding.type, SeqT):
+                if isinstance(binding.type.elem, TupleT):
+                    names.update(binding.type.elem.names)
+            return names
+
+        def walk(nodes: list[BodyNode], bound: set[str]) -> None:
+            local_bound = set(bound)
+            for n in nodes:
+                if isinstance(n, Interp):
+                    walk_expr(n.expr)
+                elif isinstance(n, Let):
+                    walk_expr(n.expr)
+                    local_bound.add(n.name)
+                elif isinstance(n, (ForEach, Join)):
+                    add(n.iterable)
+                    walk(n.body, local_bound | loop_names(n))
+                elif isinstance(n, If):
+                    if isinstance(n.cond, IsParen):
+                        walk_expr(n.cond.arg)
+                    else:
+                        walk_expr(n.cond.lhs)
+                    walk(n.then, local_bound)
+                    walk(n.else_, local_bound)
+
+        walk(nodes, bound)
+        return out
+
     # ── loops ────────────────────────────────────────────────────────
 
     def _loop_env(
         self,
-        env: dict[str, _Binding],
+        env: _Env,
         unpack: tuple[str, ...] | None,
         var: str | None,
         elem_type: Type,
-        node,
-    ) -> dict[str, _Binding]:
+        node: ForEach | Join,
+    ) -> _Env:
         loop_env = dict(env)
         if unpack is not None:
             if not isinstance(elem_type, TupleT):
@@ -157,35 +295,35 @@ class _MacroEmitter:
                     self.filename,
                     node.line,
                 )
-            names = unpack
+            names: tuple[str, ...] = unpack
         elif var is not None:
             loop_env[var] = _Binding("e", elem_type)
-            names = elem_type.names if isinstance(elem_type, TupleT) else ()
+            names = ()
         else:
             names = elem_type.names if isinstance(elem_type, TupleT) else ()
-        arity = len(names)
         for idx, name in enumerate(names):
-            loop_env[name] = _Binding(f"{self.pp('TUPLE_ELEM')}({arity}, {idx}, e)", TokenT())
+            loop_env[name] = _Binding(f"{self.pp('TUPLE_ELEM')}({idx}, e)", TokenT())
         return loop_env
 
-    def _iterable_binding(self, name: str, env: dict[str, _Binding], node) -> _Binding:
+    def _iterable_binding(self, name: str, env: _Env, node: ForEach | Join) -> tuple[str, Type]:
+        """Resolve an iterated name to (c_expr, element type)."""
         binding = env.get(name)
         if binding is None:
             raise CursedppError(f"undefined variable: {name}", self.filename, node.line)
         if not isinstance(binding.type, SeqT):
             raise CursedppError(f"cannot iterate non-seq {name!r}", self.filename, node.line)
-        return binding
+        return binding.c_expr, binding.type.elem
 
-    def _render_foreach(self, loop: ForEach, env: dict[str, _Binding]) -> str:
-        seq = self._iterable_binding(loop.iterable, env, loop)
-        loop_env = self._loop_env(env, loop.unpack, loop.var, seq.type.elem, loop)
+    def _render_foreach(self, loop: ForEach, env: _Env) -> str:
+        seq_expr, elem_type = self._iterable_binding(loop.iterable, env, loop)
+        loop_env = self._loop_env(env, loop.unpack, loop.var, elem_type, loop)
         body = _collapse_ws(self._render_block(loop.body, loop_env))
         helper = self._add_helper("EACH", "r, d, e", body)
-        return f"{self.pp('SEQ_FOR_EACH')}({helper}, ~, {seq.c_expr})"
+        return f"{self.pp('SEQ_FOR_EACH')}({helper}, ~, {seq_expr})"
 
-    def _render_join(self, join: Join, env: dict[str, _Binding]) -> str:
-        seq = self._iterable_binding(join.iterable, env, join)
-        loop_env = self._loop_env(env, None, join.var, seq.type.elem, join)
+    def _render_join(self, join: Join, env: _Env) -> str:
+        seq_expr, elem_type = self._iterable_binding(join.iterable, env, join)
+        loop_env = self._loop_env(env, None, join.var, elem_type, join)
         body = _collapse_ws(self._render_block(join.body, loop_env))
         sep = join.sep.strip()
         if sep == ",":
@@ -194,12 +332,12 @@ class _MacroEmitter:
             sep_helper = self._add_helper("SEP", "", sep)
             each_body = f"{self.pp('IF')}(i, {sep_helper}, {self.pp('EMPTY')})() {body}"
         helper = self._add_helper("EACH", "r, d, i, e", each_body)
-        return f"{self.pp('SEQ_FOR_EACH_I')}({helper}, ~, {seq.c_expr})"
+        return f"{self.pp('SEQ_FOR_EACH_I')}({helper}, ~, {seq_expr})"
 
     def _add_helper(self, kind: str, params: str, body: str) -> str:
         count = self._helper_counts.get(kind, 0) + 1
         self._helper_counts[kind] = count
-        name = f"CURSEDPP_{self.macro.name}_{kind}{count}"
+        name = f"{self.config.helper_prefix}{self.macro.name}_{kind}{count}"
         self.out.helpers.append(_Helper(name=name, params=params, body=body))
         return name
 
@@ -219,20 +357,35 @@ def _format_define(head: str, body: str) -> str:
     return f"#define {head} \\\n    {joined}\n"
 
 
+def _format_helper(helper: _Helper) -> str:
+    body = f" {helper.body}" if helper.body else ""
+    return f"#define {helper.name}({helper.params}){body}\n"
+
+
 def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None) -> str:
     config = config or EmitConfig()
-    chunks: list[str] = [
+    used: set[str] = set()
+    macro_chunks: list[str] = []
+    for macro in file.macros:
+        out = _MacroEmitter(macro, config, source_name, used).emit()
+        macro_chunks.append("\n")
+        for helper in out.helpers:
+            macro_chunks.append(_format_helper(helper))
+        macro_chunks.append(out.define)
+
+    if config.pp_include is not None:
+        includes = [config.pp_include]
+    else:
+        includes = sorted("boost/preprocessor/" + _PP_HEADERS[name] for name in used)
+
+    chunks = [
         f"/* Generated by cursedpp from {source_name} — do not edit. */\n",
         "#pragma once\n",
-        "\n",
-        f"#include <{config.pp_include}>\n",
     ]
-    for macro in file.macros:
-        out = _MacroEmitter(macro, config, source_name).emit()
+    if includes:
         chunks.append("\n")
-        for helper in out.helpers:
-            chunks.append(f"#define {helper.name}({helper.params}) {helper.body}\n")
-        chunks.append(out.define)
+        chunks.extend(f"#include <{inc}>\n" for inc in includes)
+    chunks.extend(macro_chunks)
     return "".join(chunks)
 
 

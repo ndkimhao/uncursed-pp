@@ -86,3 +86,19 @@ def test_pair_remove_parens_expansion(tmp_path):
 def test_pair_without_parens_passthrough(tmp_path):
     expanded = preprocess(tmp_path, "pair", "PAIR((a, b))")
     assert canon("S{ a | b }") in expanded
+
+
+@requires_boost
+def test_ctor_single_vs_multi_arg(tmp_path):
+    single = preprocess(tmp_path, "ctor", "CTOR(w, ((int, x)))")
+    assert canon("explicit_single_arg_init(w)") in single
+    multi = preprocess(tmp_path, "ctor", "CTOR(w, ((int, x))((int, y)))")
+    assert canon("w_init(x, y)") in multi
+
+
+@requires_boost
+def test_norm_strips_parens_iff_present(tmp_path):
+    stripped = preprocess(tmp_path, "norm", "NORM((a, b))")
+    assert canon("a, b") in stripped
+    passthrough = preprocess(tmp_path, "norm", "NORM(q)")
+    assert canon("q") in passthrough

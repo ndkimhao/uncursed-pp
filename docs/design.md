@@ -79,7 +79,7 @@ macro CTOR(name, args: seq<tuple<type, argname>>)
 @if len(args) == 1
   explicit_single_arg_init({{name}})
 @else
-  {{name}}_init(@join args with ", ": {{argname}}@end)
+  {{concat(name, _init)}}(@join args with ", ": {{argname}}@end)
 @end
 end
 

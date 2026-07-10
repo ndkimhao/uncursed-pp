@@ -9,7 +9,7 @@ dependencies = ["lark>=1.2"]
 cursedpp = "cursedpp.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "mypy>=1.13"]
 
 [build-system]
 requires = ["hatchling"]
@@ -20,3 +20,8 @@ packages = ["src/cursedpp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+files = ["src/cursedpp"]
+python_version = "3.12"
+strict = true

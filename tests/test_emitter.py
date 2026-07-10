@@ -58,3 +58,31 @@ def test_undefined_variable_is_error():
 def test_concat_multiple_args_nests_cat():
     out = compile_source("macro F(a)\n{{concat(pre_, a, _post)}}\nend\n", "f.cursed")
     assert "#define F(a) BOOST_PP_CAT(pre_, BOOST_PP_CAT(a, _post))\n" in out
+
+
+def test_if_branches_share_the_union_of_free_vars():
+    src = (
+        "macro F(a, b)\n"
+        "@if len_unrelated == 0\n"
+        "@end\n"
+        "end\n"
+    )
+    # len() must reference a real seq param; unrelated name is an error
+    from cursedpp.parser import CursedppError
+
+    with pytest.raises(CursedppError):
+        compile_source(src.replace("len_unrelated == 0", "len(nope) == 0"), "f.cursed")
+
+
+def test_if_comparison_operators_map_to_boost_pp():
+    src = "macro F(xs: seq<token>)\n@if len(xs) >= 2\nbig\n@else\nsmall\n@end\nend\n"
+    out = compile_source(src, "f.cursed")
+    assert "BOOST_PP_IIF(BOOST_PP_GREATER_EQUAL(BOOST_PP_SEQ_SIZE(xs), 2)" in out
+
+
+def test_empty_else_branch_emits_empty_helper():
+    src = "macro F(xs: seq<token>)\n@if len(xs) == 1\nonly\n@end\nend\n"
+    out = compile_source(src, "f.cursed")
+    # branches reference no variables, so the helpers take zero parameters
+    assert "#define CURSEDPP_F_ELSE1()\n" in out
+    assert "CURSEDPP_F_THEN1, CURSEDPP_F_ELSE1)()" in out
