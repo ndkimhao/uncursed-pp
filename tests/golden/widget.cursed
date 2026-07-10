@@ -6,6 +6,13 @@ macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
 struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };
 end
 
+# Comma-containing keyword values: a bare comma cannot survive as one
+# macro argument (C limitation), so callers wrap — COLORS((red, green)) —
+# and the template strips the wrapper with remove_parens().
+macro STYLE(name, named COLORS = none)
+unsigned {{name}}[] = { {{remove_parens(COLORS)}} };
+end
+
 # ── invocation specs (verified through cc -E by test_integration) ──
 #?  MAKE_WIDGET(w1)
 #=>     struct widget w1 = { 100, 50, };
@@ -38,3 +45,13 @@ end
 # edge: string-literal value
 #?  MAKE_WIDGET(w9, FLAGS(""))
 #=>     struct widget w9 = { 100, 50, "" };
+
+#?  STYLE(s1)
+#=>     unsigned s1[] = { none };
+
+#?  STYLE(s2, COLORS(red))
+#=>     unsigned s2[] = { red };
+
+# edge: comma-containing value — caller wraps, template remove_parens()-unwraps
+#?  STYLE(s3, COLORS((red, green, blue)))
+#=>     unsigned s3[] = { red, green, blue };

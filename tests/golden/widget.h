@@ -3,6 +3,7 @@
 
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/facilities/overload.hpp>
+#include <boost/preprocessor/punctuation/remove_parens.hpp>
 #include <boost/preprocessor/seq/fold_left.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
@@ -20,3 +21,12 @@
 #define CURSEDPP_MAKE_WIDGET_3 CURSEDPP_MAKE_WIDGET_KW
 #define CURSEDPP_MAKE_WIDGET_4 CURSEDPP_MAKE_WIDGET_KW
 #define MAKE_WIDGET(...) BOOST_PP_OVERLOAD(CURSEDPP_MAKE_WIDGET_, __VA_ARGS__)(__VA_ARGS__)
+
+#define CURSEDPP_STYLE_SET_COLORS(v) 0, v
+#define CURSEDPP_STYLE_STEP(s, state, e) CURSEDPP_KW_PUT(state, BOOST_PP_CAT(CURSEDPP_STYLE_SET_, e))
+#define CURSEDPP_STYLE_BODY(name, COLORS) unsigned name[] = { BOOST_PP_REMOVE_PARENS(COLORS) };
+#define CURSEDPP_STYLE_UNPACK(name, state) CURSEDPP_STYLE_BODY(name, BOOST_PP_TUPLE_ELEM(0, state))
+#define CURSEDPP_STYLE_KW(name, ...) CURSEDPP_STYLE_UNPACK(name, BOOST_PP_SEQ_FOLD_LEFT(CURSEDPP_STYLE_STEP, (none), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
+#define CURSEDPP_STYLE_1(name) CURSEDPP_STYLE_BODY(name, none)
+#define CURSEDPP_STYLE_2 CURSEDPP_STYLE_KW
+#define STYLE(...) BOOST_PP_OVERLOAD(CURSEDPP_STYLE_, __VA_ARGS__)(__VA_ARGS__)
