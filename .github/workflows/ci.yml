@@ -18,3 +18,8 @@ jobs:
 
       - name: Typecheck (mypy --strict) and full test suite
         run: make check
+
+      # The standalone checker through the real CLI entry point - same
+      # specs as the suite, but exercises uncursed-pp-check itself.
+      - name: Spec-check every template via uncursed-pp-check
+        run: make speccheck

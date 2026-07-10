@@ -2,7 +2,7 @@ MISE := mise exec --
 BOOST_PP_DIR := .boost-pp
 BOOST_PP_REF := boost-1.90.0
 
-.PHONY: setup check test test-unit test-integration typecheck example regen-golden clean boost-pp
+.PHONY: setup check test test-unit test-integration typecheck example speccheck regen-golden clean boost-pp
 
 check: typecheck test
 
@@ -29,6 +29,11 @@ test-integration: boost-pp
 
 typecheck:
 	$(MISE) uv run mypy
+
+# Run the standalone spec checker over every template - exercises the
+# real CLI end to end (pytest covers the same specs through the API).
+speccheck: boost-pp
+	$(MISE) uv run uncursed-pp-check tests/golden examples -- -I $(BOOST_PP_DIR)/include
 
 # Regenerate every golden/example .h from its template. Mechanics only:
 # goldens are updated deliberately - READ the diff before committing.
