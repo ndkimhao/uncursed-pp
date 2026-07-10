@@ -135,3 +135,13 @@ def test_spaced_form_is_not_a_wildcard():
     # only the exact, whitespace-free <...> is magic
     assert _matches(["f(int, < ... >)"], canon("f(int, < ... >)"))
     assert not _matches(["a < ... > d"], canon("a b c d"))
+
+
+def test_canon_keeps_multichar_operators_whole():
+    # << and < < are DIFFERENT token streams; canon must not conflate them
+    assert canon("1 << 2") != canon("1 < < 2")
+    assert canon("a->b") != canon("a - > b")
+    assert canon("x ## y") != canon("x # # y")
+    assert canon("a <<= 2") != canon("a << = 2")
+    # while whitespace around a whole operator stays insignificant
+    assert canon("1<<2") == canon("1 << 2")

@@ -8,6 +8,7 @@ dependencies = ["lark>=1.2"]
 [project.scripts]
 uncursed-pp = "uncursed_pp.cli:main"
 uncursed-pp-check = "uncursed_pp.speccheck:main"
+uncursed-pp-eval = "uncursed_pp.evaltool:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "mypy>=1.13"]
@@ -30,7 +31,7 @@ strict = true
 [[tool.mypy.overrides]]
 # tests are exercised code, not an API surface: keep them type-CHECKED
 # but don't demand annotations on every test function
-module = ["conftest", "test_cli", "test_collapse", "test_conditionals", "test_config", "test_defaults", "test_e2e_specs", "test_expressions", "test_golden", "test_harness", "test_loops", "test_named_args", "test_speccheck", "test_syntax", "test_unbounded_tuple", "test_variadic"]
+module = ["conftest", "test_cli", "test_collapse", "test_conditionals", "test_config", "test_defaults", "test_e2e_specs", "test_expressions", "test_golden", "test_harness", "test_loops", "test_named_args", "test_evaltool", "test_speccheck", "test_syntax", "test_unbounded_tuple", "test_variadic"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 check_untyped_defs = true

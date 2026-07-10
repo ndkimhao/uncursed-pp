@@ -27,7 +27,11 @@ _C_TOKEN = re.compile(
     C_LITERAL_PATTERN      # raw/prefixed string and char literals, verbatim
     + r"|[A-Za-z_]\w*"     # identifier
     + r"|\d[\w.]*"        # number
-    + r"|\S",              # any punctuation char
+    # multi-char operators stay whole: << and < < are different token
+    # streams and must not canonicalize equal
+    + r"|<<=|>>=|\.\.\."
+    + r"|<<|>>|<=|>=|==|!=|&&|\|\||\+\+|--|->|\+=|-=|\*=|/=|%=|&=|\|=|\^=|##"
+    + r"|\S",              # any other punctuation char
     re.S,
 )
 

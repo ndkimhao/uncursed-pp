@@ -42,6 +42,8 @@ make typecheck      # mypy --strict
 uv run uncursed-pp input.uncursed -o output.h
 uv run uncursed-pp-check input.uncursed -- -I .boost-pp/include   # verify its #? specs
 uv run uncursed-pp-check examples/ -- -I .boost-pp/include        # or a whole directory
+uv run uncursed-pp-eval t.uncursed 'PAIR(a, b)' --format          # print one expansion, pretty
+uv run uncursed-pp-eval t.uncursed --update-specs                 # fill '#=> <???>' sentinels
 ```
 
 Templates can carry their own tests — `#? INVOCATION` / `#=> expansion`

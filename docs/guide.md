@@ -423,6 +423,14 @@ Exit codes: 0 all specs pass, 1 a spec failed, 2 setup problems (no
 specs, unknown compiler, template errors). `--work-dir` keeps the
 generated header and one numbered `.c` snippet per spec for inspection.
 
+Its sibling `uncursed-pp-eval` takes ONE template and either prints an
+invocation's expansion (`--format` pipes it through clang-format) or
+fills spec sentinels: write the invocation with `#=> <???>` as its only
+expectation, run `uncursed-pp-eval file.uncursed --update-specs`, and
+the sentinel is replaced in place with the real expansion (formatted if
+`--format`). Specs stay deliberate — the sentinel is the explicit
+request to transcribe reality; review the diff.
+
 Golden templates are self-testing. Append spec comments — the invocation and
 its expectations always sit on separate lines:
 
