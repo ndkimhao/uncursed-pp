@@ -322,3 +322,46 @@ def test_arg_prefix_spread_tuple_param_e2e(tmp_path):
 
     out = preprocess_src(tmp_path, src, "t", "PT((3, 4))")
     assert canon("pair(3, 4);") in out
+
+
+# ── pragma value validation ──────────────────────────────────────────
+
+
+def test_loop_chain_rejects_typos():
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source("@pragma loop_chain onn\n@macro F($x)\n{{$x}}\n@endmacro\n", "t.uncursed")
+    assert "'on' or 'off'" in str(excinfo.value)
+
+
+def test_loop_chain_limit_rejects_non_integers_and_bad_ranges():
+    for value in ("soon", "-4", "0", "300"):
+        with pytest.raises(UncursedPpError) as excinfo:
+            compile_source(
+                f"@pragma loop_chain_limit {value}\n@macro F($x)\n{{{{$x}}}}\n@endmacro\n",
+                "t.uncursed",
+            )
+        assert "loop_chain_limit" in str(excinfo.value), value
+
+
+def test_prefix_pragmas_must_be_identifier_prefixes():
+    for key in ("pp_prefix", "helper_prefix", "arg_prefix"):
+        with pytest.raises(UncursedPpError) as excinfo:
+            compile_source(
+                f"@pragma {key} MY HELPERS_\n@macro F($x)\n{{{{$x}}}}\n@endmacro\n",
+                "t.uncursed",
+            )
+        assert key in str(excinfo.value), key
+
+
+def test_lone_quote_pragma_value_is_rejected():
+    with pytest.raises(UncursedPpError):
+        compile_source('@pragma helper_prefix "\n@macro F($x)\n{{$x}}\n@endmacro\n', "t.uncursed")
+
+
+def test_macro_name_in_helper_namespace_is_rejected():
+    # generated helpers are UNCURSED_PP_<MACRO>_* and shared ones
+    # UNCURSED_PP_<STEM>_H<n>: a user macro in that namespace could be
+    # silently redefined by the collapse pass
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source("@macro UNCURSED_PP_T_H1($x)\n{{$x}}\n@endmacro\n", "t.uncursed")
+    assert "helper namespace" in str(excinfo.value)

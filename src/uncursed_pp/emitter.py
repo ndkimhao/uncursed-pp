@@ -271,6 +271,15 @@ class _MacroEmitter:
         variadic: list[Param],
     ) -> None:
         line = self.macro.line
+        if self.macro.name.startswith(self.config.helper_prefix):
+            raise UncursedPpError(
+                f"macro name {self.macro.name!r} is inside the generated "
+                f"helper namespace ({self.config.helper_prefix}*): generated "
+                "or shared helpers could silently redefine it - rename the "
+                "macro or change @pragma helper_prefix",
+                self.filename,
+                line,
+            )
         seen_names: set[str] = set()
         for p in self.macro.params:
             if p.name in seen_names:

@@ -271,7 +271,15 @@ def _build_call(name: str, args: tuple[Expr, ...]) -> Expr:
 
 
 def _clean_default(token: Any) -> str:
-    return "" if token is None else str(token).strip()
+    value = "" if token is None else str(token).strip()
+    # a default is spliced verbatim into generated defines: '$' refs and
+    # {{...}} do not expand there, '#' is the stringize operator
+    if "$" in value or "#" in value or "{{" in value:
+        raise ValueError(
+            f"default value {value!r} must be literal C tokens "
+            "('$' references, '{{...}}', and '#' do not expand in defaults)"
+        )
+    return value
 
 
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "0": "\0", '"': '"', "\\": "\\"}
@@ -497,6 +505,11 @@ def parse_file(source: str, filename: str) -> File:
     )
 
 
+# prefixes are pasted into generated identifiers - anything else in the
+# value (spaces, quotes, punctuation) silently produces garbage defines
+_IDENT_PRAGMAS = {"pp_prefix", "helper_prefix", "arg_prefix"}
+
+
 def _parse_pragma(stripped: str, filename: str, lineno: int) -> tuple[str, str]:
     parts = stripped.split(None, 2)
     if len(parts) != 3:
@@ -506,8 +519,31 @@ def _parse_pragma(stripped: str, filename: str, lineno: int) -> tuple[str, str]:
         known = ", ".join(sorted(_KNOWN_PRAGMAS))
         raise UncursedPpError(f"unknown pragma {key!r} (known: {known})", filename, lineno)
     value = value.strip()
-    if value.startswith('"') and value.endswith('"'):
+    if len(value) >= 2 and value.startswith('"') and value.endswith('"'):
         value = value[1:-1]
+    if key in _IDENT_PRAGMAS and not re.fullmatch(r"[A-Za-z_]\w*", value):
+        raise UncursedPpError(
+            f"@pragma {key} must be an identifier prefix "
+            f"([A-Za-z_][A-Za-z0-9_]*), got {value!r}",
+            filename,
+            lineno,
+        )
+    if key == "runtime_name" and re.search(r"[\s\"']", value):
+        raise UncursedPpError(
+            f"@pragma runtime_name must be a plain filename, got {value!r}",
+            filename,
+            lineno,
+        )
+    if key == "loop_chain" and value not in {"on", "off"}:
+        raise UncursedPpError(
+            f"@pragma loop_chain takes 'on' or 'off', got {value!r}", filename, lineno
+        )
+    if key == "loop_chain_limit" and not (value.isdigit() and 1 <= int(value) <= 256):
+        raise UncursedPpError(
+            f"@pragma loop_chain_limit takes an integer in 1..256, got {value!r}",
+            filename,
+            lineno,
+        )
     return key, value
 
 

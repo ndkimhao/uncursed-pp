@@ -60,3 +60,14 @@ def test_dispatch_uses_bounded_size_scan_not_overload():
     assert "#define UNCURSED_PP_LOG2_DISPATCH_I(n) UNCURSED_PP_LOG2_ ## n\n" in out
     assert "#define LOG2(...) UNCURSED_PP_LOG2_DISPATCH(UNCURSED_PP_LOG2_SIZE(__VA_ARGS__))(__VA_ARGS__)\n" in out
     assert "OVERLOAD" not in out
+
+
+def test_defaults_must_be_literal_c_tokens():
+    # '$' refs, '{{...}}', and '#' do not expand inside a default - they
+    # would splice raw into the generated define
+    for default in ("$a", "{{$a}}", "#X"):
+        with pytest.raises(UncursedPpError) as excinfo:
+            compile_source(
+                f"@macro F($a, $b = {default})\nf({{{{$b}}}})\n@endmacro\n", "t.uncursed"
+            )
+        assert "default" in str(excinfo.value), default
