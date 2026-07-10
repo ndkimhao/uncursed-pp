@@ -29,7 +29,7 @@ You describe a macro like a web render template; uncursed-pp emits the cursed
 DECLARE_FIELDS((int, x), (float, y))   /* -> int x; float y; */
 ```
 
-Runnable version: [`examples/00-readme.uncursed`](examples/00-readme.uncursed).
+Runnable version: [`examples/simple/00-readme.uncursed`](examples/simple/00-readme.uncursed).
 More examples, one feature per file: [`examples/`](examples/).
 
 ## Install & use

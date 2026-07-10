@@ -6,9 +6,9 @@ committed next to it, and the `#? INVOCATION` / `#=> expansion` comments
 are verified token-exact through the real C preprocessor by the test
 suite. What you read is what actually happens.
 
-[`00-readme.uncursed`](00-readme.uncursed) is the front-page demo from the
+[`simple/00-readme.uncursed`](simple/00-readme.uncursed) is the front-page demo from the
 top-level README, kept honest by its specs (it pins `loop_chain off` so
-the header stays three defines); [`01-readme-chains.uncursed`](01-readme-chains.uncursed)
+the header stays three defines); [`simple/01-readme-chains.uncursed`](simple/01-readme-chains.uncursed)
 is the same macro without the pragma — compare the two committed `.h`
 files to see the default consumption-chain codegen side by side.
 
