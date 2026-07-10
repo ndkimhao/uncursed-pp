@@ -256,3 +256,40 @@ def test_compile_template_runtime_includes_used_and_default_tables():
     # union: the template's K=4 plus the default 16 (shared-file safety)
     assert "#define UNCURSED_PP_LE4_4 1\n" in result.runtime
     assert "#define UNCURSED_PP_LE16_16 1\n" in result.runtime
+
+
+# ── arg_prefix: generated parameter names get a namespace ────────────
+
+
+def test_arg_prefix_pragma_prefixes_generated_params():
+    src = (
+        "@pragma arg_prefix u_\n"
+        "@macro F($x)\n{{$x}}\n@endmacro\n"
+    )
+    out = compile_source(src, "t.uncursed")
+    assert "#define F(u_x) u_x\n" in out
+
+
+def test_arg_prefix_covers_loop_harness_slots(tmp_path):
+    # body text mentioning a harness slot name (e) must survive expansion
+    src = (
+        "@pragma arg_prefix u_\n"
+        "@macro F($xs: seq<token>)\n@for $x in $xs\nint e = {{$x}};\n@end\n@endmacro\n"
+    )
+    out = compile_source(src, "t.uncursed")
+    assert "u_e" in out
+    assert "(r, d, e)" not in out
+
+
+@requires_boost
+def test_arg_prefix_prevents_body_text_capture_e2e(tmp_path):
+    # WITHOUT the prefix the literal `e` in body text is captured by the
+    # loop helper's element parameter; WITH it the text survives.
+    src = (
+        "@pragma arg_prefix u_\n"
+        "@macro F($xs: seq<token>)\n@for $x in $xs\nint e = {{$x}};\n@end\n@endmacro\n"
+    )
+    from conftest import preprocess_src
+
+    out = preprocess_src(tmp_path, src, "t", "F((a)(b))")
+    assert out == canon("int e = a; int e = b;")

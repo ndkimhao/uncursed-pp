@@ -46,7 +46,9 @@ read back with `TUPLE_ELEM(i, d)`.
   The template-side `$` prefix is stripped in generated code (a `$suite`
   variable becomes a plain `suite` parameter), so the hazard is about the
   PLAIN name: don't reuse a bound name as an ordinary C identifier in the
-  same scope.
+  same scope — or set `@pragma arg_prefix u_` to namespace EVERY generated
+  parameter (user params and harness slots like `r`/`d`/`e` alike), which
+  removes the hazard entirely at the cost of noisier generated code.
 - Seqs cap at 256 elements (`BOOST_PP_LIMIT_SEQ`) and must be non-empty.
 - Seq-of-tuples call sites need double parens: `((int, x))((float, y))` —
   or declare the parameter `variadic<tuple<...>>` for single-paren calls.

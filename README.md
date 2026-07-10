@@ -65,6 +65,7 @@ takes only the input path and `-o`:
 | `helper_prefix` | `UNCURSED_PP_` | prefix of generated helper macros |
 | `runtime_name` | `<helper_prefix>_runtime.h` | filename the shared runtime header is written to |
 | `runtime_include` | `"<runtime_name>"` | the `#include` text generated headers use for it — any path, `"..."` or `<...>` |
+| `arg_prefix` | *(empty)* | prefix for every generated parameter name (user params and harness slots), so body text can never be captured by one |
 | `include` | — | extra `#include` for the generated header (repeatable) |
 | `loop_chain` | `on` | fast chain codegen for loops (`off` = plain `SEQ_FOR_EACH`, shorter headers) — [details](docs/loop-chains.md) |
 | `loop_chain_limit` | `16` | max seq length served by the chain (longer falls back); `256` covers everything and drops the fallback |

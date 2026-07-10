@@ -52,6 +52,9 @@ class EmitConfig:
     extra_includes: tuple[str, ...] = ()  # user includes appended verbatim
     loop_chain: bool = True  # consumption chains for no-free-var loops
     loop_chain_limit: int = 16  # chain length; larger seqs take FOR_EACH
+    arg_prefix: str = ""  # prefix for EVERY generated parameter name
+    # (user params, tuple fields, harness slots r/d/e/n/...), so body
+    # text can't be captured by them at C-expansion time
 
 
 # Header (under boost/preprocessor/) providing each primitive we may emit.
@@ -148,6 +151,12 @@ class _MacroEmitter:
         self.used.add(name)
         return f"{self.config.pp_prefix}{name}"
 
+    def arg(self, name: str) -> str:
+        """A generated parameter name. @pragma arg_prefix namespaces every
+        one of these (user params AND harness slots), so raw body text can
+        never be captured by a generated parameter at C-expansion time."""
+        return f"{self.config.arg_prefix}{name}"
+
     def emit(self) -> _MacroOut:
         pos = [p for p in self.macro.params if not p.named and p.default is None]
         defaulted = [p for p in self.macro.params if not p.named and p.default is not None]
@@ -155,7 +164,7 @@ class _MacroEmitter:
         variadic = [p for p in self.macro.params if isinstance(p.type, VariadicT)]
         self._validate_params(pos, defaulted, named, variadic)
 
-        env = {p.name: _Binding(p.name, p.type) for p in self.macro.params}
+        env = {p.name: _Binding(self.arg(p.name), p.type) for p in self.macro.params}
         for p in variadic:
             # the body sees the variadic tail as a seq of the element type
             assert isinstance(p.type, VariadicT)
@@ -169,13 +178,13 @@ class _MacroEmitter:
                 # wasted work here (audit: 2.33x)
                 self.file_state["kw_utils"] = True
                 env[p.name] = _Binding(
-                    f"{self.config.helper_prefix}KW_SPREAD {p.name}", TokenT()
+                    f"{self.config.helper_prefix}KW_SPREAD {self.arg(p.name)}", TokenT()
                 )
         spread_params: set[str] = set()
         if not defaulted and not named:
             spread_params = self._spreadable_tuple_params()
             for name in spread_params:
-                env[name] = _Binding(name, env[name].type, spread=True)
+                env[name] = _Binding(self.arg(name), env[name].type, spread=True)
         body = self._render_block(self.macro.body, env)
 
         if defaulted:
@@ -185,7 +194,7 @@ class _MacroEmitter:
         elif spread_params:
             self._emit_spread_body(spread_params, body)
         else:
-            heads = ["..." if isinstance(p.type, VariadicT) else p.name for p in self.macro.params]
+            heads = ["..." if isinstance(p.type, VariadicT) else self.arg(p.name) for p in self.macro.params]
             self.out.defines.append(_format_define(f"{self.macro.name}({', '.join(heads)})", body))
         return self.out
 
@@ -226,11 +235,11 @@ class _MacroEmitter:
         for p in self.macro.params:
             if p.name in spread_params:
                 assert isinstance(p.type, TupleT)
-                body_params.extend(p.type.names)
-                args.append(f"{spread} {p.name}")
+                body_params.extend(self.arg(n) for n in p.type.names)
+                args.append(f"{spread} {self.arg(p.name)}")
             else:
-                body_params.append(p.name)
-                args.append(p.name)
+                body_params.append(self.arg(p.name))
+                args.append(self.arg(p.name))
         self.out.defines.append(
             _format_define(f"{base}BODY1({', '.join(body_params)})", body)
         )
@@ -293,11 +302,12 @@ class _MacroEmitter:
         """
         defines = self.out.defines
         countdown = ", ".join(str(n) for n in range(max_arity, 0, -1))
-        slots = ", ".join(f"e{j}" for j in range(max_arity))
+        slots = ", ".join(self.arg(f"e{j}") for j in range(max_arity))
+        size, n_ = self.arg("size"), self.arg("n")
         defines.append(f"#define {base}SIZE(...) {base}SIZE_I(__VA_ARGS__, {countdown},)\n")
-        defines.append(f"#define {base}SIZE_I({slots}, size, ...) size\n")
-        defines.append(f"#define {base}DISPATCH(n) {base}DISPATCH_I(n)\n")
-        defines.append(f"#define {base}DISPATCH_I(n) {base} ## n\n")
+        defines.append(f"#define {base}SIZE_I({slots}, {size}, ...) {size}\n")
+        defines.append(f"#define {base}DISPATCH({n_}) {base}DISPATCH_I({n_})\n")
+        defines.append(f"#define {base}DISPATCH_I({n_}) {base} ## {n_}\n")
         defines.append(
             f"#define {self.macro.name}(...) "
             f"{base}DISPATCH({base}SIZE(__VA_ARGS__))(__VA_ARGS__)\n"
@@ -307,7 +317,7 @@ class _MacroEmitter:
         self, pos: list[Param], defaulted: list[Param], body: str
     ) -> None:
         all_params = pos + defaulted
-        names = [p.name for p in all_params]
+        names = [self.arg(p.name) for p in all_params]
         base = f"{self.config.helper_prefix}{self.macro.name}_"
         total, required = len(all_params), len(pos)
         for k in range(required, total):
@@ -319,8 +329,8 @@ class _MacroEmitter:
 
     def _emit_named(self, pos: list[Param], named: list[Param], body: str) -> None:
         base = f"{self.config.helper_prefix}{self.macro.name}_"
-        pos_names = [p.name for p in pos]
-        all_names = pos_names + [p.name for p in named]
+        pos_names = [self.arg(p.name) for p in pos]
+        all_names = pos_names + [self.arg(p.name) for p in named]
         defaults = ", ".join(
             f"({p.default or ''})" if p.variadic_value else (p.default or "")
             for p in named
@@ -335,7 +345,7 @@ class _MacroEmitter:
             if p.variadic_value:
                 defines.append(f"#define {base}SET_{p.name}(...) {slot}, (__VA_ARGS__)\n")
             else:
-                defines.append(f"#define {base}SET_{p.name}(v) {slot}, v\n")
+                defines.append(f"#define {base}SET_{p.name}({self.arg('v')}) {slot}, {self.arg('v')}\n")
 
         # OVERLOAD already dispatches on the exact keyword count, so each
         # arity nests a one-step setter over BARE comma-separated state -
@@ -344,17 +354,20 @@ class _MacroEmitter:
         # rebuilds the state list with that slot replaced. BODY is reached
         # through a variadic redirect because commas produced by expansion
         # never re-split arguments.
+        e_, i_, v_ = self.arg("e"), self.arg("i"), self.arg("v")
         defines.append(
-            f"#define {base}STEP1(e, ...) "
-            f"{base}STEP_D({self.pp('CAT')}({base}SET_, e), __VA_ARGS__)\n"
+            f"#define {base}STEP1({e_}, ...) "
+            f"{base}STEP_D({self.pp('CAT')}({base}SET_, {e_}), __VA_ARGS__)\n"
         )
         defines.append(f"#define {base}STEP_D(...) {base}STEP_I(__VA_ARGS__)\n")
-        defines.append(f"#define {base}STEP_I(i, v, ...) {base}PUT_ ## i(v, __VA_ARGS__)\n")
+        defines.append(
+            f"#define {base}STEP_I({i_}, {v_}, ...) {base}PUT_ ## {i_}({v_}, __VA_ARGS__)\n"
+        )
         arity = len(named)
-        slots = [f"p{j}" for j in range(arity)]
+        slots = [self.arg(f"p{j}") for j in range(arity)]
         for slot in range(arity):
-            replaced = ", ".join("v" if j == slot else f"p{j}" for j in range(arity))
-            defines.append(f"#define {base}PUT_{slot}(v, {', '.join(slots)}) {replaced}\n")
+            replaced = ", ".join(v_ if j == slot else self.arg(f"p{j}") for j in range(arity))
+            defines.append(f"#define {base}PUT_{slot}({v_}, {', '.join(slots)}) {replaced}\n")
         defines.append(_format_define(f"{base}BODY({', '.join(all_names)})", body))
         defines.append(f"#define {base}BODY_D(...) {base}BODY(__VA_ARGS__)\n")
 
@@ -364,7 +377,7 @@ class _MacroEmitter:
             f"{base}BODY({', '.join(pos_names)}, {defaults})\n"
         )
         for k in range(1, arity + 1):
-            kw_params = [f"e{j}" for j in range(1, k + 1)]
+            kw_params = [self.arg(f"e{j}") for j in range(1, k + 1)]
             nest = defaults
             for e in kw_params:  # innermost gets the first kwarg: last wins
                 nest = f"{base}STEP1({e}, {nest})"
@@ -502,7 +515,7 @@ class _MacroEmitter:
                     line,
                 )
             if base.spread:
-                return _Binding(expr.accessor, TokenT())
+                return _Binding(self.arg(expr.accessor), TokenT())
             idx = base.type.names.index(expr.accessor)
             return _Binding(f"{self.pp('TUPLE_ELEM')}({idx}, {base.c_expr})", TokenT())
         if isinstance(base.type, VarTupleT):
@@ -538,8 +551,8 @@ class _MacroEmitter:
             if name not in free:
                 free.append(name)
         self._guard_fragile(free, env, node.line)
-        branch_env = {n: _Binding(n, env[n].type) for n in free}
-        params = ", ".join(free)
+        branch_env = {n: _Binding(self.arg(n), env[n].type) for n in free}
+        params = ", ".join(self.arg(n) for n in free)
 
         then_helper = self._add_helper(
             "THEN", params, _collapse_ws(self._render_block(node.then, branch_env))
@@ -703,12 +716,12 @@ class _MacroEmitter:
         loop_env = dict(loop_env)
         if len(free) == 1:
             data = env[free[0]].c_expr
-            loop_env[free[0]] = _Binding("d", env[free[0]].type)
+            loop_env[free[0]] = _Binding(self.arg("d"), env[free[0]].type)
         else:
             data = "(" + ", ".join(env[n].c_expr for n in free) + ")"
             for idx, name in enumerate(free):
                 loop_env[name] = _Binding(
-                    f"{self.pp('TUPLE_ELEM')}({idx}, d)", env[name].type
+                    f"{self.pp('TUPLE_ELEM')}({idx}, {self.arg('d')})", env[name].type
                 )
         return data, loop_env
 
@@ -747,18 +760,18 @@ class _MacroEmitter:
         if free:
             parts = [seq_expr] + [env[n].c_expr for n in free]
             data = "(" + ", ".join(parts) + ")"
-            seq_ref = f"{self.pp('TUPLE_ELEM')}(0, d)"
+            seq_ref = f"{self.pp('TUPLE_ELEM')}(0, {self.arg('d')})"
         else:
             data = seq_expr
-            seq_ref = "d"
+            seq_ref = self.arg("d")
         base_env = dict(env)
         for idx, name in enumerate(free):
             base_env[name] = _Binding(
-                f"{self.pp('TUPLE_ELEM')}({idx + 1}, d)", env[name].type
+                f"{self.pp('TUPLE_ELEM')}({idx + 1}, {self.arg('d')})", env[name].type
             )
         if node.iterable in env:
             base_env[node.iterable] = _Binding(seq_ref, env[node.iterable].type)
-        elem = f"{self.pp('SEQ_ELEM')}(n, {seq_ref})"
+        elem = f"{self.pp('SEQ_ELEM')}({self.arg('n')}, {seq_ref})"
         loop_env = self._loop_env(base_env, unpack, node.var, elem_type, node, elem=elem)
 
         self._loop_depth += 1
@@ -769,11 +782,16 @@ class _MacroEmitter:
 
         if sep is not None:
             if sep == ",":
-                body = f"{self.pp('COMMA_IF')}(n) {body}"
+                body = f"{self.pp('COMMA_IF')}({self.arg('n')}) {body}"
             else:
                 sep_helper = self._add_helper("SEP", "", sep)
-                body = f"{self.pp('IF')}(n, {sep_helper}, {self.pp('EMPTY')})() {body}"
-        helper = self._add_helper("EACH", "z, n, d", body)
+                body = (
+                    f"{self.pp('IF')}({self.arg('n')}, {sep_helper}, "
+                    f"{self.pp('EMPTY')})() {body}"
+                )
+        helper = self._add_helper(
+            "EACH", f"{self.arg('z')}, {self.arg('n')}, {self.arg('d')}", body
+        )
         return f"{self.pp('REPEAT')}({self.pp('SEQ_SIZE')}({seq_expr}), {helper}, {data})"
 
     def _loop_body(
@@ -787,7 +805,7 @@ class _MacroEmitter:
         outer variables ride the `d` slot and are spread into AP params too.
         """
         unpack = node.unpack if isinstance(node, ForEach) else None
-        loop_env = self._loop_env(env, unpack, node.var, elem_type, node)
+        loop_env = self._loop_env(env, unpack, node.var, elem_type, node, elem=self.arg("e"))
         data, loop_env = self._loop_data(node, env, loop_env)
 
         field_names: tuple[str, ...] = ()
@@ -795,8 +813,13 @@ class _MacroEmitter:
             field_names = unpack or elem_type.names
         # free vars are the ones _loop_data rebound onto the d slot,
         # kept in slot order
-        free = [n for n, b in loop_env.items() if b.c_expr == "d" or b.c_expr.endswith(", d)")]
-        free.sort(key=lambda n: int(m.group(1)) if (m := re.search(r"\((\d+), d\)", loop_env[n].c_expr)) else 0)
+        d_ = self.arg("d")
+        free = [
+            n for n, b in loop_env.items()
+            if b.c_expr == d_ or b.c_expr.endswith(f", {d_})")
+        ]
+        d_slot_re = re.compile(rf"\((\d+), {re.escape(d_)}\)")
+        free.sort(key=lambda n: int(m.group(1)) if (m := d_slot_re.search(loop_env[n].c_expr)) else 0)
         ap_params = free + list(field_names)
 
         use_ap = bool(field_names) and len(set(ap_params)) == len(ap_params)
@@ -804,7 +827,7 @@ class _MacroEmitter:
         if use_ap:
             render_env = dict(loop_env)
             for name in ap_params:
-                render_env[name] = _Binding(name, loop_env[name].type)
+                render_env[name] = _Binding(self.arg(name), loop_env[name].type)
         self._loop_depth += 1
         try:
             body = _collapse_ws(self._render_block(node.body, render_env))
@@ -813,16 +836,16 @@ class _MacroEmitter:
         if not use_ap:
             return body, data
 
-        ap = self._add_helper("AP", ", ".join(ap_params), body)
+        ap = self._add_helper("AP", ", ".join(self.arg(n) for n in ap_params), body)
         if not free:
-            return f"{ap} e", data
+            return f"{ap} {self.arg('e')}", data
         self.file_state["kw_utils"] = True
         spread = f"{self.config.helper_prefix}KW_SPREAD"
-        d_part = "d" if len(free) == 1 else f"{spread} d"
+        d_part = self.arg("d") if len(free) == 1 else f"{spread} {self.arg('d')}"
         self.out.helpers.append(
             _Helper(name=f"{ap}_D", params="...", body=f"{ap}(__VA_ARGS__)")
         )
-        return f"{ap}_D({d_part}, {spread} e)", data
+        return f"{ap}_D({d_part}, {spread} {self.arg('e')})", data
 
     def _render_chain(self, body: str, sep: str, seq_expr: str, elem_var: str) -> str:
         """Consumption-chain iteration: each member emits the body for one
@@ -851,12 +874,16 @@ class _MacroEmitter:
         small = f"{base}SMALL{count}"
         big = f"{base}BIG{count}"
         pick = f"{base}PICK{count}"
+        seq_ = self.arg("seq")
         self.out.defines.append(
-            f"#define {small}(seq) {self.pp('CAT')}({chain}, {self.pp('SEQ_SIZE')}(seq)) seq\n"
+            f"#define {small}({seq_}) "
+            f"{self.pp('CAT')}({chain}, {self.pp('SEQ_SIZE')}({seq_})) {seq_}\n"
         )
         self._big_name = big  # filled by the caller with the FOR_EACH form
+        n_ = self.arg("n")
         self.out.defines.append(
-            f"#define {pick}(n) {self.pp('IIF')}({self.pp('CAT')}({table}, n), {small}, {big})\n"
+            f"#define {pick}({n_}) "
+            f"{self.pp('IIF')}({self.pp('CAT')}({table}, {n_}), {small}, {big})\n"
         )
         return f"{pick}({self.pp('SEQ_SIZE')}({seq_expr}))({seq_expr})"
 
@@ -876,8 +903,9 @@ class _MacroEmitter:
         k = len(binding.type.names)
         name = f"{self.config.helper_prefix}{self.macro.name}_TL{k}"
         if not any(h.name == name for h in self.out.helpers):
-            heads = ", ".join(f"f{j}" for j in range(k))
-            self.out.helpers.append(_Helper(name=name, params="t", body=f"{name}_I t"))
+            heads = ", ".join(self.arg(f"f{j}") for j in range(k))
+            t_ = self.arg("t")
+            self.out.helpers.append(_Helper(name=name, params=t_, body=f"{name}_I {t_}"))
             self.out.helpers.append(
                 _Helper(name=f"{name}_I", params=f"{heads}, ...", body="(__VA_ARGS__)")
             )
@@ -896,8 +924,9 @@ class _MacroEmitter:
         (TUPLE_ELEM(...)-shaped) where bare juxtaposition would misfire."""
         name = f"{self.config.helper_prefix}{self.macro.name}_ISNIL"
         if not any(h.name == name for h in self.out.helpers):
+            x_ = self.arg("x")
             self.out.helpers.append(
-                _Helper(name=name, params="x", body=f"{self.pp('IS_EMPTY')} x")
+                _Helper(name=name, params=x_, body=f"{self.pp('IS_EMPTY')} {x_}")
             )
         return name
 
@@ -913,10 +942,10 @@ class _MacroEmitter:
             return None
         free = self._free_vars([node], env, set())
         self._guard_fragile(free, env, node.line)
-        branch_env = {n: _Binding(n, env[n].type) for n in free}
+        branch_env = {n: _Binding(self.arg(n), env[n].type) for n in free}
         # hybrids iterate their TAIL; inside the branch the helper param
         # holds the whole tuple, so extract there too
-        param_view = self._vtuple_view(_Binding(node.iterable, binding.type))
+        param_view = self._vtuple_view(_Binding(self.arg(node.iterable), binding.type))
         branch_env[node.iterable] = _Binding(
             f"{self.pp('TUPLE_TO_SEQ')}({param_view})", SeqT(binding.type.elem)
         )
@@ -924,7 +953,7 @@ class _MacroEmitter:
             body = self._render_foreach(node, branch_env)
         else:
             body = self._render_join(node, branch_env)
-        params = ", ".join(free)
+        params = ", ".join(self.arg(n) for n in free)
         loop_helper = self._add_helper("LOOP", params, _collapse_ws(body))
         nil_helper = self._add_helper("NIL", params, "")
         args = ", ".join(env[n].c_expr for n in free)
@@ -942,13 +971,15 @@ class _MacroEmitter:
             return self._render_inner_loop(loop, env, seq_expr, elem_type, sep=None)
         body, data = self._loop_body(loop, env, elem_type)
         if self.config.loop_chain_limit >= 256 and self._chain_eligible(loop, data):
-            return self._render_chain(body, "", seq_expr, "e")
-        helper = self._add_helper("EACH", "r, d, e", body)
+            return self._render_chain(body, "", seq_expr, self.arg("e"))
+        helper = self._add_helper(
+            "EACH", f"{self.arg('r')}, {self.arg('d')}, {self.arg('e')}", body
+        )
         each_call = f"{self.pp('SEQ_FOR_EACH')}({helper}, {data}, "
         if self._chain_eligible(loop, data):
-            call = self._render_chain(body, "", seq_expr, "e")
+            call = self._render_chain(body, "", seq_expr, self.arg("e"))
             self.out.defines.append(
-                f"#define {self._big_name}(seq) {each_call}seq)\n"
+                f"#define {self._big_name}({self.arg('seq')}) {each_call}{self.arg('seq')})\n"
             )
             return call
         return f"{each_call}{seq_expr})"
@@ -962,25 +993,32 @@ class _MacroEmitter:
             return self._render_inner_loop(join, env, seq_expr, elem_type, sep=join.sep.strip())
         body, data = self._loop_body(join, env, elem_type)
         sep = join.sep.strip()
-        if sep == "," and body == "e" and data == "~":
+        if sep == "," and body == self.arg("e") and data == "~":
             # identity comma join: SEQ_ENUM is table-driven, ~50-140x cheaper
             # than the FOR-based SEQ_FOR_EACH_I + COMMA_IF machinery
             return f"{self.pp('SEQ_ENUM')}({seq_expr})"
         if self.config.loop_chain_limit >= 256 and self._chain_eligible(join, data):
             chain_sep = "," if sep == "," else f" {sep}"
-            return self._render_chain(body, chain_sep, seq_expr, "e")
+            return self._render_chain(body, chain_sep, seq_expr, self.arg("e"))
         if sep == ",":
-            each_body = f"{self.pp('COMMA_IF')}(i) {body}"
+            each_body = f"{self.pp('COMMA_IF')}({self.arg('i')}) {body}"
         else:
             sep_helper = self._add_helper("SEP", "", sep)
-            each_body = f"{self.pp('IF')}(i, {sep_helper}, {self.pp('EMPTY')})() {body}"
-        helper = self._add_helper("EACH", "r, d, i, e", each_body)
+            each_body = (
+                f"{self.pp('IF')}({self.arg('i')}, {sep_helper}, "
+                f"{self.pp('EMPTY')})() {body}"
+            )
+        helper = self._add_helper(
+            "EACH",
+            f"{self.arg('r')}, {self.arg('d')}, {self.arg('i')}, {self.arg('e')}",
+            each_body,
+        )
         each_call = f"{self.pp('SEQ_FOR_EACH_I')}({helper}, {data}, "
         if self._chain_eligible(join, data):
             chain_sep = "," if sep == "," else f" {sep}"
-            call = self._render_chain(body, chain_sep, seq_expr, "e")
+            call = self._render_chain(body, chain_sep, seq_expr, self.arg("e"))
             self.out.defines.append(
-                f"#define {self._big_name}(seq) {each_call}seq)\n"
+                f"#define {self._big_name}({self.arg('seq')}) {each_call}{self.arg('seq')})\n"
             )
             return call
         return f"{each_call}{seq_expr})"
@@ -988,8 +1026,8 @@ class _MacroEmitter:
     def _kary_cat(self, k: int) -> str:
         name = f"{self.config.helper_prefix}{self.macro.name}_CAT{k}"
         if not any(h.name == name for h in self.out.helpers):
-            params = ", ".join(f"p{j}" for j in range(k))
-            pasted = " ## ".join(f"p{j}" for j in range(k))
+            params = ", ".join(self.arg(f"p{j}") for j in range(k))
+            pasted = " ## ".join(self.arg(f"p{j}") for j in range(k))
             self.out.helpers.append(_Helper(name=name, params=params, body=f"{name}_I({params})"))
             self.out.helpers.append(_Helper(name=f"{name}_I", params=params, body=pasted))
         return name
@@ -1302,6 +1340,7 @@ def _apply_pragmas(config: EmitConfig, pragmas: dict[str, str]) -> EmitConfig:
         helper_prefix=pragmas.get("helper_prefix", config.helper_prefix),
         runtime_name=pragmas.get("runtime_name", config.runtime_name),
         runtime_include=pragmas.get("runtime_include", config.runtime_include),
+        arg_prefix=pragmas.get("arg_prefix", config.arg_prefix),
         loop_chain=pragmas.get("loop_chain", "on" if config.loop_chain else "off") != "off",
         loop_chain_limit=int(pragmas.get("loop_chain_limit", config.loop_chain_limit)),
     )
