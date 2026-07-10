@@ -172,7 +172,7 @@ class _Ast(Transformer[Any, Any]):
         return Join(
             var=str(var)[1:] if var else None,
             iterable=str(iterable)[1:],
-            sep=_unquote(sep),
+            sep=_check_separator(_unquote(sep)),
         )
 
     def let_line(self, items: list[Any]) -> Let:
@@ -258,6 +258,21 @@ def _clean_default(token: Any) -> str:
 
 
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "0": "\0", '"': '"', "\\": "\\"}
+
+# The separator is spliced verbatim into #define bodies: a newline splits
+# the define, a trailing backslash line-continues into the NEXT define,
+# '#' is the stringize operator, NUL is not a source character.
+_SEP_FORBIDDEN = {"\n": "'\\n'", "\r": "'\\r'", "\0": "'\\0'", "\\": "'\\'", "#": "'#'"}
+
+
+def _check_separator(sep: str) -> str:
+    bad = [_SEP_FORBIDDEN[ch] for ch in dict.fromkeys(sep) if ch in _SEP_FORBIDDEN]
+    if bad:
+        raise ValueError(
+            f"@join separator cannot contain {', '.join(bad)}: separators are "
+            "spliced into generated #define bodies"
+        )
+    return sep
 
 
 def _unquote(token: Any) -> str:

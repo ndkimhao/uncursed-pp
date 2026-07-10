@@ -283,6 +283,20 @@ def test_join_separator_escapes_still_work():
     assert join.sep == "\t"
 
 
+def test_join_separator_rejects_define_corrupting_chars():
+    # the separator is spliced into #define bodies: a newline splits the
+    # define, a backslash line-continues into the NEXT define, '#' is the
+    # stringize operator - all corrupt the header silently
+    for sep in ('"a\\nb"', '" \\\\ "', '"a # b"'):
+        src = (
+            f'@macro A($xs: seq<token>)\n@join $xs as $x with {sep}\n'
+            '({{$x}})\n@end\n@endmacro\n'
+        )
+        with pytest.raises(UncursedPpError) as excinfo:
+            parse_file(src, "t.uncursed")
+        assert "separator" in str(excinfo.value), sep
+
+
 def test_block_join_separator_containing_at_end():
     src = '@macro A($xs: seq<token>)\n@join $xs as $x with " @end "\nb({{$x}})\n@end\n@endmacro\n'
     [macro] = parse_file(src, "t.uncursed").macros

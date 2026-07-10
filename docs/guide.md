@@ -265,8 +265,11 @@ void {{$name}}(@join $args with ", ": {{$type}} {{$argname}}@end);
 
 - `as x` binds the element; for tuple elements the field names are also
   implicitly available (as with `@for`).
-- The separator is any string; `", "` compiles to the cheap
-  `BOOST_PP_COMMA_IF`, other separators get a tiny helper macro.
+- The separator is (almost) any string; `", "` compiles to the cheap
+  `BOOST_PP_COMMA_IF`, other separators get a tiny helper macro. Because
+  separators are spliced into generated `#define` bodies, they cannot
+  contain newlines, `#`, or backslashes — the compiler rejects those with
+  a clear error.
 
 ### `@if` / `@else` — compile-time branching
 
