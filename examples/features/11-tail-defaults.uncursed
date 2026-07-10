@@ -1,0 +1,36 @@
+# ── Tail defaults: optional trailing arguments ───────────────────────
+#
+# `param = value` gives a trailing parameter a default. Omitted
+# arguments are filled in AT C COMPILE TIME by arity dispatch — the
+# generated macro counts its arguments and routes to the right filler.
+# Defaults must trail required parameters; a default value must not
+# contain commas or parens; at least one required parameter is needed
+# (C cannot overload on zero arguments).
+#
+# Scenario: a retry wrapper where attempts and failure handler are
+# usually the defaults.
+
+macro RETRY(call, attempts = 3, on_fail = abort)
+for (int i_ = 0; i_ < {{attempts}}; i_++) { if ({{call}}() == 0) break; if (i_ == {{attempts}} - 1) {{on_fail}}(); }
+end
+
+#?  RETRY(connect)
+#=>     for (int i_ = 0; i_ < 3; i_++) { if (connect() == 0) break; if (i_ == 3 - 1) abort(); }
+
+#?  RETRY(connect, 5)
+#=>     for (int i_ = 0; i_ < 5; i_++) { if (connect() == 0) break; if (i_ == 5 - 1) abort(); }
+
+#?  RETRY(connect, 5, panic)
+#=>     for (int i_ = 0; i_ < 5; i_++) { if (connect() == 0) break; if (i_ == 5 - 1) panic(); }
+
+# A default may be EMPTY — here `quals` disappears when omitted.
+
+macro EXPORT_FN(ret, fname, quals = )
+{{quals}} {{ret}} {{fname}}(void);
+end
+
+#?  EXPORT_FN(int, get_version)
+#=>     int get_version(void);
+
+#?  EXPORT_FN(int, get_version, static)
+#=>     static int get_version(void);

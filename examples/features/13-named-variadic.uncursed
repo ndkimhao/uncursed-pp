@@ -1,0 +1,20 @@
+# ── named variadic: keywords that take bare commas ───────────────────
+#
+# A plain `named` keyword takes ONE token-sequence — KEY(a, b) is a
+# compile error naming the keyword's setter. Declaring the parameter
+# `named variadic` opts in to bare commas: the whole argument list
+# passes through verbatim.
+#
+# Scenario: a color gradient where stops are naturally a bare list.
+
+macro DEFINE_GRADIENT(name, named variadic STOPS = black)
+static const int {{name}}[] = { {{STOPS}} };
+end
+
+# Default:
+#?  DEFINE_GRADIENT(fade)
+#=>     static const int fade[] = { black };
+
+# Bare commas pass through verbatim:
+#?  DEFINE_GRADIENT(fade, STOPS(red, green, blue))
+#=>     static const int fade[] = { red, green, blue };
