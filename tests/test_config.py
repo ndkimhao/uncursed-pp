@@ -8,6 +8,9 @@ from conftest import GOLDEN
 from cursedpp.emitter import EmitConfig, compile_source, compile_template, runtime_header
 from cursedpp.parser import CursedppError, parse_file
 
+# a macro that needs the shared runtime (spread tuple param -> KW_SPREAD)
+SPREAD_SRC = "macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n"
+
 
 def test_parse_pragmas():
     src = (
@@ -119,7 +122,7 @@ def test_runtime_header_contents():
 
 
 def test_compile_template_reports_runtime_dependency():
-    result = compile_template(WIDGET_SRC, "w.cursed")
+    result = compile_template(SPREAD_SRC, "w.cursed")
     assert result.runtime is not None
     assert result.runtime_name == "cursedpp_runtime.h"
 
@@ -129,14 +132,14 @@ def test_compile_template_reports_runtime_dependency():
 
 def test_runtime_name_customizable():
     result = compile_template(
-        WIDGET_SRC, "w.cursed", config=EmitConfig(runtime_name="acme_common.h")
+        SPREAD_SRC, "w.cursed", config=EmitConfig(runtime_name="acme_common.h")
     )
     assert result.runtime_name == "acme_common.h"
     assert '#include "acme_common.h"' in result.header
 
 
 def test_runtime_name_pragma():
-    src = '@pragma runtime_name "acme_common.h"\n' + WIDGET_SRC
+    src = '@pragma runtime_name "acme_common.h"\n' + SPREAD_SRC
     result = compile_template(src, "w.cursed")
     assert result.runtime_name == "acme_common.h"
     assert '#include "acme_common.h"' in result.header

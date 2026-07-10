@@ -3,11 +3,8 @@
 
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/facilities/overload.hpp>
-#include <boost/preprocessor/seq/fold_left.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
-#include <boost/preprocessor/variadic/to_seq.hpp>
-#include "cursedpp_runtime.h"
 
 /* cursedpp source:
  * # Named args composed with a loop: BODY params referenced inside the
@@ -20,15 +17,12 @@
  */
 #define CURSEDPP_VEC_EACH1(r, d, e) BOOST_PP_CAT(BOOST_PP_TUPLE_ELEM(0, d), e) BOOST_PP_TUPLE_ELEM(1, d);
 #define CURSEDPP_VEC_SET_PREFIX(v) 0, v
-#define CURSEDPP_VEC_STEP(s, state, e) CURSEDPP_VEC_STEP_D(state, BOOST_PP_CAT(CURSEDPP_VEC_SET_, e))
-#define CURSEDPP_VEC_STEP_D(state, ...) CURSEDPP_VEC_STEP_I(state, __VA_ARGS__)
-#define CURSEDPP_VEC_STEP_I(state, i, v) BOOST_PP_CAT(CURSEDPP_VEC_PUT_, i)(v, state)
-#define CURSEDPP_VEC_PUT_0(v, state) CURSEDPP_VEC_PUT_0_D(v, CURSEDPP_KW_SPREAD state)
-#define CURSEDPP_VEC_PUT_0_D(...) CURSEDPP_VEC_PUT_0_I(__VA_ARGS__)
-#define CURSEDPP_VEC_PUT_0_I(v, p0) (v)
+#define CURSEDPP_VEC_STEP1(e, ...) CURSEDPP_VEC_STEP_D(BOOST_PP_CAT(CURSEDPP_VEC_SET_, e), __VA_ARGS__)
+#define CURSEDPP_VEC_STEP_D(...) CURSEDPP_VEC_STEP_I(__VA_ARGS__)
+#define CURSEDPP_VEC_STEP_I(i, v, ...) CURSEDPP_VEC_PUT_ ## i(v, __VA_ARGS__)
+#define CURSEDPP_VEC_PUT_0(v, p0) v
 #define CURSEDPP_VEC_BODY(name, items, PREFIX) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_VEC_EACH1, (PREFIX, name), items)
-#define CURSEDPP_VEC_UNPACK(name, items, state) CURSEDPP_VEC_BODY(name, items, BOOST_PP_TUPLE_ELEM(0, state))
-#define CURSEDPP_VEC_KW(name, items, ...) CURSEDPP_VEC_UNPACK(name, items, BOOST_PP_SEQ_FOLD_LEFT(CURSEDPP_VEC_STEP, (v), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
+#define CURSEDPP_VEC_BODY_D(...) CURSEDPP_VEC_BODY(__VA_ARGS__)
 #define CURSEDPP_VEC_2(name, items) CURSEDPP_VEC_BODY(name, items, v)
-#define CURSEDPP_VEC_3 CURSEDPP_VEC_KW
+#define CURSEDPP_VEC_3(name, items, e1) CURSEDPP_VEC_BODY_D(name, items, CURSEDPP_VEC_STEP1(e1, v))
 #define VEC(...) BOOST_PP_OVERLOAD(CURSEDPP_VEC_, __VA_ARGS__)(__VA_ARGS__)

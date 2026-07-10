@@ -6,10 +6,8 @@
 #include <boost/preprocessor/facilities/overload.hpp>
 #include <boost/preprocessor/punctuation/is_begin_parens.hpp>
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
-#include <boost/preprocessor/seq/fold_left.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
-#include <boost/preprocessor/variadic/to_seq.hpp>
 #include "cursedpp_runtime.h"
 
 /* cursedpp source:
@@ -50,15 +48,12 @@
 #define CURSEDPP_OBJ_THEN1(FIELDS) EACH_FIELD(FIELDS)
 #define CURSEDPP_OBJ_ELSE1(FIELDS)
 #define CURSEDPP_OBJ_SET_FIELDS(...) 0, (__VA_ARGS__)
-#define CURSEDPP_OBJ_STEP(s, state, e) CURSEDPP_OBJ_STEP_D(state, BOOST_PP_CAT(CURSEDPP_OBJ_SET_, e))
-#define CURSEDPP_OBJ_STEP_D(state, ...) CURSEDPP_OBJ_STEP_I(state, __VA_ARGS__)
-#define CURSEDPP_OBJ_STEP_I(state, i, v) BOOST_PP_CAT(CURSEDPP_OBJ_PUT_, i)(v, state)
-#define CURSEDPP_OBJ_PUT_0(v, state) CURSEDPP_OBJ_PUT_0_D(v, CURSEDPP_KW_SPREAD state)
-#define CURSEDPP_OBJ_PUT_0_D(...) CURSEDPP_OBJ_PUT_0_I(__VA_ARGS__)
-#define CURSEDPP_OBJ_PUT_0_I(v, p0) (v)
+#define CURSEDPP_OBJ_STEP1(e, ...) CURSEDPP_OBJ_STEP_D(BOOST_PP_CAT(CURSEDPP_OBJ_SET_, e), __VA_ARGS__)
+#define CURSEDPP_OBJ_STEP_D(...) CURSEDPP_OBJ_STEP_I(__VA_ARGS__)
+#define CURSEDPP_OBJ_STEP_I(i, v, ...) CURSEDPP_OBJ_PUT_ ## i(v, __VA_ARGS__)
+#define CURSEDPP_OBJ_PUT_0(v, p0) v
 #define CURSEDPP_OBJ_BODY(name, FIELDS) struct name { BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(BOOST_PP_REMOVE_PARENS(FIELDS)), CURSEDPP_OBJ_THEN1, CURSEDPP_OBJ_ELSE1)(BOOST_PP_REMOVE_PARENS(FIELDS)) };
-#define CURSEDPP_OBJ_UNPACK(name, state) CURSEDPP_OBJ_BODY(name, BOOST_PP_TUPLE_ELEM(0, state))
-#define CURSEDPP_OBJ_KW(name, ...) CURSEDPP_OBJ_UNPACK(name, BOOST_PP_SEQ_FOLD_LEFT(CURSEDPP_OBJ_STEP, (()), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
+#define CURSEDPP_OBJ_BODY_D(...) CURSEDPP_OBJ_BODY(__VA_ARGS__)
 #define CURSEDPP_OBJ_1(name) CURSEDPP_OBJ_BODY(name, ())
-#define CURSEDPP_OBJ_2 CURSEDPP_OBJ_KW
+#define CURSEDPP_OBJ_2(name, e1) CURSEDPP_OBJ_BODY_D(name, CURSEDPP_OBJ_STEP1(e1, ()))
 #define OBJ(...) BOOST_PP_OVERLOAD(CURSEDPP_OBJ_, __VA_ARGS__)(__VA_ARGS__)

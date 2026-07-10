@@ -65,7 +65,7 @@ def test_cli_config_via_pragmas(tmp_path):
 
 def test_cli_writes_runtime_header_when_needed(tmp_path):
     src = tmp_path / "w.cursed"
-    src.write_text("macro W(name, named WIDTH = 1)\nf({{name}}, {{WIDTH}})\nend\n")
+    src.write_text("macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n")
     out = tmp_path / "sub" / "w.h"
     out.parent.mkdir()
     main([str(src), "-o", str(out)])
@@ -85,7 +85,7 @@ def test_cli_runtime_name_pragma(tmp_path):
     src = tmp_path / "w.cursed"
     src.write_text(
         '@pragma runtime_name "acme_common.h"\n'
-        "macro W(name, named WIDTH = 1)\nf({{name}}, {{WIDTH}})\nend\n"
+        "macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n"
     )
     main([str(src)])
     assert (tmp_path / "acme_common.h").exists()

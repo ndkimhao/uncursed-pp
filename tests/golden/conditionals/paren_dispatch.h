@@ -6,10 +6,6 @@
 #include <boost/preprocessor/facilities/overload.hpp>
 #include <boost/preprocessor/punctuation/is_begin_parens.hpp>
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
-#include <boost/preprocessor/seq/fold_left.hpp>
-#include <boost/preprocessor/tuple/elem.hpp>
-#include <boost/preprocessor/variadic/to_seq.hpp>
-#include "cursedpp_runtime.h"
 
 /* cursedpp source:
  * # A named value's SHAPE picks the branch: parenthesized initializers
@@ -26,15 +22,12 @@
 #define CURSEDPP_DECL_THEN1(name, INIT) pair name = { BOOST_PP_REMOVE_PARENS(INIT) };
 #define CURSEDPP_DECL_ELSE1(name, INIT) int name = INIT;
 #define CURSEDPP_DECL_SET_INIT(v) 0, v
-#define CURSEDPP_DECL_STEP(s, state, e) CURSEDPP_DECL_STEP_D(state, BOOST_PP_CAT(CURSEDPP_DECL_SET_, e))
-#define CURSEDPP_DECL_STEP_D(state, ...) CURSEDPP_DECL_STEP_I(state, __VA_ARGS__)
-#define CURSEDPP_DECL_STEP_I(state, i, v) BOOST_PP_CAT(CURSEDPP_DECL_PUT_, i)(v, state)
-#define CURSEDPP_DECL_PUT_0(v, state) CURSEDPP_DECL_PUT_0_D(v, CURSEDPP_KW_SPREAD state)
-#define CURSEDPP_DECL_PUT_0_D(...) CURSEDPP_DECL_PUT_0_I(__VA_ARGS__)
-#define CURSEDPP_DECL_PUT_0_I(v, p0) (v)
+#define CURSEDPP_DECL_STEP1(e, ...) CURSEDPP_DECL_STEP_D(BOOST_PP_CAT(CURSEDPP_DECL_SET_, e), __VA_ARGS__)
+#define CURSEDPP_DECL_STEP_D(...) CURSEDPP_DECL_STEP_I(__VA_ARGS__)
+#define CURSEDPP_DECL_STEP_I(i, v, ...) CURSEDPP_DECL_PUT_ ## i(v, __VA_ARGS__)
+#define CURSEDPP_DECL_PUT_0(v, p0) v
 #define CURSEDPP_DECL_BODY(name, INIT) BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(INIT), CURSEDPP_DECL_THEN1, CURSEDPP_DECL_ELSE1)(name, INIT)
-#define CURSEDPP_DECL_UNPACK(name, state) CURSEDPP_DECL_BODY(name, BOOST_PP_TUPLE_ELEM(0, state))
-#define CURSEDPP_DECL_KW(name, ...) CURSEDPP_DECL_UNPACK(name, BOOST_PP_SEQ_FOLD_LEFT(CURSEDPP_DECL_STEP, (), BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))
+#define CURSEDPP_DECL_BODY_D(...) CURSEDPP_DECL_BODY(__VA_ARGS__)
 #define CURSEDPP_DECL_1(name) CURSEDPP_DECL_BODY(name, )
-#define CURSEDPP_DECL_2 CURSEDPP_DECL_KW
+#define CURSEDPP_DECL_2(name, e1) CURSEDPP_DECL_BODY_D(name, CURSEDPP_DECL_STEP1(e1, ))
 #define DECL(...) BOOST_PP_OVERLOAD(CURSEDPP_DECL_, __VA_ARGS__)(__VA_ARGS__)

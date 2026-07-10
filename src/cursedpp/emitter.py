@@ -272,9 +272,7 @@ class _MacroEmitter:
         )
 
     def _emit_named(self, pos: list[Param], named: list[Param], body: str) -> None:
-        self.file_state["kw_utils"] = True
         base = f"{self.config.helper_prefix}{self.macro.name}_"
-        kw_util = self.config.helper_prefix
         pos_names = [p.name for p in pos]
         all_names = pos_names + [p.name for p in named]
         defaults = ", ".join(
@@ -283,9 +281,8 @@ class _MacroEmitter:
         )
         defines = self.out.defines
 
-        # each keyword argument dispatches itself: CAT(SET_, WIDTH(20))
-        # -> SET_WIDTH(20) -> "0, 20" (slot index, value); one fold
-        # TUPLE_REPLACEs slots in the defaults tuple. 'named variadic'
+        # Each keyword argument dispatches itself: CAT(SET_, WIDTH(20))
+        # -> SET_WIDTH(20) -> "0, 20" (slot index, value). 'named variadic'
         # setters capture bare commas and re-wrap so the value stays one
         # macro argument.
         for slot, p in enumerate(named):
@@ -293,48 +290,42 @@ class _MacroEmitter:
                 defines.append(f"#define {base}SET_{p.name}(...) {slot}, (__VA_ARGS__)\n")
             else:
                 defines.append(f"#define {base}SET_{p.name}(v) {slot}, v\n")
-        # STEP re-parses the expanded "slot, value" pair, then dispatches to
-        # a generated per-slot replacer - TUPLE_REPLACE would run a full
-        # BOOST_PP_WHILE per keyword argument (measured 22x slower).
+
+        # OVERLOAD already dispatches on the exact keyword count, so each
+        # arity nests a one-step setter over BARE comma-separated state -
+        # no fold, no seq conversion, no state tuple (audit: 8.5x). STEP_I's
+        # ## pastes the literal slot digit the setter emitted; PUT_<slot>
+        # rebuilds the state list with that slot replaced. BODY is reached
+        # through a variadic redirect because commas produced by expansion
+        # never re-split arguments.
         defines.append(
-            f"#define {base}STEP(s, state, e) "
-            f"{base}STEP_D(state, {self.pp('CAT')}({base}SET_, e))\n"
+            f"#define {base}STEP1(e, ...) "
+            f"{base}STEP_D({self.pp('CAT')}({base}SET_, e), __VA_ARGS__)\n"
         )
-        defines.append(f"#define {base}STEP_D(state, ...) {base}STEP_I(state, __VA_ARGS__)\n")
-        defines.append(
-            f"#define {base}STEP_I(state, i, v) {self.pp('CAT')}({base}PUT_, i)(v, state)\n"
-        )
+        defines.append(f"#define {base}STEP_D(...) {base}STEP_I(__VA_ARGS__)\n")
+        defines.append(f"#define {base}STEP_I(i, v, ...) {base}PUT_ ## i(v, __VA_ARGS__)\n")
         arity = len(named)
         slots = [f"p{j}" for j in range(arity)]
         for slot in range(arity):
             replaced = ", ".join("v" if j == slot else f"p{j}" for j in range(arity))
-            defines.append(
-                f"#define {base}PUT_{slot}(v, state) "
-                f"{base}PUT_{slot}_D(v, {kw_util}KW_SPREAD state)\n"
-            )
-            defines.append(f"#define {base}PUT_{slot}_D(...) {base}PUT_{slot}_I(__VA_ARGS__)\n")
-            defines.append(f"#define {base}PUT_{slot}_I(v, {', '.join(slots)}) ({replaced})\n")
+            defines.append(f"#define {base}PUT_{slot}(v, {', '.join(slots)}) {replaced}\n")
         defines.append(_format_define(f"{base}BODY({', '.join(all_names)})", body))
-        unpack_args = ", ".join(
-            f"{self.pp('TUPLE_ELEM')}({slot}, state)" for slot in range(len(named))
-        )
-        defines.append(
-            f"#define {base}UNPACK({', '.join(pos_names)}, state) "
-            f"{base}BODY({', '.join(pos_names)}, {unpack_args})\n"
-        )
-        defines.append(
-            f"#define {base}KW({', '.join(pos_names)}, ...) "
-            f"{base}UNPACK({', '.join(pos_names)}, "
-            f"{self.pp('SEQ_FOLD_LEFT')}({base}STEP, ({defaults}), "
-            f"{self.pp('VARIADIC_TO_SEQ')}(__VA_ARGS__)))\n"
-        )
+        defines.append(f"#define {base}BODY_D(...) {base}BODY(__VA_ARGS__)\n")
+
         required = len(pos)
         defines.append(
             f"#define {base}{required}({', '.join(pos_names)}) "
             f"{base}BODY({', '.join(pos_names)}, {defaults})\n"
         )
-        for i in range(1, len(named) + 1):
-            defines.append(f"#define {base}{required + i} {base}KW\n")
+        for k in range(1, arity + 1):
+            kw_params = [f"e{j}" for j in range(1, k + 1)]
+            nest = defaults
+            for e in kw_params:  # innermost gets the first kwarg: last wins
+                nest = f"{base}STEP1({e}, {nest})"
+            defines.append(
+                f"#define {base}{required + k}({', '.join(pos_names + kw_params)}) "
+                f"{base}BODY_D({', '.join(pos_names)}, {nest})\n"
+            )
         defines.append(
             f"#define {self.macro.name}(...) "
             f"{self.pp('OVERLOAD')}({base}, __VA_ARGS__)(__VA_ARGS__)\n"

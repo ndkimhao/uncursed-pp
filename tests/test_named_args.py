@@ -39,14 +39,20 @@ def test_setter_dispatch_one_define_per_keyword():
     out = compile_source(src, "t.cursed")
     assert "#define CURSEDPP_W_SET_A(v) 0, v\n" in out
     assert "#define CURSEDPP_W_SET_B(v) 1, v\n" in out
-    assert out.count("BOOST_PP_SEQ_FOLD_LEFT") == 1  # one fold, not one per keyword
-    # slot updates are direct generated replacers, not TUPLE_REPLACE (which
-    # hides a BOOST_PP_WHILE per keyword argument - measured 22x slower)
-    assert "#define CURSEDPP_W_PUT_0(v, state) CURSEDPP_W_PUT_0_D(v, CURSEDPP_KW_SPREAD state)\n" in out
-    assert "#define CURSEDPP_W_PUT_0_D(...) CURSEDPP_W_PUT_0_I(__VA_ARGS__)\n" in out
-    assert "#define CURSEDPP_W_PUT_0_I(v, p0, p1) (v, p1)\n" in out
-    assert "#define CURSEDPP_W_PUT_1_I(v, p0, p1) (p0, v)\n" in out
-    assert "TUPLE_REPLACE" not in out
+    # no fold at all: OVERLOAD knows the exact kwarg count, so each arity
+    # nests a one-step setter over BARE comma-separated state (audit: 8.5x)
+    assert "SEQ_FOLD_LEFT" not in out
+    assert "VARIADIC_TO_SEQ" not in out
+    assert "#define CURSEDPP_W_STEP1(e, ...) CURSEDPP_W_STEP_D(BOOST_PP_CAT(CURSEDPP_W_SET_, e), __VA_ARGS__)\n" in out
+    assert "#define CURSEDPP_W_STEP_D(...) CURSEDPP_W_STEP_I(__VA_ARGS__)\n" in out
+    assert "#define CURSEDPP_W_STEP_I(i, v, ...) CURSEDPP_W_PUT_ ## i(v, __VA_ARGS__)\n" in out
+    assert "#define CURSEDPP_W_PUT_0(v, p0, p1) v, p1\n" in out
+    assert "#define CURSEDPP_W_PUT_1(v, p0, p1) p0, v\n" in out
+    assert "#define CURSEDPP_W_BODY_D(...) CURSEDPP_W_BODY(__VA_ARGS__)\n" in out
+    assert "#define CURSEDPP_W_2(name, e1) CURSEDPP_W_BODY_D(name, CURSEDPP_W_STEP1(e1, 1, 2))\n" in out
+    assert "#define CURSEDPP_W_3(name, e1, e2) CURSEDPP_W_BODY_D(name, CURSEDPP_W_STEP1(e2, CURSEDPP_W_STEP1(e1, 1, 2)))\n" in out
+    assert "UNPACK" not in out
+    assert "KW_SPREAD" not in out
 
 
 def test_named_variadic_setter_captures_commas():
@@ -70,11 +76,13 @@ def test_required_after_named_is_error():
 def test_single_keyword_put_arity():
     src = "macro S1(name, named ONLY = 7)\nf({{name}}, {{ONLY}})\nend\n"
     out = compile_source(src, "t.cursed")
-    assert "#define CURSEDPP_S1_PUT_0_I(v, p0) (v)\n" in out
-    assert "BOOST_PP_SEQ_FOLD_LEFT(CURSEDPP_S1_STEP, (7)," in out
+    assert "#define CURSEDPP_S1_PUT_0(v, p0) v\n" in out
+    assert "#define CURSEDPP_S1_2(name, e1) CURSEDPP_S1_BODY_D(name, CURSEDPP_S1_STEP1(e1, 7))\n" in out
 
 
-def test_empty_default_in_fold_seed():
+def test_empty_default_keeps_its_slot_in_the_state():
     src = "macro S2(name, named A = 1, named B = )\nf({{A}}, {{B}})\nend\n"
     out = compile_source(src, "t.cursed")
-    assert "(1, )," in out  # empty default keeps its slot in the seed tuple
+    # empty default keeps its slot in the bare state list
+    assert "CURSEDPP_S2_STEP1(e1, 1, )" in out
+    assert "#define CURSEDPP_S2_1(name) CURSEDPP_S2_BODY(name, 1, )\n" in out
