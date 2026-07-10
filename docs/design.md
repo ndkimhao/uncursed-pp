@@ -107,6 +107,12 @@ end
   site `(a, b, c)`, `()` = zero elements, ≤64 elements. Support `len`,
   `[i]`, iteration/unpacking, `is_empty`; no named access. Allowed as
   parameter, seq element, and variadic element types.
+- Hybrid tuples (`tuple<n1, .., nk, T...>`): named head + unbounded tail.
+  Named access reads the head (`TUPLE_ELEM`, ungated); iteration/`len`/
+  `is_empty`/`[i]` are tail-scoped via a generated 2-define extraction
+  (`TL<k>(t) = TL<k>_I t`, `TL<k>_I(f1..fk, ...) = (__VA_ARGS__)`) whose
+  result is a plain unbounded tuple — all VarTupleT codegen reuses. At
+  least k elements required at the call site; head+tail ≤64.
 - Call-site caveats (documented in README): args with bare commas must be
   parenthesized; named-arg keywords must not be `#define`d at the call site.
 

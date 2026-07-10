@@ -29,6 +29,7 @@ call-site rules that apply to it:
 | 16 | codegen: helper collapse (read the .h!) |
 | 17 | codegen: adjacency never pastes |
 | 18 | unbounded tuples — `tuple<T...>`, `()` means zero elements |
+| 19 | hybrid tuples — named head fields + unbounded tail |
 
 `combined/` shows features composing into realistic artifacts: a bitflag
 system, a finite state machine, and a unit-test registry — each driven

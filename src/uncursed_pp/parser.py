@@ -114,6 +114,10 @@ class _Ast(Transformer[Any, Any]):
     def var_tuple_type(self, items: list[Any]) -> VarTupleT:
         return VarTupleT(items[0])
 
+    def hybrid_tuple_type(self, items: list[Any]) -> VarTupleT:
+        names, tail_elem = items
+        return VarTupleT(tail_elem, names)
+
     def bare_var_tuple_type(self, _items: list[Any]) -> VarTupleT:
         return VarTupleT(TokenT())
 

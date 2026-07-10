@@ -23,9 +23,15 @@ class VarTupleT:
     """Unbounded tuple `tuple<T...>` (bare `tuple` = `tuple<token...>`):
     a parenthesized comma list with a variable element count, all of one
     element type. Loops/len are emptiness-gated so `()` means zero
-    elements; capped at 64 elements (BOOST_PP_VARIADIC_SIZE)."""
+    elements; capped at 64 elements (BOOST_PP_VARIADIC_SIZE).
+
+    Non-empty `names` makes it a HYBRID `tuple<n1, .., nk, T...>`: fixed
+    named leading fields, then the unbounded tail. Named access reads the
+    head; iteration/len/is_empty/[i] are all TAIL-scoped (they must agree
+    with each other)."""
 
     elem: "Type" = TokenT()
+    names: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

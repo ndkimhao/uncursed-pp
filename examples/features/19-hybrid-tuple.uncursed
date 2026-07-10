@@ -1,0 +1,47 @@
+# ── Hybrid tuples: named head fields + an unbounded tail ─────────────
+#
+# `tuple<fname, ftype, token...>` declares fixed NAMED fields followed
+# by a variable tail: the call site is (x, int, RO, LOGGED) — head
+# first, then any number of tail elements. `(x, int)` is a legal empty
+# tail. The tail's element type goes before the ellipsis, and may
+# itself be a named tuple: tuple<verb, tuple<code, action>...>.
+#
+# The rule that keeps this predictable: NAMED ACCESS reads the head;
+# EVERYTHING ELSE is tail-scoped. `@for`/`@join` iterate the tail only,
+# `len()` counts the tail, `is_empty()` asks "is the tail empty", and
+# `f[i]` indexes the tail. They all agree — a loop never revisits data
+# you address by name, and len() always matches what iteration sees.
+#
+# Call-site rules: at least the named fields must be present; head plus
+# tail cap at 64 elements total; a trailing comma after the head reads
+# as one EMPTY tail element (same footgun family as `()`).
+#
+# Scenario: struct field descriptors — every field has a name and type,
+# SOME fields carry extra attributes.
+
+macro DECL(f: tuple<fname, ftype, token...>)
+@if is_empty(f)
+  {{f.ftype}} {{f.fname}};
+@else
+  {{f.ftype}} {{f.fname}} __attribute__((@join f as a with ", ": {{a}}@end));
+@end
+end
+
+#?  DECL((flags, unsigned, packed))
+#=>     unsigned flags __attribute__((packed));
+
+# empty tail: the plain declaration
+#?  DECL((count, int))
+#=>     int count;
+
+# ── the head never counts: len()/[i] see only the tail ───────────────
+
+macro SUMMARY(f: tuple<owner, token...>)
+{{f.owner}} has {{len(f)}} tags
+end
+
+#?  SUMMARY((alice, admin, staff))
+#=>     alice has 2 tags
+
+#?  SUMMARY((bob))
+#=>     bob has 0 tags

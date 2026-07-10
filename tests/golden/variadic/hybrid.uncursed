@@ -1,0 +1,78 @@
+# Hybrid tuples: `tuple<n1, .., nk, T...>` — fixed NAMED head fields,
+# then an unbounded typed tail. Named access reads the head; iteration,
+# len(), is_empty() and [i] are all TAIL-scoped so they agree with each
+# other. Call site (x, int, F1, F2); (x, int) is an empty tail.
+
+macro DECL_FIELD(f: tuple<fname, ftype, token...>)
+@if is_empty(f)
+  {{f.ftype}} {{f.fname}};
+@else
+  {{f.ftype}} {{f.fname}} __attribute__((@join f as a with ", ": {{a}}@end));
+@end
+end
+
+#?  DECL_FIELD((x, int, packed, unused))
+#=>     int x __attribute__((packed, unused));
+
+# empty tail: just the head fields
+#?  DECL_FIELD((y, float))
+#=>     float y;
+
+# len() and [i] are tail-scoped: the head does not count
+macro TAIL_INFO(f: tuple<n, token...>)
+{{f.n}}: {{len(f)}} flags, first {{f[0]}}
+end
+
+#?  TAIL_INFO((cfg, RO, SYNC, DIRECT))
+#=>     cfg: 3 flags, first RO
+
+#?  TAIL_INFO((bare))
+#=>     bare: 0 flags, first
+
+# typed tails unpack; heads stay named
+macro ROUTE(r: tuple<verb, tuple<code, action>...>)
+{{concat(switch_, r.verb)}}:
+@for (code, action) in r
+  case {{code}}: {{action}}();
+@end
+end
+
+#?  ROUTE((GET, (200, ok), (404, missing)))
+#=>     switch_GET:
+#=>     case 200: ok();
+#=>     case 404: missing();
+
+# collapse interaction: identical tail loops in two macros share one
+# helper family through the TAIL extraction (chain families move as
+# units - docs/optimization.md round 3); small and empty inputs pin
+# the CAT-dispatched paths
+macro EMIT_A(f: tuple<n, token...>)
+@for x in f
+  emit({{x}});
+@end
+end
+
+macro EMIT_B(f: tuple<n, token...>)
+@for x in f
+  emit({{x}});
+@end
+end
+
+#?  EMIT_A((h, one, two))
+#=>     emit(one); emit(two);
+
+#?  EMIT_B((h, three))
+#=>     emit(three);
+
+#?  begin EMIT_B((h)) end
+#=>     begin end
+
+# hybrids as seq elements: per-row heads, variable-width tails
+macro ROWS(fs: seq<tuple<n, token...>>)
+@for f in fs
+  {{f.n}}[ @join f as a with ", ": {{a}}@end ]
+@end
+end
+
+#?  ROWS(((r1, a, b))((r2))((r3, c)))
+#=>     r1[ a, b ] r2[ ] r3[ c ]

@@ -432,10 +432,12 @@ class _MacroEmitter:
             inner = self._resolve(expr.arg, env, line)
             if isinstance(inner.type, VarTupleT):
                 # raw TUPLE_SIZE coerces () to 1 (an empty tuple IS one
-                # empty element to the preprocessor); gate so len(()) == 0
+                # empty element to the preprocessor); gate so len(()) == 0.
+                # Hybrids measure the TAIL (must agree with iteration).
+                view = self._vtuple_view(inner)
                 return _Binding(
-                    f"{self.pp('IIF')}({self._isnil()}({inner.c_expr}), 0, "
-                    f"{self.pp('TUPLE_SIZE')}({inner.c_expr}))",
+                    f"{self.pp('IIF')}({self._isnil()}({view}), 0, "
+                    f"{self.pp('TUPLE_SIZE')}({view}))",
                     TokenT(),
                 )
             if not isinstance(inner.type, SeqT):
@@ -449,7 +451,7 @@ class _MacroEmitter:
         if isinstance(expr, IsEmpty):
             inner = self._resolve(expr.arg, env, line)
             if isinstance(inner.type, VarTupleT):
-                return _Binding(f"{self._isnil()}({inner.c_expr})", TokenT())
+                return _Binding(f"{self._isnil()}({self._vtuple_view(inner)})", TokenT())
             return _Binding(f"{self.pp('IS_EMPTY')}({inner.c_expr})", TokenT())
         raise NotImplementedError(f"cannot emit expression {expr!r}")  # pragma: no cover
 
@@ -457,6 +459,19 @@ class _MacroEmitter:
         base = self._resolve(expr.base, env, line)
         if isinstance(expr.accessor, str):
             if isinstance(base.type, VarTupleT):
+                if expr.accessor in base.type.names:
+                    idx = base.type.names.index(expr.accessor)
+                    return _Binding(
+                        f"{self.pp('TUPLE_ELEM')}({idx}, {base.c_expr})", TokenT()
+                    )
+                if base.type.names:
+                    raise UncursedPpError(
+                        f"tuple has no named field {expr.accessor!r} "
+                        f"(has: {', '.join(base.type.names)}; the tail is "
+                        "indexed, not named)",
+                        self.filename,
+                        line,
+                    )
                 raise UncursedPpError(
                     f"an unbounded tuple has no named elements; index it: "
                     f"'[0]' instead of '.{expr.accessor}'",
@@ -480,8 +495,10 @@ class _MacroEmitter:
             idx = base.type.names.index(expr.accessor)
             return _Binding(f"{self.pp('TUPLE_ELEM')}({idx}, {base.c_expr})", TokenT())
         if isinstance(base.type, VarTupleT):
+            # tail-relative for hybrids: [i] must agree with len/iteration
             return _Binding(
-                f"{self.pp('TUPLE_ELEM')}({expr.accessor}, {base.c_expr})", base.type.elem
+                f"{self.pp('TUPLE_ELEM')}({expr.accessor}, {self._vtuple_view(base)})",
+                base.type.elem,
             )
         if not isinstance(base.type, SeqT):
             raise UncursedPpError(
@@ -839,6 +856,28 @@ class _MacroEmitter:
             and not _contains_loop(node.body)
         )
 
+    def _tail_of(self, binding: _Binding) -> str:
+        """Extract a hybrid tuple's unbounded tail: drop the named head
+        fields, re-wrap the rest. The argument expands before `_I t`
+        juxtaposes (ISNIL trick), so computed values work; the result is
+        a plain unbounded tuple that every VarTupleT path consumes."""
+        assert isinstance(binding.type, VarTupleT)
+        k = len(binding.type.names)
+        name = f"{self.config.helper_prefix}{self.macro.name}_TL{k}"
+        if not any(h.name == name for h in self.out.helpers):
+            heads = ", ".join(f"f{j}" for j in range(k))
+            self.out.helpers.append(_Helper(name=name, params="t", body=f"{name}_I t"))
+            self.out.helpers.append(
+                _Helper(name=f"{name}_I", params=f"{heads}, ...", body="(__VA_ARGS__)")
+            )
+        return f"{name}({binding.c_expr})"
+
+    def _vtuple_view(self, binding: _Binding) -> str:
+        """The unbounded part of a VarTupleT value: the value itself, or
+        the extracted tail when named head fields precede it."""
+        assert isinstance(binding.type, VarTupleT)
+        return self._tail_of(binding) if binding.type.names else binding.c_expr
+
     def _isnil(self) -> str:
         """0/1 emptiness probe for a parenthesized value. The argument is
         macro-expanded before substitution, then juxtaposition makes its
@@ -864,8 +903,11 @@ class _MacroEmitter:
         free = self._free_vars([node], env, set())
         self._guard_fragile(free, env, node.line)
         branch_env = {n: _Binding(n, env[n].type) for n in free}
+        # hybrids iterate their TAIL; inside the branch the helper param
+        # holds the whole tuple, so extract there too
+        param_view = self._vtuple_view(_Binding(node.iterable, binding.type))
         branch_env[node.iterable] = _Binding(
-            f"{self.pp('TUPLE_TO_SEQ')}({node.iterable})", SeqT(binding.type.elem)
+            f"{self.pp('TUPLE_TO_SEQ')}({param_view})", SeqT(binding.type.elem)
         )
         if isinstance(node, ForEach):
             body = self._render_foreach(node, branch_env)
@@ -876,7 +918,7 @@ class _MacroEmitter:
         nil_helper = self._add_helper("NIL", params, "")
         args = ", ".join(env[n].c_expr for n in free)
         return (
-            f"{self.pp('IIF')}({self._isnil()}({binding.c_expr}), "
+            f"{self.pp('IIF')}({self._isnil()}({self._vtuple_view(binding)}), "
             f"{nil_helper}, {loop_helper})({args})"
         )
 

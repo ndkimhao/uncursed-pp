@@ -115,3 +115,59 @@ def test_unpack_loop_over_pair_elements_compiles():
         "macro F(ps: tuple<tuple<k, v>...>)\n@for (k, v) in ps\nset({{k}}, {{v}});\n@end\nend\n",
         "t.uncursed",
     )
+
+
+# ── hybrid: fixed named head + unbounded tail ────────────────────────
+
+
+def test_hybrid_type_parses():
+    assert _last_param_type("f: tuple<fname, ftype, token...>") == VarTupleT(
+        TokenT(), ("fname", "ftype")
+    )
+
+
+def test_hybrid_with_typed_tail():
+    assert _last_param_type("f: tuple<key, tuple<a, b>...>") == VarTupleT(
+        TupleT(("a", "b")), ("key",)
+    )
+
+
+def test_hybrid_inside_seq():
+    assert _last_param_type("fs: seq<tuple<n, token...>>") == SeqT(
+        VarTupleT(TokenT(), ("n",))
+    )
+
+
+def test_hybrid_named_head_access_compiles():
+    compile_source(
+        "macro F(f: tuple<fname, ftype, token...>)\n{{f.fname}} {{f.ftype}}\nend\n",
+        "t.uncursed",
+    )
+
+
+def test_hybrid_unknown_field_lists_names():
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source(
+            "macro F(f: tuple<fname, ftype, token...>)\n{{f.nope}}\nend\n",
+            "t.uncursed",
+        )
+    assert "fname" in str(excinfo.value) and "ftype" in str(excinfo.value)
+
+
+def test_hybrid_tail_ops_compile():
+    compile_source(
+        "macro F(f: tuple<n, token...>)\n"
+        "{{f.n}}: {{len(f)}} {{f[0]}}\n"
+        "@for a in f\n[{{a}}]\n@end\n"
+        "end\n",
+        "t.uncursed",
+    )
+
+
+def test_hybrid_unpack_needs_tuple_tail():
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source(
+            "macro F(f: tuple<n, token...>)\n@for (a, b) in f\nx\n@end\nend\n",
+            "t.uncursed",
+        )
+    assert "tuple unpacking" in str(excinfo.value)

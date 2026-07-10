@@ -81,6 +81,7 @@ macro M(a, xs: seq<token>, f: tuple<type, name>, rest: variadic)
 | *(none)* / `token` | a single preprocessor token-sequence | `foo`, `123`, `(wrapped, commas)` |
 | `tuple<n1, n2, ...>` | a parenthesized tuple with **named** elements | `(int, x)` |
 | `tuple` / `tuple<T...>` | an **unbounded** tuple: variable element count, all of type `T` (bare `tuple` = `tuple<token...>`) | `(a, b, c)`; `()` = zero elements |
+| `tuple<n1, .., nk, T...>` | **hybrid**: fixed named head fields, then an unbounded `T` tail | `(x, int, RO, LOGGED)`; `(x, int)` = empty tail |
 | `seq<T>` | a Boost.PP seq of `T` | `(a)(b)(c)` or `((int,x))((float,y))` |
 | `variadic` / `variadic<T>` | the trailing `...`; the body sees it as `seq<T>` | `a, b, c` or `(int,x), (float,y)` |
 
@@ -94,6 +95,10 @@ Notes:
   `is_empty()`. Loops and `len()` are emptiness-gated, so `()` means zero
   elements. Elements cap at **64** (vs 256 for seqs); named access is a
   compile error — index instead.
+- **Hybrid tuples**: named access reads the head; iteration, `len()`,
+  `is_empty()` and `[i]` are all TAIL-scoped (they agree with each other —
+  a loop never revisits data you address by name). At least the named
+  fields must be present at the call site; head + tail ≤ 64 elements.
 - Names bound in scope — parameters, `@for` unpack names, tuple element
   names — compile to macro parameters, so they substitute wherever they
   appear in the body, **including literal C text**. Don't reuse a bound name

@@ -230,6 +230,10 @@ with both enabled.
   zero elements — correctness, not subject to the ≥1.3x bar. A direct
   comma-consumption chain that skips the conversion is a possible LATER
   measured experiment.
+- Hybrid-tuple tail extraction (`TL<k>`) is 2 expansions per tail
+  operation, and multiple tail ops in one body re-extract — no hoisting,
+  same reasoning as the refuted `VARIADIC_TO_SEQ` hoist. Head access is
+  a plain `TUPLE_ELEM`, ungated.
 - Per-arity/per-slot generated defines trade header size for expansion count.
   Definition-time cost doesn't scale with invocation count; invocation cost
   does.

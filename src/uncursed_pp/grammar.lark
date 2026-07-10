@@ -9,12 +9,13 @@ param: "named" "variadic" CNAME "=" [DEFAULT] -> named_variadic_param
      | CNAME [":" type]            -> plain_param
 DEFAULT: /[^,()\s][^,()]*/
 
-type: "seq" "<" type ">"            -> seq_type
-    | "tuple" "<" type "..." ">"    -> var_tuple_type
-    | "tuple" "<" name_list ">"     -> tuple_type
-    | "tuple"                       -> bare_var_tuple_type
-    | "token"                       -> token_type
-    | "variadic" ["<" type ">"]     -> variadic_type
+type: "seq" "<" type ">"                        -> seq_type
+    | "tuple" "<" type "..." ">"                -> var_tuple_type
+    | "tuple" "<" name_list "," type "..." ">"  -> hybrid_tuple_type
+    | "tuple" "<" name_list ">"                 -> tuple_type
+    | "tuple"                                   -> bare_var_tuple_type
+    | "token"                                   -> token_type
+    | "variadic" ["<" type ">"]                 -> variadic_type
 name_list: CNAME ("," CNAME)*
 
 for_line: "for" for_target "in" CNAME

@@ -79,6 +79,7 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 | Join | `@join xs with ", ": body @end` (inline) or block form; `as x` binds the element |
 | Conditional | `@if len(xs) == 1` / `@if is_paren(x)` / `@if is_empty(x)` ... `@else` ... `@end` (ops: `== != < > <= >=`) |
 | Unbounded tuple | `row: tuple<T...>` (bare `tuple` = `tuple<token...>`) — call `F((a, b, c))`; loops/`len()` see N elements and `()` means zero |
+| Hybrid tuple | `f: tuple<name, type, token...>` — named head fields + unbounded tail; `f.name` reads the head, loops/`len()`/`[i]` see only the tail |
 | Element access | `{{t.field}}` (tuple, by name), `{{xs[0]}}` (seq, by index) |
 | Paste | `{{concat(get_, f.name)}}` → `BOOST_PP_CAT` — pasting is never implicit |
 | Stringize | `{{stringize(f.name)}}` → `BOOST_PP_STRINGIZE` — works on computed tokens |
