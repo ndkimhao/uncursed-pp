@@ -1,0 +1,33 @@
+# ── Combined example: a finite state machine from a transition list ──
+#
+# Features composing: two seq parameters, @for over tokens AND over
+# tuples, concat() for derived names, trailing free use of a macro
+# parameter inside loop bodies.
+#
+# The states seq defines the enum; the transitions seq defines step().
+# An event that matches no transition leaves the state unchanged.
+
+macro DEFINE_FSM(fsm, states: seq<token>, transitions: seq<tuple<src, evt, dst>>)
+enum {{concat(fsm, _state)}} {
+@for s in states
+  {{s}},
+@end
+};
+static int {{concat(fsm, _step)}}(int s, int ev) {
+@for (src, evt, dst) in transitions
+  if (s == {{src}} && ev == {{evt}}) return {{dst}};
+@end
+  return s;
+}
+end
+
+#?  DEFINE_FSM(door, (CLOSED)(OPEN), ((CLOSED, EV_OPEN, OPEN))((OPEN, EV_CLOSE, CLOSED)))
+#=>     enum door_state {
+#=>       CLOSED,
+#=>       OPEN,
+#=>     };
+#=>     static int door_step(int s, int ev) {
+#=>       if (s == CLOSED && ev == EV_OPEN) return OPEN;
+#=>       if (s == OPEN && ev == EV_CLOSE) return CLOSED;
+#=>       return s;
+#=>     }
