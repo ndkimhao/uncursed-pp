@@ -11,7 +11,7 @@ uncursed-pp-check = "uncursed_pp.speccheck:main"
 uncursed-pp-eval = "uncursed_pp.evaltool:main"
 
 [dependency-groups]
-dev = ["pytest>=8", "mypy>=1.13"]
+dev = ["pytest>=8", "mypy>=1.13", "clang-format>=18"]
 
 [build-system]
 requires = ["hatchling"]

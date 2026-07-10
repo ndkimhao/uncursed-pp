@@ -42,9 +42,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
 
-      - name: Install clang-format (for the --format legs)
-        run: sudo apt-get update -q && sudo apt-get install -y -q clang-format
-
+      # clang-format comes from the dev dependency group (PyPI wheel),
+      # installed and cached by the same `uv sync` as everything else.
       - name: Set up environment (uv sync + vendored Boost.PP)
         run: make setup
 
