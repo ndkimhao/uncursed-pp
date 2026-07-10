@@ -23,6 +23,34 @@ def test_parse_named_params():
     ]
 
 
+def test_bare_named_param_is_empty_default():
+    # `named $Q` with no `=` is shorthand for `named $Q = ` (empty default)
+    src = '@macro F($a, named $Q)\n{{$Q}} {{$a}}\n@endmacro\n'
+    [macro] = parse_file(src, "t.uncursed").macros
+    p = macro.params[1]
+    assert (p.name, p.named, p.default) == ("Q", True, "")
+
+
+def test_bare_named_shorthand_compiles_identically():
+    # identical codegen; only the reproduced-source comment may differ
+    explicit = '@macro F($a, named $Q = )\n{{$Q}} {{$a}}\n@endmacro\n'
+    bare = '@macro F($a, named $Q)\n{{$Q}} {{$a}}\n@endmacro\n'
+
+    def defines(out: str) -> list[str]:
+        return [l for l in out.splitlines() if l.startswith("#")]
+
+    assert defines(compile_source(bare, "t.uncursed")) == defines(
+        compile_source(explicit, "t.uncursed")
+    )
+
+
+def test_bare_named_variadic_is_empty_default():
+    src = '@macro F($a, named variadic $L)\n{{$L}}\n@endmacro\n'
+    [macro] = parse_file(src, "t.uncursed").macros
+    p = macro.params[1]
+    assert (p.name, p.named, p.variadic_value, p.default) == ("L", True, True, "")
+
+
 def test_parse_named_variadic_param():
     src = '@macro S($name, named variadic $COLORS = none)\n{{$COLORS}}\n@endmacro\n'
     [macro] = parse_file(src, "t.uncursed").macros

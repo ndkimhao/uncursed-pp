@@ -150,9 +150,12 @@ fprintf({{$out}}, "[" #{{$level}} "] %s\n", {{$msg}});
 
 `LOG(m)`, `LOG(m, WARN)`, `LOG(m, WARN, stdout)` are all valid; omitted
 trailing arguments take their defaults, dispatched **at C compile time** by
-argument count (`BOOST_PP_OVERLOAD`). A default may be empty (`qualifiers = `).
-Defaults may only trail required parameters, and a default value must not
-contain commas or parens.
+argument count (a per-macro arity scan). A default may be empty
+(`$qualifiers = ` — the parameter substitutes as zero tokens). An explicit
+empty argument also works: `ATTR(x,)` still counts as two arguments, so the
+second parameter gets an empty value rather than its default (same tokens,
+different route). Defaults may only trail required parameters, and a default
+value must not contain commas or parens.
 
 ### Named parameters
 
@@ -171,6 +174,9 @@ MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))  /* any order   */
 Each named argument is written `KEYWORD(value)` at the call site. Semantics:
 
 - Omitted keywords take their defaults; `FLAGS()` passes an empty value.
+- A default may be empty. Bare `named $FLAGS` (no `=`) is shorthand for
+  `named $FLAGS = ` — both mean "substitutes as zero tokens unless the
+  caller says otherwise". Works for `named variadic` too.
 - A repeated keyword: the **last occurrence wins** (left-to-right fold).
 - A misspelled keyword is a **C compile error** (it fails to dispatch), never a
   silently-applied default.

@@ -39,3 +39,9 @@
  * #?  LOG("hi there", ERROR)
  * #=>     fprintf(stderr, "[" "ERROR" "] %s\n", "hi there");
  */
+
+/* # edge: an explicit empty trailing argument still counts in the arity
+ * # scan - level gets an empty value (stringizing to ""), NOT its default
+ * #?  LOG(m,)
+ * #=>     fprintf(stderr, "[" "" "] %s\n", m);
+ */

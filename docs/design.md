@@ -100,6 +100,12 @@ S{ @join $items as $it with ", ": @if is_paren($it) {{$it}} @else ({{$it}}, omit
   with a clear error. @if nests freely at any depth.
 - Per macro: required positional params + at most ONE of {tail defaults, named
   section, variadic}. Variadic must be last.
+- Defaults may be empty (`$x = ` / `named $X = `): the parameter substitutes
+  as zero tokens. Bare `named $X` (no `=`) is shorthand for the empty default;
+  positional params have no such shorthand (bare `$x` means required). Empty
+  values also pass at call sites: `KEY()` for named args, and an explicit
+  empty trailing argument (`M(a,)`) still counts in the arity scan, selecting
+  the higher arity with an empty value instead of the default.
 - Seq/variadic args must be non-empty at C call sites (Boost.PP limitation, documented).
 - Conditions: `len($seq) == N` (and <, >, etc.), integer equality (0–256 range),
   `is_paren($x)`, `is_empty($x)`.

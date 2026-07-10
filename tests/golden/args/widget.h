@@ -9,7 +9,9 @@
  * #   MAKE_WIDGET(w1)                          → struct widget w1 = { 100, 50, };
  * #   MAKE_WIDGET(w2, HEIGHT(80))              → struct widget w2 = { 100, 80, };
  * #   MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))  → struct widget w3 = { 20, 50, BOLD };
- * @macro MAKE_WIDGET($name, named $WIDTH = 100, named $HEIGHT = 50, named $FLAGS = )
+ * # Bare `named $FLAGS` (no `=`) is shorthand for `named $FLAGS = `:
+ * # an empty default that substitutes as zero tokens.
+ * @macro MAKE_WIDGET($name, named $WIDTH = 100, named $HEIGHT = 50, named $FLAGS)
  * struct widget {{$name}} = { {{$WIDTH}}, {{$HEIGHT}}, {{$FLAGS}} };
  * @endmacro
  */
@@ -109,6 +111,12 @@
 /* # edge: bare commas allowed in a 'named variadic' keyword value
  * #?  STYLE(s3, COLORS(red, green, blue))
  * #=>     unsigned s3[] = { red, green, blue };
+ */
+
+/* # edge: empty keyword value for a 'named variadic' - overrides the
+ * # default with zero tokens
+ * #?  STYLE(s5, COLORS())
+ * #=>     unsigned s5[] = { };
  */
 
 /* # edge: values pass through verbatim - the setter's wrap and the

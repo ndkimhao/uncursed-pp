@@ -1,0 +1,18 @@
+# Empty tail default: `$quals = ` (nothing after `=`) substitutes as
+# zero tokens when the argument is omitted. Positional params have no
+# bare shorthand - `$quals` alone means required.
+@macro ATTR($name, $quals = )
+{{$quals}} int {{$name}};
+@endmacro
+
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
+#?  ATTR(x)
+#=>     int x;
+
+#?  ATTR(y, static)
+#=>     static int y;
+
+# edge: explicit empty trailing argument - selects the 2-arg overload
+# with an empty value (same tokens as the default here, different route)
+#?  ATTR(z,)
+#=>     int z;

@@ -11,6 +11,7 @@
  * #   - a repeated keyword: the LAST occurrence wins;
  * #   - a misspelled keyword is a C compile error, never a silent default;
  * #   - values containing commas must be parenthesized: TITLE((a, b));
+ * #   - KEY() passes an empty value (zero tokens);
  * #   - keyword names must not be #define'd macros at the call site.
  * #
  * # Scenario: opening a window without remembering a 4-argument order.
@@ -55,4 +56,46 @@
 /* # Repeated keyword — last one wins:
  * #?  OPEN_WINDOW("editor", MONITOR(1), MONITOR(2))
  * #=>     open_window("editor", 640, 480, 2);
+ */
+
+/* # ── Empty defaults and empty values ──────────────────────────────────
+ * #
+ * # A default may be empty: the parameter substitutes as zero tokens
+ * # unless the caller says otherwise. Bare `named $ATTRS` (no `=`) is
+ * # shorthand for `named $ATTRS = `. Great for optional qualifiers,
+ * # attributes, or trailing initializer entries.
+ */
+
+/* uncursed-pp source:
+ * @macro DECLARE($name, named $ATTRS)
+ * {{$ATTRS}} int {{$name}};
+ * @endmacro
+ */
+#define UNCURSED_PP_DECLARE_SET_ATTRS(v) 0, v
+#define UNCURSED_PP_DECLARE_STEP1(e, ...) UNCURSED_PP_DECLARE_STEP_D(BOOST_PP_CAT(UNCURSED_PP_DECLARE_SET_, e), __VA_ARGS__)
+#define UNCURSED_PP_DECLARE_STEP_D(...) UNCURSED_PP_DECLARE_STEP_I(__VA_ARGS__)
+#define UNCURSED_PP_DECLARE_STEP_I(i, v, ...) UNCURSED_PP_DECLARE_PUT_ ## i(v, __VA_ARGS__)
+#define UNCURSED_PP_DECLARE_PUT_0(v, p0) v
+#define UNCURSED_PP_DECLARE_BODY(name, ATTRS) ATTRS int name;
+#define UNCURSED_PP_DECLARE_BODY_D(...) UNCURSED_PP_DECLARE_BODY(__VA_ARGS__)
+#define UNCURSED_PP_DECLARE_1(name) UNCURSED_PP_DECLARE_BODY(name, )
+#define UNCURSED_PP_DECLARE_2(name, e1) UNCURSED_PP_DECLARE_BODY_D(name, UNCURSED_PP_DECLARE_STEP1(e1, ))
+#define UNCURSED_PP_DECLARE_SIZE(...) UNCURSED_PP_DECLARE_SIZE_I(__VA_ARGS__, 2, 1,)
+#define UNCURSED_PP_DECLARE_SIZE_I(e0, e1, size, ...) size
+#define UNCURSED_PP_DECLARE_DISPATCH(n) UNCURSED_PP_DECLARE_DISPATCH_I(n)
+#define UNCURSED_PP_DECLARE_DISPATCH_I(n) UNCURSED_PP_DECLARE_ ## n
+#define DECLARE(...) UNCURSED_PP_DECLARE_DISPATCH(UNCURSED_PP_DECLARE_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+/* # Omitted keyword — the empty default contributes nothing:
+ * #?  DECLARE(counter)
+ * #=>     int counter;
+ */
+
+/* #?  DECLARE(counter, ATTRS(volatile))
+ * #=>     volatile int counter;
+ */
+
+/* # Explicit empty value — same result as omitting the keyword:
+ * #?  DECLARE(counter, ATTRS())
+ * #=>     int counter;
  */

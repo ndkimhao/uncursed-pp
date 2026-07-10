@@ -95,11 +95,12 @@ class _Ast(Transformer[Any, Any]):
         return Param(name=str(name)[1:], type=None, default=_clean_default(default))
 
     def named_param(self, items: list[Any]) -> Param:
-        name, default = items
+        # a bare `named $X` (no `=`) is shorthand for an empty default
+        name, default = items if len(items) == 2 else (items[0], None)
         return Param(name=str(name)[1:], type=None, default=_clean_default(default), named=True)
 
     def named_variadic_param(self, items: list[Any]) -> Param:
-        name, default = items
+        name, default = items if len(items) == 2 else (items[0], None)
         return Param(
             name=str(name)[1:],
             type=None,
