@@ -1,0 +1,63 @@
+# Deep nesting: loops inside @if branches and @ifs inside @ifs are fine.
+# Only LOOP nesting is rejected (SEQ_FOR_EACH can't re-enter itself).
+
+# @for inside an @else branch
+macro OPT(xs: seq<token>)
+@if len(xs) == 1
+solo({{xs[0]}})
+@else
+@for x in xs
+many({{x}});
+@end
+@end
+end
+
+# @if inside an @if branch
+macro GRADE(xs: seq<token>)
+@if len(xs) < 3
+@if len(xs) == 1
+tiny
+@else
+small
+@end
+@else
+big
+@end
+end
+
+# three levels: @if -> @for -> @if
+macro TRIAGE(xs: seq<tuple<kind, val>>)
+@if len(xs) == 1
+only({{xs[0].val}});
+@else
+@for (kind, val) in xs
+@if kind == 1
+urgent({{val}});
+@else
+routine({{kind}}, {{val}});
+@end
+@end
+@end
+end
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  OPT((a))
+#=>     solo(a)
+
+#?  OPT((a)(b))
+#=>     many(a); many(b);
+
+#?  GRADE((a))
+#=>     tiny
+
+#?  GRADE((a)(b))
+#=>     small
+
+#?  GRADE((a)(b)(c))
+#=>     big
+
+#?  TRIAGE(((1, a)))
+#=>     only(a);
+
+#?  TRIAGE(((1, a))((2, b))((1, c)))
+#=>     urgent(a); routine(2, b); urgent(c);

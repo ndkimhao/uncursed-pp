@@ -89,3 +89,80 @@ def test_unpacking_non_tuple_seq_is_error():
     with pytest.raises(CursedppError) as excinfo:
         compile_source(src, "t.cursed")
     assert "tuple" in str(excinfo.value)
+
+
+NESTED_FOR = (
+    "macro CROSS(xs: seq<token>, ys: seq<token>)\n"
+    "@for x in xs\n@for y in ys\npair({{x}}, {{y}});\n@end\n@end\nend\n"
+)
+
+LOOP_IF_LOOP = (
+    "macro DEEP(xs: seq<token>, ys: seq<token>)\n"
+    "@for x in xs\n"
+    "@if len(ys) == 1\n"
+    "@for y in ys\np({{y}});\n@end\n"
+    "@end\n"
+    "@end\nend\n"
+)
+
+JOIN_IN_FOR = (
+    "macro JF(xs: seq<token>, ys: seq<token>)\n"
+    "@for x in xs\n"
+    'f(@join ys as y with ", ": {{y}}@end);\n'
+    "@end\nend\n"
+)
+
+
+def test_nested_for_is_rejected():
+    with pytest.raises(CursedppError) as excinfo:
+        compile_source(NESTED_FOR, "t.cursed")
+    assert "nested loops" in str(excinfo.value)
+
+
+def test_loop_if_loop_is_rejected():
+    with pytest.raises(CursedppError) as excinfo:
+        compile_source(LOOP_IF_LOOP, "t.cursed")
+    assert "nested loops" in str(excinfo.value)
+
+
+def test_inline_join_inside_for_is_rejected():
+    with pytest.raises(CursedppError) as excinfo:
+        compile_source(JOIN_IN_FOR, "t.cursed")
+    assert "nested loops" in str(excinfo.value)
+
+
+def test_let_join_inside_loop_is_rejected():
+    src = (
+        "macro F(xs: seq<token>, ys: seq<token>)\n"
+        "@for x in xs\n"
+        '@let j := @join ys as y with ", ": {{y}}@end\n'
+        "g({{j}});\n"
+        "@end\nend\n"
+    )
+    with pytest.raises(CursedppError) as excinfo:
+        compile_source(src, "t.cursed")
+    assert "nested loops" in str(excinfo.value)
+
+
+def test_sibling_loops_are_fine():
+    src = (
+        "macro TWO(xs: seq<token>)\n"
+        "@for x in xs\na({{x}});\n@end\n"
+        "@for x in xs\nb({{x}});\n@end\n"
+        "end\n"
+    )
+    out = compile_source(src, "t.cursed")
+    # (the near-identical bodies collapse into one shared d-parameterized
+    # helper - the point is both call sites exist and nothing was rejected)
+    assert out.count("BOOST_PP_SEQ_FOR_EACH(") == 2
+
+
+def test_loop_inside_if_branch_is_fine():
+    src = (
+        "macro OPT(xs: seq<token>)\n"
+        "@if len(xs) == 1\nsolo({{xs[0]}})\n@else\n"
+        "@for x in xs\nmany({{x}});\n@end\n"
+        "@end\nend\n"
+    )
+    out = compile_source(src, "t.cursed")  # no loop encloses the @if
+    assert "CURSEDPP_OPT_EACH1" in out

@@ -91,7 +91,10 @@ end
 ### Language rules
 - Body is raw C text; `@`-directives for control flow; `{{expr}}` interpolation.
 - Loops: `@for (a, b) in xs` (tuple unpack) or `@for x in xs` / `@join xs as x with "sep"`.
-- Flat only: one loop level per macro; nesting is a cursedpp compile error.
+- Flat only: one loop level per macro; nested @for/@join (even through @if
+  branches or @let-of-join inside a loop) is rejected with a clear error —
+  verified empirically: SEQ_FOR_EACH cannot re-enter itself and the _R forms
+  do not help. @if nests freely (in loops, in other @ifs).
 - Per macro: required positional params + at most ONE of {tail defaults, named
   section, variadic}. Variadic must be last.
 - Seq/variadic args must be non-empty at C call sites (Boost.PP limitation, documented).

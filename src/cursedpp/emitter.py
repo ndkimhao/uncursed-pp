@@ -121,6 +121,7 @@ class _MacroEmitter:
         self.file_state = file_state
         self.out = _MacroOut()
         self._helper_counts: dict[str, int] = {}
+        self._loop_depth = 0
 
     def pp(self, name: str) -> str:
         self.used.add(name)
@@ -503,19 +504,40 @@ class _MacroEmitter:
                 )
         return data, loop_env
 
+    def _reject_nested_loop(self, node: ForEach | Join) -> None:
+        if self._loop_depth:
+            raise CursedppError(
+                "nested loops (@for/@join inside a loop body) are not "
+                "supported: BOOST_PP_SEQ_FOR_EACH cannot re-enter itself. "
+                "Flatten the data or split the inner loop into its own macro "
+                "invoked outside the loop.",
+                self.filename,
+                node.line,
+            )
+
     def _render_foreach(self, loop: ForEach, env: _Env) -> str:
+        self._reject_nested_loop(loop)
         seq_expr, elem_type = self._iterable_binding(loop.iterable, env, loop)
         loop_env = self._loop_env(env, loop.unpack, loop.var, elem_type, loop)
         data, loop_env = self._loop_data(loop, env, loop_env)
-        body = _collapse_ws(self._render_block(loop.body, loop_env))
+        self._loop_depth += 1
+        try:
+            body = _collapse_ws(self._render_block(loop.body, loop_env))
+        finally:
+            self._loop_depth -= 1
         helper = self._add_helper("EACH", "r, d, e", body)
         return f"{self.pp('SEQ_FOR_EACH')}({helper}, {data}, {seq_expr})"
 
     def _render_join(self, join: Join, env: _Env) -> str:
+        self._reject_nested_loop(join)
         seq_expr, elem_type = self._iterable_binding(join.iterable, env, join)
         loop_env = self._loop_env(env, None, join.var, elem_type, join)
         data, loop_env = self._loop_data(join, env, loop_env)
-        body = _collapse_ws(self._render_block(join.body, loop_env))
+        self._loop_depth += 1
+        try:
+            body = _collapse_ws(self._render_block(join.body, loop_env))
+        finally:
+            self._loop_depth -= 1
         sep = join.sep.strip()
         if sep == ",":
             each_body = f"{self.pp('COMMA_IF')}(i) {body}"
