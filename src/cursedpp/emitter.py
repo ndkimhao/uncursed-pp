@@ -384,7 +384,7 @@ class _MacroEmitter:
                     env[node.name] = self._resolve(node.expr, env, node.line)
             else:  # pragma: no cover - future node kinds
                 raise NotImplementedError(f"cannot emit {node!r}")
-        return "".join(parts)
+        return _join_segments(parts)
 
     def _resolve(self, expr: Expr, env: _Env, line: int, allow_literal: bool = False) -> _Binding:
         if isinstance(expr, VarRef):
@@ -834,6 +834,22 @@ C_LITERAL_PATTERN = (
 )
 
 _LITERAL_RE = re.compile(C_LITERAL_PATTERN)
+
+
+def _word_char(ch: str) -> bool:
+    return ch.isalnum() or ch == "_"
+
+
+def _join_segments(parts: list[str]) -> str:
+    """Join rendered segments, inserting a space where two word characters
+    would otherwise fuse across a segment boundary: cursedpp never
+    token-pastes implicitly - concat() is the explicit paste."""
+    acc = ""
+    for part in parts:
+        if acc and part and _word_char(acc[-1]) and _word_char(part[0]):
+            acc += " "
+        acc += part
+    return acc
 
 
 def _collapse_ws(text: str) -> str:

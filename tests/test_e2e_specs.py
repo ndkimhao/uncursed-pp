@@ -115,3 +115,15 @@ def test_example_file_compiles_and_all_macros_expand(tmp_path):
         "S{ (a, omit), (b,c), (d, omit) }",
     ]:
         assert canon(expected) in out, expected
+
+
+@requires_boost
+def test_adjacency_no_paste_e2e(tmp_path):
+    src = (
+        "macro G(f: tuple<t, n>, xs: seq<token>)\n"
+        "pre{{f.n}} mid{{f.t}}\n"
+        "@for x in xs\nitem{{x}};\n@end\n"
+        "end\n"
+    )
+    out = preprocess_src(tmp_path, src, "adj", "G((int, age), (a)(b))")
+    assert canon("pre age mid int item a; item b;") == out

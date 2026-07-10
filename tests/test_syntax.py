@@ -150,3 +150,27 @@ def test_raw_string_interior_survives_emission():
     assert 'R"(a " x  b " c)"' in out.split("/* cursedpp source:")[0] or (
         'R"(a " ' in out and '  b " c)"' in out.rsplit("*/", 1)[-1]
     )
+
+
+# ── adjacency never pastes implicitly; concat() is the explicit paste ──
+
+
+def test_text_adjacent_to_interp_stays_separate_tokens():
+    out = compile_source("macro P(x)\npre{{x}}post {{x}}5;\nend\n", "t.cursed")
+    assert "#define P(x) pre x post x 5;\n" in out
+
+
+def test_interp_adjacent_to_interp_stays_separate():
+    out = compile_source("macro Q(a, b)\n{{a}}{{b}};\nend\n", "t.cursed")
+    assert "#define Q(a, b) a b;\n" in out
+
+
+def test_spread_tuple_field_adjacency_does_not_paste():
+    src = "macro G(f: tuple<t, n>)\nget_{{f.n}} = {{f.t}}{{f.n}};\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "get_ n = t n;" in out
+
+
+def test_punctuation_adjacency_stays_tight():
+    out = compile_source("macro R(x)\n[{{x}}]({{x}});\nend\n", "t.cursed")
+    assert "#define R(x) [x](x);\n" in out
