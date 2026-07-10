@@ -4,7 +4,6 @@
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/control/iif.hpp>
 #include <boost/preprocessor/punctuation/is_begin_parens.hpp>
-#include <boost/preprocessor/punctuation/remove_parens.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 #include "cursedpp_runtime.h"
@@ -51,7 +50,7 @@
 #define CURSEDPP_OBJ_STEP_D(...) CURSEDPP_OBJ_STEP_I(__VA_ARGS__)
 #define CURSEDPP_OBJ_STEP_I(i, v, ...) CURSEDPP_OBJ_PUT_ ## i(v, __VA_ARGS__)
 #define CURSEDPP_OBJ_PUT_0(v, p0) v
-#define CURSEDPP_OBJ_BODY(name, FIELDS) struct name { BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(BOOST_PP_REMOVE_PARENS(FIELDS)), CURSEDPP_OBJ_THEN1, CURSEDPP_OBJ_ELSE1)(BOOST_PP_REMOVE_PARENS(FIELDS)) };
+#define CURSEDPP_OBJ_BODY(name, FIELDS) struct name { BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(CURSEDPP_KW_SPREAD FIELDS), CURSEDPP_OBJ_THEN1, CURSEDPP_OBJ_ELSE1)(CURSEDPP_KW_SPREAD FIELDS) };
 #define CURSEDPP_OBJ_BODY_D(...) CURSEDPP_OBJ_BODY(__VA_ARGS__)
 #define CURSEDPP_OBJ_1(name) CURSEDPP_OBJ_BODY(name, ())
 #define CURSEDPP_OBJ_2(name, e1) CURSEDPP_OBJ_BODY_D(name, CURSEDPP_OBJ_STEP1(e1, ()))

@@ -148,8 +148,13 @@ class _MacroEmitter:
             )
         for p in named:
             if p.variadic_value:
-                # value travels parenthesized; interpolation auto-unwraps
-                env[p.name] = _Binding(f"{self.pp('REMOVE_PARENS')}({p.name})", TokenT())
+                # value is parenthesized by construction, so unwrap by
+                # juxtaposition - the conditional REMOVE_PARENS probe is
+                # wasted work here (audit: 2.33x)
+                self.file_state["kw_utils"] = True
+                env[p.name] = _Binding(
+                    f"{self.config.helper_prefix}KW_SPREAD {p.name}", TokenT()
+                )
         spread_params: set[str] = set()
         if not defaulted and not named:
             spread_params = self._spreadable_tuple_params()
@@ -382,6 +387,11 @@ class _MacroEmitter:
             return self._resolve_access(expr, env, line)
         if isinstance(expr, Concat):
             rendered = [self._resolve(a, env, line, allow_literal=True).c_expr for a in expr.args]
+            if len(rendered) >= 4:
+                # one k-ary paste (2 expansions total) beats the nested CAT
+                # chain (2 per pair); below 4 args nesting measured equal
+                helper = self._kary_cat(len(rendered))
+                return _Binding(f"{helper}({', '.join(rendered)})", TokenT())
             out = rendered[-1]
             for part in reversed(rendered[:-1]):
                 out = f"{self.pp('CAT')}({part}, {out})"
@@ -738,6 +748,15 @@ class _MacroEmitter:
             each_body = f"{self.pp('IF')}(i, {sep_helper}, {self.pp('EMPTY')})() {body}"
         helper = self._add_helper("EACH", "r, d, i, e", each_body)
         return f"{self.pp('SEQ_FOR_EACH_I')}({helper}, {data}, {seq_expr})"
+
+    def _kary_cat(self, k: int) -> str:
+        name = f"{self.config.helper_prefix}{self.macro.name}_CAT{k}"
+        if not any(h.name == name for h in self.out.helpers):
+            params = ", ".join(f"p{j}" for j in range(k))
+            pasted = " ## ".join(f"p{j}" for j in range(k))
+            self.out.helpers.append(_Helper(name=name, params=params, body=f"{name}_I({params})"))
+            self.out.helpers.append(_Helper(name=f"{name}_I", params=params, body=pasted))
+        return name
 
     def _add_helper(self, kind: str, params: str, body: str) -> str:
         count = self._helper_counts.get(kind, 0) + 1

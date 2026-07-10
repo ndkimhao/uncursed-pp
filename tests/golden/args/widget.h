@@ -2,7 +2,7 @@
 #pragma once
 
 #include <boost/preprocessor/cat.hpp>
-#include <boost/preprocessor/punctuation/remove_parens.hpp>
+#include "cursedpp_runtime.h"
 
 /* cursedpp source:
  * # Named arguments: KEYWORD(value) at the call site, any order, any subset.
@@ -46,7 +46,7 @@
 #define CURSEDPP_STYLE_STEP_D(...) CURSEDPP_STYLE_STEP_I(__VA_ARGS__)
 #define CURSEDPP_STYLE_STEP_I(i, v, ...) CURSEDPP_STYLE_PUT_ ## i(v, __VA_ARGS__)
 #define CURSEDPP_STYLE_PUT_0(v, p0) v
-#define CURSEDPP_STYLE_BODY(name, COLORS) unsigned name[] = { BOOST_PP_REMOVE_PARENS(COLORS) };
+#define CURSEDPP_STYLE_BODY(name, COLORS) unsigned name[] = { CURSEDPP_KW_SPREAD COLORS };
 #define CURSEDPP_STYLE_BODY_D(...) CURSEDPP_STYLE_BODY(__VA_ARGS__)
 #define CURSEDPP_STYLE_1(name) CURSEDPP_STYLE_BODY(name, (none))
 #define CURSEDPP_STYLE_2(name, e1) CURSEDPP_STYLE_BODY_D(name, CURSEDPP_STYLE_STEP1(e1, (none)))

@@ -59,7 +59,7 @@ def test_named_variadic_setter_captures_commas():
     src = "macro S(name, named variadic COLORS = none)\n{{COLORS}}\nend\n"
     out = compile_source(src, "t.cursed")
     assert "#define CURSEDPP_S_SET_COLORS(...) 0, (__VA_ARGS__)\n" in out
-    assert "BOOST_PP_REMOVE_PARENS(COLORS)" in out
+    assert "CURSEDPP_KW_SPREAD COLORS" in out
 
 
 def test_named_without_required_param_is_error():
@@ -86,3 +86,13 @@ def test_empty_default_keeps_its_slot_in_the_state():
     # empty default keeps its slot in the bare state list
     assert "CURSEDPP_S2_STEP1(e1, 1, )" in out
     assert "#define CURSEDPP_S2_1(name) CURSEDPP_S2_BODY(name, 1, )\n" in out
+
+
+def test_named_variadic_value_unwraps_by_juxtaposition():
+    src = "macro S(name, named variadic COLORS = none)\n{ {{COLORS}} }\nend\n"
+    out = compile_source(src, "t.cursed")
+    # values are parenthesized by construction; the conditional
+    # REMOVE_PARENS probe is wasted work (audit: 2.33x)
+    assert "CURSEDPP_KW_SPREAD COLORS" in out
+    assert "REMOVE_PARENS" not in out
+    assert '#include "cursedpp_runtime.h"' in out

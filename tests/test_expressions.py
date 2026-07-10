@@ -167,3 +167,20 @@ def test_tuple_param_with_tail_defaults_keeps_tuple_elem():
     # spread applies only to the simple dispatch path
     assert "BODY1" not in out
     assert "BOOST_PP_TUPLE_ELEM(0, p)" in out
+
+
+def test_concat_four_plus_args_uses_kary_paste():
+    src = "macro F(a, b)\n{{concat(pre_, a, _mid_, b, _end)}}\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_F_CAT5(p0, p1, p2, p3, p4) CURSEDPP_F_CAT5_I(p0, p1, p2, p3, p4)\n" in out
+    assert "#define CURSEDPP_F_CAT5_I(p0, p1, p2, p3, p4) p0 ## p1 ## p2 ## p3 ## p4\n" in out
+    assert "CURSEDPP_F_CAT5(pre_, a, _mid_, b, _end)" in out
+    assert "BOOST_PP_CAT" not in out
+
+
+def test_concat_three_args_keeps_nested_cat():
+    src = "macro F(a)\n{{concat(pre_, a, _end)}}\nend\n"
+    out = compile_source(src, "t.cursed")
+    # 3-arg nesting measured 1.06x - below the bar, keep BOOST_PP_CAT
+    assert "BOOST_PP_CAT(pre_, BOOST_PP_CAT(a, _end))" in out
+    assert "CAT3" not in out
