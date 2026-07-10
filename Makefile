@@ -2,7 +2,7 @@ MISE := mise exec --
 BOOST_PP_DIR := .boost-pp
 BOOST_PP_REF := boost-1.90.0
 
-.PHONY: setup check test test-unit test-integration typecheck example speccheck regen-golden clean boost-pp
+.PHONY: setup check test test-unit test-integration typecheck example speccheck eval-smoke regen-golden clean boost-pp
 
 check: typecheck test
 
@@ -34,6 +34,11 @@ typecheck:
 # real CLI end to end (pytest covers the same specs through the API).
 speccheck: boost-pp
 	$(MISE) uv run uncursed-pp-check tests/golden examples -- -I $(BOOST_PP_DIR)/include
+
+# Smoke the uncursed-pp-eval CLI: invoke + --update-specs, each with
+# and without --format (needs clang-format for the format legs).
+eval-smoke: boost-pp
+	bash scripts/eval_smoke.sh
 
 # Regenerate every golden/example .h from its template. Mechanics only:
 # goldens are updated deliberately - READ the diff before committing.

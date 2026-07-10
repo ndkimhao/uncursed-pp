@@ -5,6 +5,7 @@ on:
   pull_request:
 
 jobs:
+  # mypy --strict + the full pytest suite (unit, golden, cc -E e2e specs)
   check:
     runs-on: ubuntu-latest
     steps:
@@ -19,7 +20,33 @@ jobs:
       - name: Typecheck (mypy --strict) and full test suite
         run: make check
 
-      # The standalone checker through the real CLI entry point - same
-      # specs as the suite, but exercises uncursed-pp-check itself.
+  # The standalone checker through the real CLI entry point - same specs
+  # as the suite, but exercises uncursed-pp-check itself.
+  speccheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+
+      - name: Set up environment (uv sync + vendored Boost.PP)
+        run: make setup
+
       - name: Spec-check every template via uncursed-pp-check
         run: make speccheck
+
+  # uncursed-pp-eval end to end: invoke mode and --update-specs mode,
+  # each with and without --format.
+  eval-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+
+      - name: Install clang-format (for the --format legs)
+        run: sudo apt-get update -q && sudo apt-get install -y -q clang-format
+
+      - name: Set up environment (uv sync + vendored Boost.PP)
+        run: make setup
+
+      - name: Smoke uncursed-pp-eval (invoke / update-specs, +/- format)
+        run: make eval-smoke
