@@ -87,11 +87,19 @@ jobs:
           set -eu
           ccs="gcc-12 gcc-13 gcc-14 gcc-15 gcc-16 clang-19 clang-20 clang-21 clang-22"
           # parallel across compilers, one log per compiler so the
-          # grouped output below stays readable; xargs keeps running the
-          # remaining compilers when one fails and exits nonzero at the end
+          # grouped output below stays readable; the workers emit
+          # single-line start/finish events for live progress; xargs
+          # keeps running the remaining compilers when one fails and
+          # exits nonzero at the end
           failed=0
-          printf '%s\n' $ccs | xargs -P "$(nproc)" -I{} sh -c \
-            'make speccheck CHECK_CC={} > /tmp/speccheck-{}.log 2>&1' || failed=1
+          printf '%s\n' $ccs | xargs -P "$(nproc)" -I{} sh -c '
+            echo "[{}] started  ($({} --version | head -n 1))"
+            if make speccheck CHECK_CC={} > /tmp/speccheck-{}.log 2>&1; then
+              echo "[{}] passed   ($(tail -n 1 /tmp/speccheck-{}.log))"
+            else
+              echo "[{}] FAILED   (full log in the group below)"
+              exit 1
+            fi' || failed=1
           for cc in $ccs; do
             echo "::group::${cc} ($($cc --version | head -1))"
             cat "/tmp/speccheck-$cc.log"
