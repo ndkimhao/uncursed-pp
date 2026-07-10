@@ -214,6 +214,13 @@ def _default_cc() -> str | None:
     return os.environ.get("CC") or shutil.which("cc") or shutil.which("gcc")
 
 
+def _use_color() -> bool:
+    """Color only on an interactive terminal; the NO_COLOR convention wins."""
+    if "NO_COLOR" in os.environ:
+        return False
+    return sys.stdout.isatty()
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="uncursed-pp-check",
@@ -285,6 +292,14 @@ def main(argv: list[str] | None = None) -> None:
         else:
             paths.append(p)
 
+    color = _use_color()
+
+    def paint(text: str, code: str) -> str:
+        return f"\x1b[{code}m{text}\x1b[0m" if color else text
+
+    ok_tag = paint("ok  ", "32")
+    fail_tag = paint("FAIL", "31")
+
     total_passed = 0
     total_specs = 0
     failed_files: list[tuple[Path, int, int]] = []  # (path, passed, total)
@@ -307,20 +322,22 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit(2) from exc
         passed = sum(1 for r in results if r.ok)
         for r in results:
-            print(f"{'ok  ' if r.ok else 'FAIL'}  {r.invocation}")
+            print(f"{ok_tag if r.ok else fail_tag}  {r.invocation}")
             if not r.ok:
                 for line in r.detail.splitlines():
                     print(f"      {line}")
-        print(f"{path}: {passed}/{len(results)} specs passed")
+        summary = f"{path}: {passed}/{len(results)} specs passed"
+        print(paint(summary, "32" if passed == len(results) else "31"))
         total_passed += passed
         total_specs += len(results)
         if passed != len(results):
             failed_files.append((path, passed, len(results)))
     if len(paths) > 1:
         print()
-        print(f"{len(paths)} files: {total_passed}/{total_specs} specs passed")
+        grand = f"{len(paths)} files: {total_passed}/{total_specs} specs passed"
+        print(paint(grand, "1;32" if not failed_files else "1;31"))
         for path, passed, total in failed_files:
-            print(f"FAILED {path} ({passed}/{total})")
+            print(paint(f"FAILED {path} ({passed}/{total})", "31"))
     raise SystemExit(1 if failed_files else 0)
 
 

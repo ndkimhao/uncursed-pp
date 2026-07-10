@@ -152,3 +152,40 @@ def test_single_file_has_no_grand_summary(tmp_path, capsys):
     src.write_text(PASSING)
     assert _run([str(src)]) == 0
     assert "files:" not in capsys.readouterr().out
+
+
+# ── color: only on an interactive terminal, NO_COLOR wins ────────────
+
+
+def test_no_ansi_when_not_a_tty(tmp_path, capsys):
+    src = tmp_path / "plain.uncursed"
+    src.write_text(PASSING)
+    _run([str(src)])
+    assert "\x1b[" not in capsys.readouterr().out
+
+
+def test_ansi_when_terminal_detected(tmp_path, capsys, monkeypatch):
+    import uncursed_pp.speccheck as sc
+
+    monkeypatch.setattr(sc, "_use_color", lambda: True)
+    src = tmp_path / "color.uncursed"
+    src.write_text(PASSING)
+    _run([str(src)])
+    out = capsys.readouterr().out
+    assert "\x1b[32m" in out  # green ok tag
+
+
+def test_use_color_detection(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    import uncursed_pp.speccheck as sc
+
+    monkeypatch.setattr(sys, "stdout", SimpleNamespace(isatty=lambda: True))
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    assert sc._use_color() is True
+    monkeypatch.setenv("NO_COLOR", "1")
+    assert sc._use_color() is False
+    monkeypatch.setattr(sys, "stdout", SimpleNamespace(isatty=lambda: False))
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    assert sc._use_color() is False
