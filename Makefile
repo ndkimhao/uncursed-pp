@@ -1,5 +1,6 @@
 MISE := mise exec --
 BOOST_PP_DIR := .boost-pp
+BOOST_PP_REF := boost-1.90.0
 
 .PHONY: setup check test test-unit test-integration typecheck example clean boost-pp
 
@@ -15,7 +16,7 @@ setup: boost-pp
 boost-pp: $(BOOST_PP_DIR)
 
 $(BOOST_PP_DIR):
-	git clone --depth 1 https://github.com/boostorg/preprocessor.git $(BOOST_PP_DIR)
+	git clone --depth 1 --branch $(BOOST_PP_REF) https://github.com/boostorg/preprocessor.git $(BOOST_PP_DIR)
 
 test: boost-pp
 	$(MISE) uv run pytest

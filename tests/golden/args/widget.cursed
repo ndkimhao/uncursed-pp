@@ -63,3 +63,7 @@ end
 # edge: negative number as a keyword value (multi-token, no commas)
 #?  MAKE_WIDGET(wn, WIDTH(-1))
 #=>     struct widget wn = { -1, 50, };
+
+# documented caveat: a misspelled keyword is a C compile error, not a
+# silent default
+#?! MAKE_WIDGET(wbad, WIDHT(9))

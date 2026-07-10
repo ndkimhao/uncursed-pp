@@ -34,13 +34,22 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(1)
     try:
-        result = compile_template(input_path.read_text(), str(input_path))
+        source = input_path.read_text()
+    except OSError as exc:
+        print(f"cursedpp: cannot read {input_path}: {exc.strerror}", file=sys.stderr)
+        raise SystemExit(1) from exc
+    try:
+        result = compile_template(source, str(input_path))
     except CursedppError as exc:
         print(exc, file=sys.stderr)
         raise SystemExit(1) from exc
-    output_path.write_text(result.header)
-    if result.runtime is not None:
-        (output_path.parent / result.runtime_name).write_text(result.runtime)
+    try:
+        output_path.write_text(result.header)
+        if result.runtime is not None:
+            (output_path.parent / result.runtime_name).write_text(result.runtime)
+    except OSError as exc:
+        print(f"cursedpp: cannot write {output_path}: {exc.strerror}", file=sys.stderr)
+        raise SystemExit(1) from exc
 
 
 if __name__ == "__main__":

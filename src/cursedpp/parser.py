@@ -204,9 +204,14 @@ def _clean_default(token: Any) -> str:
     return "" if token is None else str(token).strip()
 
 
+_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "0": "\0", '"': '"', "\\": "\\"}
+
+
 def _unquote(token: Any) -> str:
-    text = str(token)
-    return text[1:-1].encode().decode("unicode_escape")
+    """Translate escape sequences without corrupting non-ASCII text (the
+    old encode/unicode_escape round-trip mojibake'd UTF-8)."""
+    text = str(token)[1:-1]
+    return re.sub(r"\\(.)", lambda m: _ESCAPES.get(m.group(1), m.group(1)), text)
 
 
 _TRANSFORM = _Ast()
@@ -284,6 +289,10 @@ def _parse_segments(text: str, lineno: int, filename: str) -> list[BodyNode]:
     pieces = _INTERP_RE.split(text)
     for i, piece in enumerate(pieces):
         if i % 2 == 0:
+            if "{{" in piece:
+                raise CursedppError(
+                    "unclosed '{{' interpolation", filename, lineno
+                )
             if piece:
                 nodes.append(Text(piece))
         else:
@@ -315,11 +324,17 @@ def _parse_inline_if(text: str, lineno: int, filename: str) -> tuple[If, str]:
 
 def _find_colon_outside_quotes(text: str) -> int:
     in_string = False
-    for i, ch in enumerate(text):
-        if ch == '"' and (i == 0 or text[i - 1] != "\\"):
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if in_string and ch == "\\":
+            i += 2  # skip the escaped character, whatever it is
+            continue
+        if ch == '"':
             in_string = not in_string
         elif ch == ":" and not in_string:
             return i
+        i += 1
     return -1
 
 
@@ -402,7 +417,11 @@ def _directive_word(stripped: str) -> str | None:
 def _is_block_directive(stripped: str) -> bool:
     """A directive line opens/closes a block; inline @join/@if close on the same line."""
     word = _directive_word(stripped)
-    if word in {"join", "if"}:
+    if word == "join":
+        # inline joins have ': <body>@end'; a block header has no colon
+        # outside its separator string (which may itself contain '@end')
+        return _find_colon_outside_quotes(stripped) == -1
+    if word == "if":
         return "@end" not in stripped
     return word in {"for", "let", "else", "end"}
 
@@ -432,6 +451,21 @@ def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef,
             _handle_directive(stripped[1:], stack, filename, lineno)
             i += 1
             continue
+
+        word = _directive_word(stripped)
+        if word == "pragma":
+            raise CursedppError(
+                "@pragma is only allowed at the top level, before any macro",
+                filename,
+                lineno,
+            )
+        if word is not None and word not in {"join", "if"} and not _INLINE_OPEN_RE.search(raw):
+            raise CursedppError(
+                f"unknown directive: @{word} (known: for, join, if, else, "
+                "end, let, pragma)",
+                filename,
+                lineno,
+            )
 
         segments = _parse_segments(raw, lineno, filename)
         if segments and isinstance(segments[-1], Text):

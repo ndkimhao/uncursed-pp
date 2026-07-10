@@ -26,14 +26,16 @@ def test_parse_macro_signature():
 
 
 def test_parse_plain_macro_text_and_interp():
+    from cursedpp.nodes import Interp
+
     file = parse_file("macro ID(x)\nvalue: {{x}}!\nend\n", "t.cursed")
     [macro] = file.macros
     assert macro.params[0].type is None  # bare token param
-    kinds = [type(n) for n in macro.body]
-    assert kinds == [Text, type(macro.body[1]), Text]
-    assert macro.body[0].value == "value: "
-    assert macro.body[1].expr == VarRef("x")
-    assert macro.body[2].value == "!\n"
+    lead, interp, tail = macro.body
+    assert isinstance(lead, Text) and isinstance(interp, Interp) and isinstance(tail, Text)
+    assert lead.value == "value: "
+    assert interp.expr == VarRef("x")
+    assert tail.value == "!\n"
 
 
 def test_missing_end_is_error():
@@ -174,3 +176,26 @@ def test_spread_tuple_field_adjacency_does_not_paste():
 def test_punctuation_adjacency_stays_tight():
     out = compile_source("macro R(x)\n[{{x}}]({{x}});\nend\n", "t.cursed")
     assert "#define R(x) [x](x);\n" in out
+
+
+# ── template mistakes error instead of leaking into output ──────────
+
+
+def test_unknown_at_directive_line_is_error():
+    with pytest.raises(CursedppError) as excinfo:
+        parse_file("macro M(xs: seq<token>)\n@fro x in xs\nx\n@end\nend\n", "t.cursed")
+    assert "unknown directive" in str(excinfo.value)
+    assert "t.cursed:2" in str(excinfo.value)
+
+
+def test_pragma_inside_macro_body_is_error():
+    with pytest.raises(CursedppError) as excinfo:
+        parse_file("macro M(x)\n@pragma pp_prefix F_\n{{x}}\nend\n", "t.cursed")
+    assert "top level" in str(excinfo.value)
+
+
+def test_unclosed_interpolation_is_error():
+    with pytest.raises(CursedppError) as excinfo:
+        parse_file("macro M(x)\nvalue = {{x} + 1;\nend\n", "t.cursed")
+    assert "{{" in str(excinfo.value)
+    assert "t.cursed:2" in str(excinfo.value)

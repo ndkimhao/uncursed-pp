@@ -18,3 +18,14 @@ def test_golden(cursed):
 def test_every_golden_template_has_a_header():
     missing = [golden_id(p) for p in golden_templates() if not p.with_suffix(".h").exists()]
     assert not missing, f"golden templates without .h: {missing}"
+
+
+def test_no_orphaned_golden_headers():
+    from conftest import GOLDEN
+
+    stray = [
+        str(h.relative_to(GOLDEN))
+        for h in GOLDEN.rglob("*.h")
+        if h.name != "cursedpp_runtime.h" and not h.with_suffix(".cursed").exists()
+    ]
+    assert not stray, f"golden headers without a .cursed source: {stray}"

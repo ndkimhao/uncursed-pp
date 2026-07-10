@@ -65,6 +65,7 @@ def canon(text: str) -> str:
 def run_cpp(c_file: Path, *extra_flags: str) -> str:
     """Preprocess a C file; failures surface the compiler's stderr instead
     of an opaque CalledProcessError."""
+    assert CC is not None, "requires_boost should have skipped this test"
     cmd = [CC, "-E", "-P", *BOOST_FLAGS, *extra_flags, str(c_file)]
     run = subprocess.run(cmd, capture_output=True, text=True)
     if run.returncode != 0:

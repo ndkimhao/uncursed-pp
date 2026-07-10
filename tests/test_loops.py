@@ -309,3 +309,24 @@ def test_seq_enum_join_expands(tmp_path):
     out = preprocess_src(tmp_path, src, "enumj", "ARGS((a)(b)(c))\nARGS((only))")
     assert canon("f(a, b, c)") in out
     assert canon("f(only)") in out
+
+
+def test_join_separator_preserves_utf8():
+    src = 'macro A(xs: seq<token>)\n@join xs as x with " → "\n({{x}})\n@end\nend\n'
+    [macro] = parse_file(src, "t.cursed").macros
+    join = next(n for n in macro.body if isinstance(n, Join))
+    assert join.sep == " → "
+
+
+def test_join_separator_escapes_still_work():
+    src = 'macro A(xs: seq<token>)\n@join xs as x with "\\t"\n({{x}})\n@end\nend\n'
+    [macro] = parse_file(src, "t.cursed").macros
+    join = next(n for n in macro.body if isinstance(n, Join))
+    assert join.sep == "\t"
+
+
+def test_block_join_separator_containing_at_end():
+    src = 'macro A(xs: seq<token>)\n@join xs as x with " @end "\nb({{x}})\n@end\nend\n'
+    [macro] = parse_file(src, "t.cursed").macros
+    join = next(n for n in macro.body if isinstance(n, Join))
+    assert join.sep == " @end "

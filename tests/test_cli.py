@@ -115,3 +115,21 @@ def test_cli_refuses_to_overwrite_input(tmp_path, capsys):
     assert excinfo.value.code == 1
     assert "overwrite" in capsys.readouterr().err
     assert src.read_text().startswith("macro ID")  # untouched
+
+
+def test_cli_missing_input_is_clean_error(tmp_path, capsys):
+    with pytest.raises(SystemExit) as excinfo:
+        main([str(tmp_path / "nope.cursed")])
+    assert excinfo.value.code == 1
+    err = capsys.readouterr().err
+    assert "cannot read" in err and "Traceback" not in err
+
+
+def test_cli_unwritable_output_is_clean_error(tmp_path, capsys):
+    src = tmp_path / "a.cursed"
+    src.write_text("macro ID(x)\n{{x}}\nend\n")
+    with pytest.raises(SystemExit) as excinfo:
+        main([str(src), "-o", str(tmp_path / "no_dir" / "a.h")])
+    assert excinfo.value.code == 1
+    err = capsys.readouterr().err
+    assert "cannot write" in err and "Traceback" not in err

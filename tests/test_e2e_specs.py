@@ -4,49 +4,71 @@
     #=>     expected expansion (line 1)
     #=>     expected expansion (line 2)
 
+    #?! MACRO(bad-args)      # expected-failure: preprocessing must error
+
 The #=> lines together are the COMPLETE expected expansion: the harness
 compiles the template, invokes the macro from a C snippet, runs
 `cc -E -P` (against the vendored Boost.PP), and requires the whole
 preprocessed output to equal the joined expectation (whitespace-
-canonicalized) - a missing or extra token fails the spec.
+canonicalized) - a missing or extra token fails the spec. '#?!' cases
+assert the documented failure modes really fail.
 """
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from conftest import canon, golden_id, golden_templates, preprocess_src, requires_boost
 
 
-def parse_specs(text: str) -> list[tuple[str, list[str]]]:
-    """Extract (invocation, [expected, ...]) cases from #? / #=> comments."""
-    cases: list[tuple[str, list[str]]] = []
+def parse_specs(text: str) -> list[tuple[str, list[str], bool]]:
+    """(invocation, [expected, ...], expect_failure) cases from spec comments."""
+    cases: list[tuple[str, list[str], bool]] = []
     for line in text.splitlines():
         stripped = line.strip()
-        if stripped.startswith("#?"):
+        if stripped.startswith("#?!"):
+            invocation = stripped[3:].strip()
+            if not invocation:
+                raise ValueError("empty '#?!' invocation")
+            cases.append((invocation, [], True))
+        elif stripped.startswith("#?"):
             invocation = stripped[2:].strip()
+            if not invocation:
+                raise ValueError("empty '#?' invocation")
             if "=>" in invocation:
                 raise ValueError(
                     f"put the expectation on its own '#=>' line: {stripped!r}"
                 )
-            cases.append((invocation, []))
+            cases.append((invocation, [], False))
         elif stripped.startswith("#=>"):
             if not cases:
                 raise ValueError("#=> before any #? line")
-            cases[-1][1].append(stripped[3:].strip())
-    for invocation, expecteds in cases:
-        if not expecteds:
+            expected = stripped[3:].strip()
+            if not expected:
+                raise ValueError("empty '#=>' expectation line")
+            cases[-1][1].append(expected)
+    for invocation, expecteds, expect_failure in cases:
+        if expect_failure and expecteds:
+            raise ValueError(f"'#?!' spec {invocation!r} must not have #=> lines")
+        if not expect_failure and not expecteds:
             raise ValueError(f"spec {invocation!r} has no expected output")
     return cases
 
 
-def spec_params() -> list:
+def spec_params() -> list[Any]:
     params = []
     for cursed in golden_templates():
-        for i, (invocation, expecteds) in enumerate(parse_specs(cursed.read_text())):
+        for i, (invocation, expecteds, expect_failure) in enumerate(
+            parse_specs(cursed.read_text())
+        ):
             params.append(
                 pytest.param(
-                    cursed, invocation, expecteds, id=f"{golden_id(cursed)}-{i}"
+                    cursed,
+                    invocation,
+                    expecteds,
+                    expect_failure,
+                    id=f"{golden_id(cursed)}-{i}",
                 )
             )
     return params
@@ -59,18 +81,23 @@ def test_every_golden_template_has_specs():
 
 def test_every_golden_macro_is_exercised():
     """Each macro a golden defines must be invoked by a spec, or called
-    from another macro in the same template (composition)."""
+    from another macro in the same template (composition). String/char
+    literals are stripped first so a name inside emitted text can't fool
+    the check."""
     import re
+
+    from cursedpp.emitter import C_LITERAL_PATTERN
 
     unexercised = []
     for cursed in golden_templates():
         text = cursed.read_text()
         macros = re.findall(r"^macro\s+(\w+)\s*\(", text, flags=re.MULTILINE)
-        invocations = " ".join(inv for inv, _ in parse_specs(text))
+        invocations = " ".join(inv for inv, _, _ in parse_specs(text))
         bodies = re.sub(r"^macro\s+\w+\s*\(.*$", "", text, flags=re.MULTILINE)
         bodies = "\n".join(
             line for line in bodies.splitlines() if not line.strip().startswith("#")
         )
+        bodies = re.sub(C_LITERAL_PATTERN, " ", bodies)
         for name in macros:
             if not re.search(rf"\b{name}\s*\(", invocations + " " + bodies):
                 unexercised.append(f"{golden_id(cursed)}:{name}")
@@ -78,8 +105,14 @@ def test_every_golden_macro_is_exercised():
 
 
 @requires_boost
-@pytest.mark.parametrize(("cursed", "invocation", "expecteds"), spec_params())
-def test_spec(tmp_path, cursed, invocation, expecteds):
+@pytest.mark.parametrize(
+    ("cursed", "invocation", "expecteds", "expect_failure"), spec_params()
+)
+def test_spec(tmp_path, cursed, invocation, expecteds, expect_failure):
+    if expect_failure:
+        with pytest.raises(AssertionError, match="preprocessing failed"):
+            preprocess_src(tmp_path, cursed.read_text(), cursed.stem, invocation)
+        return
     out = preprocess_src(tmp_path, cursed.read_text(), cursed.stem, invocation)
     expected = canon(" ".join(expecteds))
     assert expected == out, (
