@@ -195,7 +195,9 @@ Design: K=16 chain members per loop (dedupe across loops via collapse), a
 256-entry `LE16_<n>` 0/1 table in the shared runtime header making the
 small/large pick one `CAT`+`IIF`, `SEQ_FOR_EACH` fallback above K (no new
 call-site limits). `@pragma loop_chain off` opts out; `@pragma
-loop_chain_limit K` tunes (non-default K emits a local `LE<K>` table).
+loop_chain_limit K` tunes (every `LE<K>` table lives in the shared
+runtime header; `--runtime-chain-limits` on --emit-runtime adds tables
+for K values other headers sharing the file were generated with).
 Free-variable loops are excluded structurally: chain members are top-level
 defines and cannot see outer macro parameters — they keep the FOR path.
 Prototype postmortem: the first chain sketch had a real mechanism bug (a seq

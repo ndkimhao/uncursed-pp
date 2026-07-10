@@ -29,7 +29,31 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "stderr note instead (silence it with --no-emit-runtime)"
         ),
     )
+    parser.add_argument(
+        "--runtime-chain-limits",
+        type=_chain_limits,
+        default=(),
+        metavar="K[,K...]",
+        help=(
+            "extra loop_chain_limit values whose LE<K> size-class tables the "
+            "written runtime should carry, so one shared file serves headers "
+            "generated with different limits (merged with this template's "
+            "own needs and the default 16; only meaningful with "
+            "--emit-runtime)"
+        ),
+    )
     return parser
+
+
+def _chain_limits(value: str) -> tuple[int, ...]:
+    try:
+        limits = tuple(int(part) for part in value.split(","))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not a comma-separated int list: {value!r}")
+    for k in limits:
+        if not 1 <= k <= 256:
+            raise argparse.ArgumentTypeError(f"chain limit {k} outside 1..256")
+    return limits
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -57,8 +81,10 @@ def main(argv: list[str] | None = None) -> None:
         output_path.write_text(result.header)
         if args.emit_runtime:
             # explicit request: write even when this header doesn't need it,
-            # so one invocation can seed a directory shared by many headers
-            runtime = result.runtime if result.runtime is not None else runtime_header(result.config)
+            # so one invocation can seed a directory shared by many headers.
+            # Tables: this template's needs + the default + any CLI extras.
+            limits = sorted({16, *result.chain_limits, *args.runtime_chain_limits})
+            runtime = runtime_header(result.config, chain_limits=limits)
             (output_path.parent / result.runtime_name).write_text(runtime)
     except OSError as exc:
         print(f"uncursed-pp: cannot write {output_path}: {exc.strerror}", file=sys.stderr)

@@ -380,15 +380,15 @@ def test_pragma_loop_chain_off():
     assert "CH1_" not in out
 
 
-def test_pragma_loop_chain_limit_emits_local_table():
+def test_pragma_loop_chain_limit_table_lives_in_runtime():
     src = "@pragma loop_chain_limit 4\n@macro D(fields: seq<tuple<t, n>>)\n@for (t, n) in fields\n{{t}} {{n}};\n@end\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     assert "#define UNCURSED_PP_D_CH1_4(e)" in out
     assert "UNCURSED_PP_D_CH1_5" not in out
-    # non-default K: the size-class table is emitted locally
-    assert "#define UNCURSED_PP_LE4_4 1\n" in out
-    assert "#define UNCURSED_PP_LE4_5 0\n" in out
-    assert "#define UNCURSED_PP_LE4_256 0\n" in out
+    # non-default K: the size-class table comes from the shared runtime
+    assert '#include "uncursed_pp_runtime.h"' in out
+    assert "UNCURSED_PP_LE4_" in out           # referenced by the dispatch...
+    assert "#define UNCURSED_PP_LE4_4" not in out  # ...but not defined locally
 
 
 def test_nested_loop_bodies_keep_existing_machinery():

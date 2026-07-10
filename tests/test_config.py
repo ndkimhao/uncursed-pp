@@ -242,3 +242,31 @@ def test_readme_documents_every_pragma():
     table = readme.split("| Pragma |", 1)[1].split("```", 1)[0]
     missing = [p for p in sorted(_KNOWN_PRAGMAS) if f"`{p}`" not in table]
     assert not missing, f"pragmas absent from README table: {missing}"
+
+
+# ── chain-limit tables live in the shared runtime ────────────────────
+
+
+def test_runtime_header_takes_chain_limits():
+    rt = runtime_header(EmitConfig(), chain_limits=[4, 16])
+    assert "#define UNCURSED_PP_LE4_4 1\n" in rt
+    assert "#define UNCURSED_PP_LE4_5 0\n" in rt
+    assert "#define UNCURSED_PP_LE16_16 1\n" in rt
+
+
+def test_runtime_header_default_is_le16_only():
+    rt = runtime_header(EmitConfig())
+    assert "UNCURSED_PP_LE16_1 " in rt.replace("\n", " ") or "#define UNCURSED_PP_LE16_1 1\n" in rt
+    assert "UNCURSED_PP_LE4_" not in rt
+
+
+def test_compile_template_runtime_includes_used_and_default_tables():
+    src = (
+        "@pragma loop_chain_limit 4\n"
+        "@macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
+    )
+    result = compile_template(src, "t.uncursed")
+    assert result.runtime is not None
+    # union: the template's K=4 plus the default 16 (shared-file safety)
+    assert "#define UNCURSED_PP_LE4_4 1\n" in result.runtime
+    assert "#define UNCURSED_PP_LE16_16 1\n" in result.runtime

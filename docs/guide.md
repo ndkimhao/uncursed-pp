@@ -39,13 +39,17 @@ uv run uncursed-pp fields.uncursed -o fields.h # compile one template
 make test                                 # pytest incl. real `cc -E` e2e tests
 ```
 
-`uncursed-pp INPUT [-o OUTPUT] [--emit-runtime]` writes `OUTPUT` (default:
+`uncursed-pp INPUT [-o OUTPUT] [--emit-runtime [--runtime-chain-limits K,K]]`
+writes `OUTPUT` (default:
 input stem + `.h`). Templates whose generated code needs shared utilities
 (keyword-argument spreading, the loop-chain size table) `#include` a small
 companion header (default `uncursed_pp_runtime.h`) by name. The companion is
 only written when you pass `--emit-runtime`; by default the CLI prints a
 stderr note when a header needs one (silence it with `--no-emit-runtime`).
-Multiple generated headers in one directory share the single runtime file.
+Multiple generated headers in one directory share the single runtime
+file; if they were generated with different `loop_chain_limit` values,
+pass every K via `--runtime-chain-limits` so the one file carries all
+their `LE<K>` size-class tables.
 
 ## 3. File structure
 

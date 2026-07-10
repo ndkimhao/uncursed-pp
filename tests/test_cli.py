@@ -164,3 +164,16 @@ def test_cli_unwritable_output_is_clean_error(tmp_path, capsys):
     assert excinfo.value.code == 1
     err = capsys.readouterr().err
     assert "cannot write" in err and "Traceback" not in err
+
+
+def test_cli_runtime_chain_limits_flag(tmp_path):
+    src = tmp_path / "k.uncursed"
+    src.write_text(
+        "@pragma loop_chain_limit 4\n"
+        "@macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
+    )
+    main([str(src), "--emit-runtime", "--runtime-chain-limits", "8,24"])
+    rt = (tmp_path / "uncursed_pp_runtime.h").read_text()
+    # union of the template's K, the default, and the CLI-supplied extras
+    for k in (4, 8, 16, 24):
+        assert f"#define UNCURSED_PP_LE{k}_{k} 1\n" in rt
