@@ -53,7 +53,7 @@
  * }
  * end
  */
-#define CURSEDPP_DEFINE_PRINTER_AP1(type, name, fmt) printf(" " BOOST_PP_STRINGIZE(name) " = " fmt "\n", v->name);
+#define CURSEDPP_DEFINE_PRINTER_AP1(type, name, fmt) printf("  " BOOST_PP_STRINGIZE(name) " = " fmt "\n", v->name);
 #define DEFINE_PRINTER(sname, fields) \
     static void BOOST_PP_CAT(print_, sname)(const sname *v) { \
     BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, CURSEDPP_DEFINE_PRINTER_AP1, fields) \

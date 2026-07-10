@@ -133,3 +133,10 @@ def test_comment_terminator_in_body_is_sanitized():
     out = compile_source(src, "t.cursed")
     # the embedded source must not close the enclosing C comment early
     assert " * {{x}} /* inline * /\n" in out
+
+
+def test_string_literal_whitespace_survives_emission():
+    src = 'macro P(x)\nprintf("  a  b", {{x}});\nend\n'
+    out = compile_source(src, "t.cursed")
+    # check the #define itself, not the embedded source comment
+    assert '#define P(x) printf("  a  b", x);' in out

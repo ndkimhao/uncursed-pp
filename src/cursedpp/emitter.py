@@ -753,8 +753,19 @@ def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
     return walk(nodes)
 
 
+_LITERAL_RE = re.compile(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'")
+
+
 def _collapse_ws(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()
+    """Collapse whitespace runs, but never inside string/char literals."""
+    parts: list[str] = []
+    last = 0
+    for m in _LITERAL_RE.finditer(text):
+        parts.append(re.sub(r"\s+", " ", text[last : m.start()]))
+        parts.append(m.group(0))
+        last = m.end()
+    parts.append(re.sub(r"\s+", " ", text[last:]))
+    return "".join(parts).strip()
 
 
 def _format_define(head: str, body: str) -> str:

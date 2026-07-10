@@ -45,11 +45,22 @@ requires_boost = pytest.mark.skipif(
 )
 
 
+_C_TOKEN = re.compile(
+    r"\"(?:\\.|[^\"\\])*\""  # string literal (escapes intact)
+    r"|'(?:\\.|[^'\\])*'"      # char literal
+    r"|[A-Za-z_]\w*"              # identifier
+    r"|\d[\w.]*"                 # number
+    r"|\S",                       # any punctuation char
+    re.S,
+)
+
+
 def canon(text: str) -> str:
-    """Whitespace-canonical form: the preprocessor may add/drop spaces around
-    punctuation, but never inside identifiers - so compare modulo that."""
-    text = re.sub(r"\s+", " ", text).strip()
-    return re.sub(r" ?([(),;{}|]) ?", r"\1", text)
+    """Token-exact canonical form: whitespace BETWEEN C tokens is
+    insignificant and normalized away, but string/char literal interiors
+    are preserved verbatim - two expansions compare equal iff their token
+    streams are identical."""
+    return " ".join(_C_TOKEN.findall(text))
 
 
 def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> str:
