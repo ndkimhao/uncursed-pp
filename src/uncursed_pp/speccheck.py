@@ -226,7 +226,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "(e.g. -I for Boost.Preprocessor)."
         ),
     )
-    parser.add_argument("inputs", nargs="+", help="input .uncursed template file(s)")
+    parser.add_argument(
+        "inputs",
+        nargs="+",
+        help=(
+            "input .uncursed template file(s) and/or directories "
+            "(a directory is searched recursively for *.uncursed)"
+        ),
+    )
     parser.add_argument(
         "--cc", default=None, help="C compiler to use (default: $CC, else cc/gcc from PATH)"
     )
@@ -264,9 +271,22 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(2)
 
-    any_failed = False
+    paths: list[Path] = []
     for name in args.inputs:
-        path = Path(name)
+        p = Path(name)
+        if p.is_dir():
+            found = sorted(p.rglob("*.uncursed"))
+            if not found:
+                print(
+                    f"uncursed-pp-check: no .uncursed templates under {p}", file=sys.stderr
+                )
+                raise SystemExit(2)
+            paths.extend(found)
+        else:
+            paths.append(p)
+
+    any_failed = False
+    for path in paths:
         try:
             results = check_file(
                 path,

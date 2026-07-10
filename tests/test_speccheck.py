@@ -102,3 +102,30 @@ def test_work_dir_keeps_artifacts(tmp_path):
     assert (work / "dbg.h").exists()
     assert (work / "dbg_spec_1.c").exists()
     assert '#include "dbg.h"' in (work / "dbg_spec_1.c").read_text()
+
+
+def test_directory_input_checks_all_templates_recursively(tmp_path, capsys):
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "a.uncursed").write_text(PASSING)
+    (tmp_path / "sub" / "b.uncursed").write_text(
+        "@macro ID(x)\n{{x}}\n@endmacro\n#?  ID(7)\n#=>     8\n"
+    )
+    assert _run([str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "a.uncursed: 1/1 specs passed" in out
+    assert "b.uncursed: 0/1 specs passed" in out
+
+
+def test_directory_without_templates_is_a_setup_error(tmp_path, capsys):
+    (tmp_path / "empty").mkdir()
+    assert _run([str(tmp_path / "empty")]) == 2
+    assert "no .uncursed templates" in capsys.readouterr().err
+
+
+def test_mixed_file_and_directory_inputs(tmp_path):
+    d = tmp_path / "dir"
+    d.mkdir()
+    (d / "a.uncursed").write_text(PASSING)
+    lone = tmp_path / "lone.uncursed"
+    lone.write_text(PASSING)
+    assert _run([str(lone), str(d)]) == 0

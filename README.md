@@ -39,6 +39,7 @@ make typecheck      # mypy --strict
 
 uv run uncursed-pp input.uncursed -o output.h
 uv run uncursed-pp-check input.uncursed -- -I .boost-pp/include   # verify its #? specs
+uv run uncursed-pp-check examples/ -- -I .boost-pp/include        # or a whole directory
 ```
 
 Golden templates in `tests/golden/` are self-testing — each carries spec
