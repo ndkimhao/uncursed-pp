@@ -156,3 +156,23 @@ def test_dec_chain_relationals_expand(tmp_path):
     assert canon("s(lt3 / lt2 / le1 / le4)") in out
     assert canon("s(lt3 / ge2 / gt1 / le4)") in out
     assert canon("s(ge3 / ge2 / gt1 / gt4)") in out
+
+
+def test_else_with_trailing_text_is_error():
+    src = "macro M(xs: seq<token>)\n@if len(xs) == 1\none\n@else if len(xs) == 2\ntwo\n@end\nend\n"
+    with pytest.raises(CursedppError) as excinfo:
+        parse_file(src, "t.cursed")
+    assert "@else" in str(excinfo.value) and "t.cursed:4" in str(excinfo.value)
+
+
+def test_comparison_literal_above_256_is_error():
+    for cond in ["len(xs) == 300", "len(xs) != 257", "x == 999"]:
+        src = f"macro F(x, xs: seq<token>)\n@if {cond}\nbig\n@end\nend\n"
+        with pytest.raises(CursedppError) as excinfo:
+            compile_source(src, "t.cursed")
+        assert "256" in str(excinfo.value)
+
+
+def test_comparison_literal_at_256_is_ok():
+    src = "macro F(xs: seq<token>)\n@if len(xs) == 256\nmax\n@end\nend\n"
+    compile_source(src, "t.cursed")  # boundary value is legal

@@ -105,3 +105,13 @@ def test_cli_extra_include_and_pp_include_dir_pragmas(tmp_path):
     assert '#include "myproj/types.h"' in text
     assert "#include <stdio.h>" in text
     assert "#include <boost_foo/preprocessor/seq/for_each.hpp>" in text
+
+
+def test_cli_refuses_to_overwrite_input(tmp_path, capsys):
+    src = tmp_path / "already.h"
+    src.write_text("macro ID(x)\n{{x}}\nend\n")
+    with pytest.raises(SystemExit) as excinfo:
+        main([str(src)])
+    assert excinfo.value.code == 1
+    assert "overwrite" in capsys.readouterr().err
+    assert src.read_text().startswith("macro ID")  # untouched

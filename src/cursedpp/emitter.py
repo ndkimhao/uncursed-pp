@@ -102,6 +102,8 @@ class _MacroOut:
 class _Binding:
     c_expr: str
     type: Type | None  # None/TokenT = plain token, arity/shape unknown
+    fragile: bool = False  # rendered @join/@if call: expands to comma-bearing
+    # text, so it cannot travel as a helper argument or data-slot value
     spread: bool = False  # tuple param whose fields are direct BODY params
 
 
@@ -377,9 +379,13 @@ class _MacroEmitter:
                 parts.append(self._render_if(node, env))
             elif isinstance(node, Let):
                 if isinstance(node.expr, Join):
-                    env[node.name] = _Binding(self._render_join(node.expr, env), TokenT())
+                    env[node.name] = _Binding(
+                        self._render_join(node.expr, env), TokenT(), fragile=True
+                    )
                 elif isinstance(node.expr, If):
-                    env[node.name] = _Binding(self._render_if(node.expr, env), TokenT())
+                    env[node.name] = _Binding(
+                        self._render_if(node.expr, env), TokenT(), fragile=True
+                    )
                 else:
                     env[node.name] = self._resolve(node.expr, env, node.line)
             else:  # pragma: no cover - future node kinds
@@ -451,11 +457,23 @@ class _MacroEmitter:
 
     # ── conditionals ─────────────────────────────────────────────────
 
+    def _guard_fragile(self, names: list[str], env: _Env, line: int) -> None:
+        for n in names:
+            if env[n].fragile:
+                raise CursedppError(
+                    f"{n!r} holds a @let-bound inline @join/@if; its "
+                    "expansion cannot travel into a loop or branch helper — "
+                    "write the @join/@if inline at the use site instead",
+                    self.filename,
+                    line,
+                )
+
     def _render_if(self, node: If, env: _Env) -> str:
         free = self._free_vars(node.then, env, set())
         for name in self._free_vars(node.else_, env, set()):
             if name not in free:
                 free.append(name)
+        self._guard_fragile(free, env, node.line)
         branch_env = {n: _Binding(n, env[n].type) for n in free}
         params = ", ".join(free)
 
@@ -485,6 +503,13 @@ class _MacroEmitter:
         """
         if isinstance(cond, IsParen):
             return self._resolve(cond, env, line).c_expr, False
+        if not 0 <= cond.value <= 256:
+            raise CursedppError(
+                f"comparison literal {cond.value} is outside Boost.PP's "
+                "0-256 magnitude range",
+                self.filename,
+                line,
+            )
         lhs = self._resolve(cond.lhs, env, line).c_expr
         if cond.op in ("==", "!="):
             return f"{self.pp(_OP_TO_PP[cond.op])}({lhs}, {cond.value})", False
@@ -608,6 +633,7 @@ class _MacroEmitter:
         # env is free and must travel through `d`.
         bound = {name for name, binding in loop_env.items() if env.get(name) != binding}
         free = self._free_vars(node.body, env, bound)
+        self._guard_fragile(free, env, node.line)
         if not free:
             return "~", loop_env
         loop_env = dict(loop_env)
@@ -652,6 +678,7 @@ class _MacroEmitter:
         prelim = self._loop_env(env, unpack, node.var, elem_type, node)
         bound = {n for n, b in prelim.items() if env.get(n) != b}
         free = [n for n in self._free_vars(node.body, env, bound) if n != node.iterable]
+        self._guard_fragile(free, env, node.line)
 
         if free:
             parts = [seq_expr] + [env[n].c_expr for n in free]
@@ -891,13 +918,14 @@ def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None)
     from .collapse import collapse
 
     config = config or EmitConfig()
+    stem = re.sub(r"[^A-Za-z0-9]", "_", source_name.removesuffix(".cursed")).upper()
     used: set[str] = set()
     file_state = {"kw_utils": False}
     outs = [
         _MacroEmitter(macro, config, source_name, used, file_state).emit()
         for macro in file.macros
     ]
-    collapse(outs, config.helper_prefix)
+    collapse(outs, f"{config.helper_prefix}{stem}_")
     macro_chunks: list[str] = []
     for macro, out in zip(file.macros, outs):
         macro_chunks.append("\n")

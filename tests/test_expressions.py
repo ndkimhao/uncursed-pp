@@ -222,3 +222,25 @@ def test_spread_fallback_expands_correctly(tmp_path):
         tmp_path, SPREAD_VARIADIC_SRC, "svar", "V((foo, bar), a, b, c)"
     )
     assert canon("foo: a, b, c") == out
+
+
+def test_let_join_used_inside_loop_is_rejected():
+    src = (
+        "macro F(xs: seq<token>, ys: seq<token>)\n"
+        '@let j := @join ys as y with ", ": {{y}}@end\n'
+        "@for x in xs\ng({{x}}, {{j}});\n@end\nend\n"
+    )
+    with pytest.raises(CursedppError) as excinfo:
+        compile_source(src, "t.cursed")
+    assert "inline" in str(excinfo.value)
+
+
+def test_let_join_used_inside_if_branch_is_rejected():
+    src = (
+        "macro F(xs: seq<token>)\n"
+        '@let j := @join xs as x with ", ": {{x}}@end\n'
+        "@if len(xs) == 1\ng({{j}});\n@end\nend\n"
+    )
+    with pytest.raises(CursedppError) as excinfo:
+        compile_source(src, "t.cursed")
+    assert "inline" in str(excinfo.value)

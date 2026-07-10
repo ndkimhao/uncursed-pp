@@ -26,6 +26,13 @@ def main(argv: list[str] | None = None) -> None:
     args = build_arg_parser().parse_args(argv)
     input_path = Path(args.input)
     output_path = Path(args.output) if args.output else input_path.with_suffix(".h")
+    if output_path.resolve() == input_path.resolve():
+        print(
+            f"cursedpp: refusing to overwrite the input file {input_path} "
+            "(pass -o with a different output path)",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     try:
         result = compile_template(input_path.read_text(), str(input_path))
     except CursedppError as exc:

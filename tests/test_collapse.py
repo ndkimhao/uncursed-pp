@@ -23,23 +23,23 @@ TWO_TOKEN_DIFF = (
 
 def test_exact_duplicate_helpers_collapse():
     out = compile_source(TWO_IDENTICAL, "t.cursed")
-    assert out.count("#define CURSEDPP_H1(r, d, e) f(e);") == 1
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, ~, xs)" in out
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, ~, ys)" in out
+    assert out.count("#define CURSEDPP_T_H1(r, d, e) f(e);") == 1
+    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T_H1, ~, xs)" in out
+    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T_H1, ~, ys)" in out
     assert "CURSEDPP_CALL_A_EACH1" not in out
     assert "CURSEDPP_CALL_B_EACH1" not in out
 
 
 def test_single_token_diff_parameterizes_via_d():
     out = compile_source(ONE_TOKEN_DIFF, "t.cursed")
-    assert "#define CURSEDPP_H1(r, d, e) d e;" in out
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, int, xs)" in out
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, float, ys)" in out
+    assert "#define CURSEDPP_T_H1(r, d, e) d e;" in out
+    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T_H1, int, xs)" in out
+    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T_H1, float, ys)" in out
 
 
 def test_multi_token_diff_stays_unmerged():
     out = compile_source(TWO_TOKEN_DIFF, "t.cursed")
-    assert "CURSEDPP_H1" not in out
+    assert "_H1" not in out
     assert "#define CURSEDPP_A_EACH1(r, d, e) int e = 0;" in out
     assert "#define CURSEDPP_B_EACH1(r, d, e) float e = 1;" in out
 
@@ -48,7 +48,7 @@ def test_single_user_keeps_macro_specific_name():
     src = "macro ONLY(xs: seq<token>)\n@for x in xs\ng({{x}});\n@end\nend\n"
     out = compile_source(src, "t.cursed")
     assert "CURSEDPP_ONLY_EACH1" in out
-    assert "CURSEDPP_H1" not in out
+    assert "_H1" not in out
 
 
 @requires_boost
@@ -92,3 +92,19 @@ def test_collapse_merges_expand_correctly(tmp_path):
     out = preprocess_src(tmp_path, LITERAL_DIFF, "lit", "TBL1((k1))\nTBL2((k2))")
     assert canon('{ k1, "alpha" },') in out
     assert canon('{ k2, "beta" },') in out
+
+
+def test_shared_helpers_are_namespaced_per_file():
+    # two independently generated headers in one translation unit must not
+    # collide on shared helper names
+    out_a = compile_source(TWO_IDENTICAL, "widgets.cursed")
+    out_b = compile_source(
+        "macro OTHER(xs: seq<token>)\n@for x in xs\ng({{x}})\n@end\nend\n"
+        "macro OTHER2(ys: seq<token>)\n@for y in ys\ng({{y}})\n@end\nend\n",
+        "gadgets.cursed",
+    )
+    assert "CURSEDPP_WIDGETS_H1" in out_a
+    assert "CURSEDPP_GADGETS_H1" in out_b
+    import re
+
+    assert not re.search(r"\bCURSEDPP_H1\b", out_a + out_b)

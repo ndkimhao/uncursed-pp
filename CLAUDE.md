@@ -42,6 +42,7 @@ and refuted ideas — the refuted list is binding).
   fails. New goldens must include specs —
   `test_every_golden_template_has_specs` enforces it.
 - Generated helpers are namespaced `CURSEDPP_<MACRO>_*` (shared collapsed helpers:
-  `CURSEDPP_H<n>` in first-use order — output must stay deterministic).
+  `CURSEDPP_<FILESTEM>_H<n>` in first-use order — deterministic, and
+  namespaced per file so independently generated headers cannot collide).
 - The `BOOST_PP_` prefix is never hardcoded in emitter output paths; always go
   through the configured prefix (`@pragma pp_prefix`; EmitConfig for API use).

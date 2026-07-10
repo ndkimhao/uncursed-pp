@@ -19,10 +19,10 @@
  * end
  */
 #define CURSEDPP_DEFINE_STRUCT_AP1(type, name, fmt) type name;
-#define CURSEDPP_H1(r, d, e) d e
+#define CURSEDPP_REFLECT_H1(r, d, e) d e
 #define DEFINE_STRUCT(sname, fields) \
     typedef struct { \
-    BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, CURSEDPP_DEFINE_STRUCT_AP1, fields) \
+    BOOST_PP_SEQ_FOR_EACH(CURSEDPP_REFLECT_H1, CURSEDPP_DEFINE_STRUCT_AP1, fields) \
     } sname;
 
 /* cursedpp source:
@@ -56,7 +56,7 @@
 #define CURSEDPP_DEFINE_PRINTER_AP1(type, name, fmt) printf("  " BOOST_PP_STRINGIZE(name) " = " fmt "\n", v->name);
 #define DEFINE_PRINTER(sname, fields) \
     static void BOOST_PP_CAT(print_, sname)(const sname *v) { \
-    BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, CURSEDPP_DEFINE_PRINTER_AP1, fields) \
+    BOOST_PP_SEQ_FOR_EACH(CURSEDPP_REFLECT_H1, CURSEDPP_DEFINE_PRINTER_AP1, fields) \
     }
 
 /* cursedpp source:

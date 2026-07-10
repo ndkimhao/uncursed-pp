@@ -10,8 +10,10 @@ Runs over all macros' generated helpers before the header is assembled:
    into one shared helper reading that token from `d`. Anything needing
    more machinery (several differing tokens) stays unmerged on purpose.
 
-Shared helpers are numbered in first-use order so output is deterministic.
-Only helpers with 2+ users ever merge.
+Shared helpers are named <prefix><FILESTEM>_H<n> in first-use order —
+deterministic, and distinct across independently generated headers so two
+headers in one translation unit cannot collide. Only helpers with 2+ users
+ever merge.
 """
 
 from __future__ import annotations
@@ -36,21 +38,21 @@ class _Site:
     helper: _Helper
 
 
-def collapse(outs: list[_MacroOut], helper_prefix: str) -> None:
-    counter = _SharedCounter(helper_prefix)
+def collapse(outs: list[_MacroOut], shared_prefix: str) -> None:
+    counter = _SharedCounter(shared_prefix)
     while _merge_exact(outs, counter):
         pass
     _merge_parameterized(outs, counter)
 
 
 class _SharedCounter:
-    def __init__(self, helper_prefix: str):
-        self.helper_prefix = helper_prefix
+    def __init__(self, shared_prefix: str):
+        self.shared_prefix = shared_prefix
         self.n = 0
 
     def next_name(self) -> str:
         self.n += 1
-        return f"{self.helper_prefix}H{self.n}"
+        return f"{self.shared_prefix}H{self.n}"
 
 
 def _sites(outs: list[_MacroOut]) -> list[_Site]:
@@ -90,7 +92,7 @@ def _merge_exact(outs: list[_MacroOut], counter: _SharedCounter) -> bool:
         if len(members) < 2:
             continue
         canonical = members[0].helper
-        if _is_shared(canonical.name, counter.helper_prefix):
+        if _is_shared(canonical.name, counter.shared_prefix):
             new_name = canonical.name  # already shared; absorb the extra copies
         else:
             new_name = counter.next_name()
@@ -104,15 +106,15 @@ def _merge_exact(outs: list[_MacroOut], counter: _SharedCounter) -> bool:
     return merged
 
 
-def _is_shared(name: str, helper_prefix: str) -> bool:
-    return re.fullmatch(rf"{re.escape(helper_prefix)}H\d+", name) is not None
+def _is_shared(name: str, shared_prefix: str) -> bool:
+    return re.fullmatch(rf"{re.escape(shared_prefix)}H\d+", name) is not None
 
 
 def _merge_parameterized(outs: list[_MacroOut], counter: _SharedCounter) -> None:
     candidates = [
         site
         for site in _sites(outs)
-        if site.helper.params in _LOOP_PARAMS and not _is_shared(site.helper.name, counter.helper_prefix)
+        if site.helper.params in _LOOP_PARAMS and not _is_shared(site.helper.name, counter.shared_prefix)
     ]
     used: set[int] = set()
     clusters: list[list[_Site]] = []

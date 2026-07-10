@@ -488,6 +488,13 @@ def _handle_directive(directive: str, stack: list[_Block], filename: str, lineno
         stack[-1].target.append(node)
         stack.append(_Block(node.then, node, "if", lineno))
     elif word == "else":
+        if directive.strip() != "else":
+            raise CursedppError(
+                "unexpected text after @else (for else-if, nest an @if "
+                "inside the @else branch)",
+                filename,
+                lineno,
+            )
         block = stack[-1]
         if block.kind != "if" or not isinstance(block.node, If):
             raise CursedppError("@else without matching @if", filename, lineno)
