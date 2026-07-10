@@ -41,6 +41,9 @@ and refuted ideas — the refuted list is binding).
   whole-output equality (canonicalized), so a missing or extra emitted token
   fails. New goldens must include specs —
   `test_every_golden_template_has_specs` enforces it.
+  `examples/` is a second golden root with identical rules (committed .h,
+  mandatory #? specs, deliberate regeneration) — its templates are
+  human-facing documentation, so keep the prose accurate too.
 - Generated helpers are namespaced `UNCURSED_PP_<MACRO>_*` (shared collapsed helpers:
   `UNCURSED_PP_<FILESTEM>_H<n>` in first-use order — deterministic, and
   namespaced per file so independently generated headers cannot collide).

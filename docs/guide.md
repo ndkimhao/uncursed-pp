@@ -3,7 +3,7 @@
 uncursed-pp compiles a readable template DSL (`.uncursed` files) into C preprocessor
 macros built on [Boost.Preprocessor](https://www.boost.org/doc/libs/latest/libs/preprocessor/doc/index.html).
 This is the complete language reference. For the design rationale see
-[design.md](design.md); for a quick tour see [`examples/example.uncursed`](../examples/example.uncursed).
+[design.md](design.md); for per-feature walkthroughs see [`examples/`](../examples/README.md).
 
 ## 1. Mental model
 

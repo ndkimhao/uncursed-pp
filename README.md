@@ -70,7 +70,7 @@ takes only the input path and `-o`:
 
 A `.uncursed` file holds `#` comments, optional `@pragma` lines, and macro
 definitions. The body is raw C text; control flow uses `@`-directives;
-`{{expr}}` interpolates. See `examples/example.uncursed` for a feature tour.
+`{{expr}}` interpolates. See `examples/` for per-feature walkthroughs, each verified by the test suite.
 
 | Feature | Syntax |
 |---|---|
@@ -92,7 +92,9 @@ automatically (`@join args with ", ": {{type}} {{argname}}@end`). Loop bodies
 may reference outer parameters freely — they travel through `FOR_EACH`'s data
 slot. See `tests/golden/compose/reflect.uncursed` for a worked example: a
 reflection system where one field list generates a struct, a name/type/offset
-metadata table, and a debug printer.
+metadata table, and a debug printer. New to the DSL? Start with the
+annotated, spec-verified walkthroughs in `examples/` — one feature per
+file, in reading order.
 
 Identical generated helpers are deduplicated across the file into shared
 `UNCURSED_PP_<FILESTEM>_H<n>` macros; loop bodies differing by one constant
