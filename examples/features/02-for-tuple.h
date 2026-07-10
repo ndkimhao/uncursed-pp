@@ -8,6 +8,22 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── @for with tuple destructuring ────────────────────────────────────
+ * #
+ * # A seq can hold tuples with NAMED elements: `seq<tuple<ctype, regname>>`.
+ * # `@for (ctype, regname) in regs` unpacks each tuple; the names bind
+ * # inside the loop body (arity must match the declared tuple).
+ * #
+ * # CALL-SITE RULE (the one everybody trips on): a seq of tuples needs
+ * # DOUBLE parens — the outer paren is the seq-element wrapper (it also
+ * # protects the tuple's commas from argument splitting), the inner paren
+ * # is the tuple itself:
+ * #
+ * #     ((uint32_t, CTRL))((uint16_t, STATUS))
+ * #
+ * # Scenario: memory-mapped register declarations for a device driver.
+ */
+
 /* uncursed-pp source:
  * @macro DECLARE_REGISTERS(regs: seq<tuple<ctype, regname>>)
  * @for (ctype, regname) in regs
@@ -37,3 +53,14 @@
 #define UNCURSED_PP_DECLARE_REGISTERS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_DECLARE_REGISTERS_SMALL1, UNCURSED_PP_DECLARE_REGISTERS_BIG1)
 #define UNCURSED_PP_DECLARE_REGISTERS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_DECLARE_REGISTERS_EACH1, ~, seq)
 #define DECLARE_REGISTERS(regs) UNCURSED_PP_DECLARE_REGISTERS_PICK1(BOOST_PP_SEQ_SIZE(regs))(regs)
+
+/* #?  DECLARE_REGISTERS(((uint32_t, CTRL))((uint16_t, STATUS))((uint16_t, DATA)))
+ * #=>     volatile uint32_t CTRL;
+ * #=>     volatile uint16_t STATUS;
+ * #=>     volatile uint16_t DATA;
+ */
+
+/* # Edge: an element type containing a space is still one token-sequence.
+ * #?  DECLARE_REGISTERS(((unsigned long, TICKS)))
+ * #=>     volatile unsigned long TICKS;
+ */

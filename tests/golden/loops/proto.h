@@ -37,3 +37,17 @@
 #define UNCURSED_PP_PROTO_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_PROTO_SMALL1, UNCURSED_PP_PROTO_BIG1)
 #define UNCURSED_PP_PROTO_BIG1(seq) BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_PROTO_EACH1, ~, seq)
 #define PROTO(name, args) void name(UNCURSED_PP_PROTO_PICK1(BOOST_PP_SEQ_SIZE(args))(args));
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  PROTO(init, ((int, only)))
+ * #=>     void init(int only);
+ */
+
+/* #?  PROTO(draw, ((struct ctx *, ctx))((int, flags))((char *, label)))
+ * #=>     void draw(struct ctx * ctx, int flags, char * label);
+ */
+
+/* # edge: function-pointer parameter type (nested parens + comma)
+ * #?  PROTO(on_event, ((void (*)(int, void *), handler)))
+ * #=>     void on_event(void (*)(int, void *) handler);
+ */

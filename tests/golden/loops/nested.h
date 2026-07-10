@@ -8,6 +8,12 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+/* # Nested loops (up to 4 deep): the outer level uses SEQ_FOR_EACH; inner
+ * # levels ride BOOST_PP_REPEAT's three auto-detected dimensions, indexing
+ * # their seq with SEQ_ELEM. The seq plus free outer variables travel in
+ * # the inner data tuple.
+ */
+
 /* uncursed-pp source:
  * # cartesian product of two seq params
  * @macro CROSS(xs: seq<token>, ys: seq<token>)
@@ -67,3 +73,25 @@
 #define UNCURSED_PP_QUAD_EACH3(z, n, d) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_ELEM(1, d)), UNCURSED_PP_QUAD_EACH2, (BOOST_PP_TUPLE_ELEM(1, d), BOOST_PP_TUPLE_ELEM(2, d), BOOST_PP_TUPLE_ELEM(3, d), BOOST_PP_SEQ_ELEM(n, BOOST_PP_TUPLE_ELEM(0, d))))
 #define UNCURSED_PP_QUAD_EACH4(r, d, e) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_ELEM(0, d)), UNCURSED_PP_QUAD_EACH3, (BOOST_PP_TUPLE_ELEM(0, d), BOOST_PP_TUPLE_ELEM(1, d), BOOST_PP_TUPLE_ELEM(2, d), e))
 #define QUAD(s1, s2, s3, s4) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_QUAD_EACH4, (s2, s3, s4), s1)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  CROSS((a)(b), (u)(v))
+ * #=>     pair(a, u); pair(a, v); pair(b, u); pair(b, v);
+ */
+
+/* #?  MATRIX(((a)(b))((c)))
+ * #=>     cell(a); cell(b); cell(c);
+ */
+
+/* #?  CALL_ROWS((p)(q), (u)(v))
+ * #=>     call(p, u, v); call(q, u, v);
+ */
+
+/* #?  QUAD((1), (2)(20), (3), (4))
+ * #=>     quad(1, 2, 3, 4); quad(1, 20, 3, 4);
+ */
+
+/* # edge: single-element everything
+ * #?  QUAD((1), (2), (3), (4))
+ * #=>     quad(1, 2, 3, 4);
+ */

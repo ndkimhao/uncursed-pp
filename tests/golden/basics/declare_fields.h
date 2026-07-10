@@ -38,3 +38,22 @@
 #define UNCURSED_PP_DECLARE_FIELDS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_DECLARE_FIELDS_SMALL1, UNCURSED_PP_DECLARE_FIELDS_BIG1)
 #define UNCURSED_PP_DECLARE_FIELDS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_DECLARE_FIELDS_EACH1, ~, seq)
 #define DECLARE_FIELDS(fields) UNCURSED_PP_DECLARE_FIELDS_PICK1(BOOST_PP_SEQ_SIZE(fields))(fields)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  DECLARE_FIELDS(((int, x)))
+ * #=>     int x;
+ */
+
+/* #?  DECLARE_FIELDS(((int, x))((float, y))((char *, name)))
+ * #=>     int x; float y; char * name;
+ */
+
+/* # edge: multi-token type
+ * #?  DECLARE_FIELDS(((struct foo *, p)))
+ * #=>     struct foo * p;
+ */
+
+/* # edge: commas inside nested parens stay inside their tuple element
+ * #?  DECLARE_FIELDS(((void (*)(int, int), cb)))
+ * #=>     void (*)(int, int) cb;
+ */

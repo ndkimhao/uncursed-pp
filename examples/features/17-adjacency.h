@@ -3,6 +3,19 @@
 
 #include <boost/preprocessor/cat.hpp>
 
+/* # ── Codegen: adjacency never pastes ──────────────────────────────────
+ * #
+ * # `{{prefix}}{{name}}` and `pre{{x}}` place tokens NEXT TO each other —
+ * # they never merge into one identifier, no matter how tightly you write
+ * # them in the template. This is deliberate: implicit pasting is the #1
+ * # source of silent bugs in handwritten preprocessor code. The generated
+ * # header (committed next to this file) keeps segments apart so the C
+ * # preprocessor cannot fuse them; building an identifier is ALWAYS the
+ * # explicit {{concat(...)}}.
+ * #
+ * # The two lines below differ only in concat() — compare their output.
+ */
+
 /* uncursed-pp source:
  * @macro SHOW_PASTE_RULE(prefix, name)
  * int {{prefix}}{{name}} = 0;
@@ -12,3 +25,10 @@
 #define SHOW_PASTE_RULE(prefix, name) \
     int prefix name = 0; \
     int BOOST_PP_CAT(prefix, name) = 1;
+
+/* # Line 1: TWO tokens (`user_ id`, not an identifier).
+ * # Line 2: ONE identifier (`user_id`).
+ * #?  SHOW_PASTE_RULE(user_, id)
+ * #=>     int user_ id = 0;
+ * #=>     int user_id = 1;
+ */

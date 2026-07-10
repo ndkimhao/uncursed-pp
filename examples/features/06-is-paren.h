@@ -4,6 +4,16 @@
 #include <boost/preprocessor/control/iif.hpp>
 #include <boost/preprocessor/punctuation/is_begin_parens.hpp>
 
+/* # ── is_paren(): dispatch on parenthesization ─────────────────────────
+ * #
+ * # `is_paren(x)` is 1 when the value starts with a paren, else 0 — the
+ * # building block for macros that accept EITHER a bare token OR a
+ * # parenthesized argument pack and do the right thing for each.
+ * #
+ * # Scenario: an init helper — pass `(args...)` to forward them, or a
+ * # single value to wrap it.
+ */
+
 /* uncursed-pp source:
  * @macro INIT_CALL(fn, arg)
  * @if is_paren(arg)
@@ -16,3 +26,14 @@
 #define UNCURSED_PP_INIT_CALL_THEN1(fn, arg) fn arg;
 #define UNCURSED_PP_INIT_CALL_ELSE1(fn, arg) fn((arg));
 #define INIT_CALL(fn, arg) BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(arg), UNCURSED_PP_INIT_CALL_THEN1, UNCURSED_PP_INIT_CALL_ELSE1)(fn, arg)
+
+/* # A parenthesized argument pack is forwarded verbatim (juxtaposing the
+ * # name against the pack forms the call):
+ * #?  INIT_CALL(setup, (dev, 0, NULL))
+ * #=>     setup(dev, 0, NULL);
+ */
+
+/* # A bare value gets wrapped:
+ * #?  INIT_CALL(enable, IRQ7)
+ * #=>     enable((IRQ7));
+ */

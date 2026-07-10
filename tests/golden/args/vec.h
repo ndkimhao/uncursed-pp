@@ -29,3 +29,12 @@
 #define UNCURSED_PP_VEC_DISPATCH(n) UNCURSED_PP_VEC_DISPATCH_I(n)
 #define UNCURSED_PP_VEC_DISPATCH_I(n) UNCURSED_PP_VEC_ ## n
 #define VEC(...) UNCURSED_PP_VEC_DISPATCH(UNCURSED_PP_VEC_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  VEC(acc, (x)(y))
+ * #=>     vx acc; vy acc;
+ */
+
+/* #?  VEC(acc, (x)(y), PREFIX(k))
+ * #=>     kx acc; ky acc;
+ */

@@ -3,6 +3,19 @@
 
 #include <boost/preprocessor/cat.hpp>
 
+/* # ── Named arguments: any order, any subset ───────────────────────────
+ * #
+ * # `named KEY = default` declares a keyword parameter. Call sites write
+ * # KEY(value) after the required arguments — in any order, any subset.
+ * # Rules that matter at the call site:
+ * #   - a repeated keyword: the LAST occurrence wins;
+ * #   - a misspelled keyword is a C compile error, never a silent default;
+ * #   - values containing commas must be parenthesized: TITLE((a, b));
+ * #   - keyword names must not be #define'd macros at the call site.
+ * #
+ * # Scenario: opening a window without remembering a 4-argument order.
+ */
+
 /* uncursed-pp source:
  * @macro OPEN_WINDOW(title, named W = 640, named H = 480, named MONITOR = 0)
  * open_window({{title}}, {{W}}, {{H}}, {{MONITOR}});
@@ -28,3 +41,18 @@
 #define UNCURSED_PP_OPEN_WINDOW_DISPATCH(n) UNCURSED_PP_OPEN_WINDOW_DISPATCH_I(n)
 #define UNCURSED_PP_OPEN_WINDOW_DISPATCH_I(n) UNCURSED_PP_OPEN_WINDOW_ ## n
 #define OPEN_WINDOW(...) UNCURSED_PP_OPEN_WINDOW_DISPATCH(UNCURSED_PP_OPEN_WINDOW_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+/* # All defaults:
+ * #?  OPEN_WINDOW("editor")
+ * #=>     open_window("editor", 640, 480, 0);
+ */
+
+/* # Any subset, any order:
+ * #?  OPEN_WINDOW("editor", H(1080), W(1920))
+ * #=>     open_window("editor", 1920, 1080, 0);
+ */
+
+/* # Repeated keyword — last one wins:
+ * #?  OPEN_WINDOW("editor", MONITOR(1), MONITOR(2))
+ * #=>     open_window("editor", 640, 480, 2);
+ */

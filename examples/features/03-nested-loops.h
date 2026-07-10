@@ -7,6 +7,20 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+/* # ── Nested loops ─────────────────────────────────────────────────────
+ * #
+ * # Loops nest up to 4 deep. Under the hood only the OUTERMOST level can
+ * # use BOOST_PP_SEQ_FOR_EACH (it cannot re-enter itself); inner levels
+ * # compile to BOOST_PP_REPEAT with indexed element access. You don't
+ * # have to care — but it explains why deeper nesting is a compile error
+ * # and why generated inner loops look different from outer ones in the
+ * # committed header next to this file.
+ * #
+ * # Inner bodies may reference outer loop variables freely ({{m}} below).
+ * #
+ * # Scenario: a dispatch table over every (mode x width) combination.
+ */
+
 /* uncursed-pp source:
  * @macro FILL_DISPATCH(modes: seq<token>, widths: seq<token>)
  * @for m in modes
@@ -19,3 +33,15 @@
 #define UNCURSED_PP_FILL_DISPATCH_EACH1(z, n, d) table[BOOST_PP_TUPLE_ELEM(1, d)][BOOST_PP_SEQ_ELEM(n, BOOST_PP_TUPLE_ELEM(0, d))] = op_generic;
 #define UNCURSED_PP_FILL_DISPATCH_EACH2(r, d, e) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(d), UNCURSED_PP_FILL_DISPATCH_EACH1, (d, e))
 #define FILL_DISPATCH(modes, widths) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_FILL_DISPATCH_EACH2, widths, modes)
+
+/* #?  FILL_DISPATCH((MODE_R)(MODE_W), (W8)(W16))
+ * #=>     table[MODE_R][W8] = op_generic;
+ * #=>     table[MODE_R][W16] = op_generic;
+ * #=>     table[MODE_W][W8] = op_generic;
+ * #=>     table[MODE_W][W16] = op_generic;
+ */
+
+/* # Edge: 1 x 1 still works.
+ * #?  FILL_DISPATCH((MODE_R), (W8))
+ * #=>     table[MODE_R][W8] = op_generic;
+ */

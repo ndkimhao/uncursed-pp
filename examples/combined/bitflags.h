@@ -12,6 +12,17 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── Combined example: a bitflag system from one list ─────────────────
+ * #
+ * # Features composing: @for with tuple destructuring, concat(),
+ * # stringize(), @join, and automatic element-name binding inside a
+ * # @join over a seq of tuples.
+ * #
+ * # ONE flag list produces: the shifted enum, an all-bits mask, and a
+ * # name-lookup function. Add a flag in one place; everything stays
+ * # consistent.
+ */
+
 /* uncursed-pp source:
  * @macro DEFINE_BITFLAGS(setname, flags: seq<tuple<fname, bit>>)
  * enum {
@@ -104,3 +115,26 @@
     } \
     return "?"; \
     }
+
+/* #?  DEFINE_BITFLAGS(PERM, ((PERM_R, 0))((PERM_W, 1))((PERM_X, 2)))
+ * #=>     enum {
+ * #=>       PERM_R = 1 << 0,
+ * #=>       PERM_W = 1 << 1,
+ * #=>       PERM_X = 1 << 2,
+ * #=>       PERM_ALL = PERM_R | PERM_W | PERM_X
+ * #=>     };
+ * #=>     static const char *PERM_name(int f) {
+ * #=>       switch (f) {
+ * #=>         case PERM_R: return "PERM_R";
+ * #=>         case PERM_W: return "PERM_W";
+ * #=>         case PERM_X: return "PERM_X";
+ * #=>       }
+ * #=>       return "?";
+ * #=>     }
+ */
+
+/* # Edge: a single flag — the mask degenerates to that flag.
+ * #?  DEFINE_BITFLAGS(DBG, ((DBG_TRACE, 0)))
+ * #=>     enum { DBG_TRACE = 1 << 0, DBG_ALL = DBG_TRACE };
+ * #=>     static const char *DBG_name(int f) { switch (f) { case DBG_TRACE: return "DBG_TRACE"; } return "?"; }
+ */

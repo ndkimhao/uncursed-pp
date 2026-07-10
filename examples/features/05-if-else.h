@@ -13,6 +13,16 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── @if / @else with len() ───────────────────────────────────────────
+ * #
+ * # Conditionals run at C-preprocess time too. `len(xs)` is the element
+ * # count of a seq (or variadic); comparisons support == != < > <= >=
+ * # against literals 0-256. Seq elements are also indexable: {{xs[0]}}.
+ * #
+ * # Scenario: a buffer declaration — one dimension gets a plain array,
+ * # several dimensions multiply out.
+ */
+
 /* uncursed-pp source:
  * @macro DECLARE_BUFFER(name, dims: seq<token>)
  * @if len(dims) == 1
@@ -47,6 +57,16 @@
 #define UNCURSED_PP_DECLARE_BUFFER_BIG1(seq) BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_DECLARE_BUFFER_EACH1, ~, seq)
 #define DECLARE_BUFFER(name, dims) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(dims), 1), UNCURSED_PP_DECLARE_BUFFER_THEN1, UNCURSED_PP_DECLARE_BUFFER_ELSE1)(name, dims)
 
+/* #?  DECLARE_BUFFER(io_buf, (4096))
+ * #=>     static char io_buf[4096];
+ */
+
+/* #?  DECLARE_BUFFER(grid, (16)(16)(4))
+ * #=>     static char grid[16 * 16 * 4];
+ */
+
+/* # Relational tests: pick a strategy by list size. */
+
 /* uncursed-pp source:
  * @macro PICK_SEARCH(xs: seq<token>)
  * @if len(xs) <= 3
@@ -59,3 +79,11 @@
 #define UNCURSED_PP_PICK_SEARCH_THEN1() linear_scan
 #define UNCURSED_PP_PICK_SEARCH_ELSE1() binary_search
 #define PICK_SEARCH(xs) BOOST_PP_IIF(BOOST_PP_BOOL(BOOST_PP_DEC(BOOST_PP_DEC(BOOST_PP_DEC(BOOST_PP_SEQ_SIZE(xs))))), UNCURSED_PP_PICK_SEARCH_ELSE1, UNCURSED_PP_PICK_SEARCH_THEN1)()
+
+/* #?  PICK_SEARCH((a)(b))
+ * #=>     linear_scan
+ */
+
+/* #?  PICK_SEARCH((a)(b)(c)(d))
+ * #=>     binary_search
+ */

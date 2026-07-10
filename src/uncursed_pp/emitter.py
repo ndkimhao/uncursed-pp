@@ -1112,6 +1112,17 @@ def _source_comment(source: str) -> str:
     return f"/* uncursed-pp source:\n{body} */\n"
 
 
+def _standalone_comment(text: str) -> str:
+    """A detached top-level comment group (incl. #?/#=> spec lines),
+    reproduced verbatim at its source position."""
+    lines = [line.rstrip().replace("*/", "* /") for line in text.splitlines()]
+    if len(lines) == 1:
+        return f"/* {lines[0]} */\n"
+    head, *rest = lines
+    body = "".join(f" * {line}\n" if line else " *\n" for line in rest)
+    return f"/* {head}\n{body} */\n"
+
+
 def _format_helper(helper: _Helper) -> str:
     body = f" {helper.body}" if helper.body else ""
     return f"#define {helper.name}({helper.params}){body}\n"
@@ -1130,13 +1141,22 @@ def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None)
     ]
     collapse(outs, f"{config.helper_prefix}{stem}_")
     macro_chunks: list[str] = []
-    for macro, out in zip(file.macros, outs):
+
+    def emit_standalone(position: int) -> None:
+        for pos, text in file.comments:
+            if pos == position:
+                macro_chunks.append("\n")
+                macro_chunks.append(_standalone_comment(text))
+
+    for idx, (macro, out) in enumerate(zip(file.macros, outs)):
+        emit_standalone(idx)
         macro_chunks.append("\n")
         if macro.source:
             macro_chunks.append(_source_comment(macro.source))
         for helper in out.helpers:
             macro_chunks.append(_format_helper(helper))
         macro_chunks.extend(out.defines)
+    emit_standalone(len(file.macros))
 
     if config.pp_include is not None:
         includes = [config.pp_include]

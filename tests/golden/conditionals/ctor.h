@@ -44,3 +44,16 @@
 #define UNCURSED_PP_CTOR_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_CTOR_SMALL1, UNCURSED_PP_CTOR_BIG1)
 #define UNCURSED_PP_CTOR_BIG1(seq) BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_CTOR_EACH1, ~, seq)
 #define CTOR(name, args) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(args), 1), UNCURSED_PP_CTOR_THEN1, UNCURSED_PP_CTOR_ELSE1)(name, args)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  CTOR(w, ((int, x)))
+ * #=>     explicit_single_arg_init(w)
+ */
+
+/* #?  CTOR(w, ((int, x))((int, y)))
+ * #=>     w_init(x, y)
+ */
+
+/* #?  CTOR(w, ((int, x))((int, y))((int, z)))
+ * #=>     w_init(x, y, z)
+ */

@@ -82,3 +82,20 @@
 #define UNCURSED_PP_PAIRS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_PAIRS_SMALL1, UNCURSED_PP_PAIRS_BIG1)
 #define UNCURSED_PP_PAIRS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_PAIRS_EACH1, ~, seq)
 #define PAIRS(xs) UNCURSED_PP_PAIRS_PICK1(BOOST_PP_SEQ_SIZE(xs))(xs)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  CALL2(f, ((int, a))((int, b)))
+ * #=>     f(a, b, a, b)
+ */
+
+/* #?  PICK((a, b))
+ * #=>     g(a, b)
+ */
+
+/* #?  PICK(q)
+ * #=>     g(q)
+ */
+
+/* #?  PAIRS((a)(b))
+ * #=>     int a_id = sizeof(a_id); int b_id = sizeof(b_id);
+ */

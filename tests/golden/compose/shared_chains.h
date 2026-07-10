@@ -7,6 +7,13 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # Two macros with byte-identical loop bodies: their consumption chains
+ * # must merge as a FAMILY (shared HC prefix reachable by the CAT-assembled
+ * # dispatch), never member-by-member. Regression golden for the dangling
+ * # UNCURSED_PP_<M>_CH1_<n> bug: the small-seq specs exercise the merged
+ * # chain path, the 17-element spec the SEQ_FOR_EACH fallback.
+ */
+
 /* uncursed-pp source:
  * @macro DECLARE_INTS(xs: seq<token>)
  * @for x in xs
@@ -47,3 +54,16 @@
 #define UNCURSED_PP_DECLARE_MORE_INTS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_DECLARE_MORE_INTS_SMALL1, UNCURSED_PP_DECLARE_MORE_INTS_BIG1)
 #define UNCURSED_PP_DECLARE_MORE_INTS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_SHARED_CHAINS_H1, ~, seq)
 #define DECLARE_MORE_INTS(ys) UNCURSED_PP_DECLARE_MORE_INTS_PICK1(BOOST_PP_SEQ_SIZE(ys))(ys)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  DECLARE_INTS((a)(b))
+ * #=>     int a; int b;
+ */
+
+/* #?  DECLARE_MORE_INTS((u)(v)(w))
+ * #=>     int u; int v; int w;
+ */
+
+/* #?  DECLARE_INTS((e0)(e1)(e2)(e3)(e4)(e5)(e6)(e7)(e8)(e9)(e10)(e11)(e12)(e13)(e14)(e15)(e16))
+ * #=>     int e0; int e1; int e2; int e3; int e4; int e5; int e6; int e7; int e8; int e9; int e10; int e11; int e12; int e13; int e14; int e15; int e16;
+ */

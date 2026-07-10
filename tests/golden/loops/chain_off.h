@@ -4,6 +4,8 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+/* # loop_chain opt-out: loops compile to plain SEQ_FOR_EACH machinery only. */
+
 /* uncursed-pp source:
  * @macro FIELDS_OFF(fields: seq<tuple<t, n>>)
  * @for (t, n) in fields
@@ -14,3 +16,12 @@
 #define UNCURSED_PP_FIELDS_OFF_AP1(t, n) t n;
 #define UNCURSED_PP_FIELDS_OFF_EACH1(r, d, e) UNCURSED_PP_FIELDS_OFF_AP1 e
 #define FIELDS_OFF(fields) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_FIELDS_OFF_EACH1, ~, fields)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  FIELDS_OFF(((int, a)))
+ * #=>     int a;
+ */
+
+/* #?  FIELDS_OFF(((int, a))((long, b))((char, c)))
+ * #=>     int a; long b; char c;
+ */

@@ -16,3 +16,26 @@
 #define UNCURSED_PP_LOG_DISPATCH(n) UNCURSED_PP_LOG_DISPATCH_I(n)
 #define UNCURSED_PP_LOG_DISPATCH_I(n) UNCURSED_PP_LOG_ ## n
 #define LOG(...) UNCURSED_PP_LOG_DISPATCH(UNCURSED_PP_LOG_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  LOG(m)
+ * #=>     fprintf(stderr, "[" "INFO" "] %s\n", m);
+ */
+
+/* #?  LOG(m, WARN)
+ * #=>     fprintf(stderr, "[" "WARN" "] %s\n", m);
+ */
+
+/* #?  LOG(m, WARN, stdout)
+ * #=>     fprintf(stdout, "[" "WARN" "] %s\n", m);
+ */
+
+/* # edge: parenthesized comma-containing message counts as ONE argument
+ * #?  LOG((a, b))
+ * #=>     fprintf(stderr, "[" "INFO" "] %s\n", (a, b));
+ */
+
+/* # edge: string-literal argument passes through
+ * #?  LOG("hi there", ERROR)
+ * #=>     fprintf(stderr, "[" "ERROR" "] %s\n", "hi there");
+ */

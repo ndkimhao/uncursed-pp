@@ -186,3 +186,7 @@ class File:
     macros: list[MacroDef]
     pragmas: dict[str, str] = field(default_factory=dict)
     extra_includes: list[str] = field(default_factory=list)
+    # standalone top-level comment groups (incl. #?/#=> spec lines),
+    # as (number of macros preceding the group, raw text) - reproduced
+    # in the generated header at the same position
+    comments: list[tuple[int, str]] = field(default_factory=list)

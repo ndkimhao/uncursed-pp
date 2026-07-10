@@ -10,6 +10,16 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── Combined example: a unit-test registry from one list ─────────────
+ * #
+ * # Features composing: variadic<tuple<...>> (single-paren call sites),
+ * # k-ary concat() (4 pieces -> one identifier), stringize() OF a
+ * # concat() result, and iterating the same list twice for two artifacts.
+ * #
+ * # One list of (suite, name) pairs produces the forward declarations
+ * # and a runner that registers each test with its human-readable name.
+ */
+
 /* uncursed-pp source:
  * @macro TEST_REGISTRY(tests: variadic<tuple<suite, tname>>)
  * @for (suite, tname) in tests
@@ -70,3 +80,14 @@
     static void run_all_tests(void) { \
     UNCURSED_PP_TEST_REGISTRY_PICK2(BOOST_PP_SEQ_SIZE(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \
     }
+
+/* #?  TEST_REGISTRY((parser, empty_input), (parser, nested), (emitter, dedup))
+ * #=>     static void test_parser_empty_input(void);
+ * #=>     static void test_parser_nested(void);
+ * #=>     static void test_emitter_dedup(void);
+ * #=>     static void run_all_tests(void) {
+ * #=>       run_test("parser_empty_input", test_parser_empty_input);
+ * #=>       run_test("parser_nested", test_parser_nested);
+ * #=>       run_test("emitter_dedup", test_emitter_dedup);
+ * #=>     }
+ */

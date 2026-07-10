@@ -5,6 +5,17 @@
 #include <boost/preprocessor/seq/enum.hpp>
 #include <boost/preprocessor/seq/size.hpp>
 
+/* # ── @let: name a computed value once ─────────────────────────────────
+ * #
+ * # `@let name := expr` binds a GENERATION-TIME name: uncursed-pp inlines
+ * # the value at each use. It costs nothing at C-preprocess time and
+ * # keeps templates DRY when a computed token is used more than once.
+ * # Scope: the enclosing block.
+ * #
+ * # Scenario: a counted array — the length is used in the declaration
+ * # and again in a companion enum.
+ */
+
 /* uncursed-pp source:
  * @macro COUNTED_ARRAY(name, elems: seq<token>)
  * @let n := len(elems)
@@ -15,3 +26,13 @@
 #define COUNTED_ARRAY(name, elems) \
     static const int name[BOOST_PP_SEQ_SIZE(elems)] = { BOOST_PP_SEQ_ENUM(elems) }; \
     enum { BOOST_PP_CAT(name, _len) = BOOST_PP_SEQ_SIZE(elems) };
+
+/* #?  COUNTED_ARRAY(primes, (2)(3)(5))
+ * #=>     static const int primes[3] = { 2, 3, 5 };
+ * #=>     enum { primes_len = 3 };
+ */
+
+/* #?  COUNTED_ARRAY(one, (42))
+ * #=>     static const int one[1] = { 42 };
+ * #=>     enum { one_len = 1 };
+ */

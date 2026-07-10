@@ -40,3 +40,12 @@
 #define UNCURSED_PP_ORS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_ORS_SMALL1, UNCURSED_PP_ORS_BIG1)
 #define UNCURSED_PP_ORS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_ORS_EACH1, ~, seq)
 #define ORS(xs) UNCURSED_PP_ORS_PICK1(BOOST_PP_SEQ_SIZE(xs))(xs)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  ORS((a)(b)(c))
+ * #=>     (a) || (b) || (c)
+ */
+
+/* #?  ORS((only))
+ * #=>     (only)
+ */

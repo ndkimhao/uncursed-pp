@@ -7,6 +7,22 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── @for: loop over a seq ────────────────────────────────────────────
+ * #
+ * # The most basic uncursed-pp construct: `@for x in xs` repeats its body
+ * # once per element of a Boost.PP seq. Crucially, the loop does NOT run
+ * # when uncursed-pp compiles this file — it compiles into Boost.PP
+ * # iteration machinery that runs when the C compiler preprocesses your
+ * # code, so every call site can pass a different list.
+ * #
+ * # Call-site shape: a seq is parenthesized elements back to back, no
+ * # commas between them: (a)(b)(c). Seqs must be non-empty (a Boost.PP
+ * # limitation) and cap at 256 elements.
+ * #
+ * # Scenario: a plugin's event handlers must each be registered at startup.
+ * # One list, one line per handler, no copy-paste drift.
+ */
+
 /* uncursed-pp source:
  * @macro REGISTER_HANDLERS(handlers: seq<token>)
  * @for h in handlers
@@ -35,3 +51,15 @@
 #define UNCURSED_PP_REGISTER_HANDLERS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_REGISTER_HANDLERS_SMALL1, UNCURSED_PP_REGISTER_HANDLERS_BIG1)
 #define UNCURSED_PP_REGISTER_HANDLERS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_REGISTER_HANDLERS_EACH1, ~, seq)
 #define REGISTER_HANDLERS(handlers) UNCURSED_PP_REGISTER_HANDLERS_PICK1(BOOST_PP_SEQ_SIZE(handlers))(handlers)
+
+/* # The call expands to plain C — one statement per element:
+ * #?  REGISTER_HANDLERS((on_open)(on_close)(on_error))
+ * #=>     register_handler(on_open);
+ * #=>     register_handler(on_close);
+ * #=>     register_handler(on_error);
+ */
+
+/* # Edge: a single-element seq is just one iteration.
+ * #?  REGISTER_HANDLERS((on_open))
+ * #=>     register_handler(on_open);
+ */

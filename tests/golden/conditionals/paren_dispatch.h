@@ -34,3 +34,17 @@
 #define UNCURSED_PP_DECL_DISPATCH(n) UNCURSED_PP_DECL_DISPATCH_I(n)
 #define UNCURSED_PP_DECL_DISPATCH_I(n) UNCURSED_PP_DECL_ ## n
 #define DECL(...) UNCURSED_PP_DECL_DISPATCH(UNCURSED_PP_DECL_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  DECL(v, INIT((1, 2)))
+ * #=>     pair v = { 1, 2 };
+ */
+
+/* #?  DECL(v, INIT(7))
+ * #=>     int v = 7;
+ */
+
+/* # edge: empty default takes the else branch with an empty value
+ * #?  DECL(v)
+ * #=>     int v = ;
+ */

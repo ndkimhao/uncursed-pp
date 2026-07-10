@@ -37,3 +37,16 @@
  */
 #define UNCURSED_PP_COUNTED_EACH1(r, d, e) h(e, BOOST_PP_SEQ_SIZE(d));
 #define COUNTED(xs) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_COUNTED_EACH1, xs, xs)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  TAG(dbg, (a)(b))
+ * #=>     dbg(a); dbg(b);
+ */
+
+/* #?  BOTH(p, q, (x)(y))
+ * #=>     g(p, q, x); g(p, q, y);
+ */
+
+/* #?  COUNTED((a)(b)(c))
+ * #=>     h(a, 3); h(b, 3); h(c, 3);
+ */

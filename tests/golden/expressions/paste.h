@@ -27,3 +27,16 @@
  * @endmacro
  */
 #define CHAIN(base) BOOST_PP_CAT(BOOST_PP_CAT(base, _mid), _end)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  NAME_OF(foo)
+ * #=>     "pre_foo"
+ */
+
+/* #?  TRIPLE(x)
+ * #=>     pre_x_post
+ */
+
+/* #?  CHAIN(v)
+ * #=>     v_mid_end
+ */

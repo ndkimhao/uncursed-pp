@@ -120,14 +120,20 @@ def test_spec_comments_are_not_attached():
     src = "#? A(q)\n#=> q\n# real comment\n@macro A(x)\n{{x}}\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
     assert " * # real comment\n" in out
-    assert "#?" not in out
-    assert "#=>" not in out
+    # spec lines never join the macro's source block; they stand alone
+    source_block = out.split("/* uncursed-pp source:")[1].split("*/")[0]
+    assert "#?" not in source_block and "#=>" not in source_block
+    assert "/* #? A(q)\n * #=> q\n */" in out
 
 
 def test_blank_line_detaches_comments():
+    # blank-detached comments do not join the macro's source block, but
+    # they ARE preserved as a standalone comment at their own position
     src = "# stale note\n\n@macro A(x)\n{{x}}\n@endmacro\n"
     out = compile_source(src, "t.uncursed")
-    assert "stale note" not in out
+    source_block = out.split("/* uncursed-pp source:")[1].split("*/")[0]
+    assert "stale note" not in source_block
+    assert "/* # stale note */" in out
 
 
 def test_comment_terminator_in_body_is_sanitized():
@@ -264,3 +270,38 @@ def test_missing_endmacro():
     with pytest.raises(UncursedPpError) as excinfo:
         parse_file("@macro F(x)\n{{x}}\n", "t.uncursed")
     assert "@endmacro" in str(excinfo.value)
+
+
+# ── top-level comments are preserved in the generated header ─────────
+
+
+def test_top_banner_comment_is_preserved():
+    src = "# file banner\n# second line\n\n@macro A(x)\n{{x}}\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    assert "/* # file banner\n * # second line\n */" in out
+    assert out.index("# file banner") < out.index("#define A(x)")
+
+
+def test_mid_file_comment_lands_between_macros():
+    src = (
+        "@macro A(x)\n{{x}}\n@endmacro\n"
+        "\n# section two\n\n"
+        "@macro B(y)\n{{y}}\n@endmacro\n"
+    )
+    out = compile_source(src, "t.uncursed")
+    assert "/* # section two */" in out
+    assert out.index("#define A(x)") < out.index("# section two") < out.index("#define B(y)")
+
+
+def test_eof_comments_and_specs_are_preserved():
+    src = "@macro A(x)\n{{x}}\n@endmacro\n\n#?  A(1)\n#=>     1\n\n# closing note\n"
+    out = compile_source(src, "t.uncursed")
+    assert "/* #?  A(1)\n * #=>     1\n */" in out
+    assert "/* # closing note */" in out
+    assert out.index("#define A(x)") < out.index("#?  A(1)")
+
+
+def test_attached_comment_is_not_duplicated():
+    src = "# doc\n@macro A(x)\n{{x}}\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    assert out.count("# doc") == 1  # lives in the macro's source block only

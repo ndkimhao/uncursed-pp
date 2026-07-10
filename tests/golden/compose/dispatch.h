@@ -22,3 +22,12 @@
 #define UNCURSED_PP_DISPATCH_THEN1(fn, args) BOOST_PP_CAT(fn, _1)(BOOST_PP_SEQ_ELEM(0, args))
 #define UNCURSED_PP_DISPATCH_ELSE1(fn, args) BOOST_PP_CAT(fn, _n)(BOOST_PP_SEQ_SIZE(args), BOOST_PP_SEQ_ENUM(args))
 #define DISPATCH(fn, args) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(args), 1), UNCURSED_PP_DISPATCH_THEN1, UNCURSED_PP_DISPATCH_ELSE1)(fn, args)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  DISPATCH(handler, (x))
+ * #=>     handler_1(x)
+ */
+
+/* #?  DISPATCH(handler, (x)(y)(z))
+ * #=>     handler_n(3, x, y, z)
+ */

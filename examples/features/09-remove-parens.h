@@ -4,6 +4,17 @@
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── remove_parens(): the comma-protection idiom ──────────────────────
+ * #
+ * # The C preprocessor splits macro arguments on bare commas. A value
+ * # that CONTAINS commas (a template type, an initializer list) must be
+ * # wrapped in parens at the call site — and the template strips exactly
+ * # one layer with {{remove_parens(x)}}, which is a no-op when the value
+ * # isn't parenthesized. Callers only pay the wrapping when they need it.
+ * #
+ * # Scenario: declaring a struct member whose type may contain commas.
+ */
+
 /* uncursed-pp source:
  * @macro DECLARE_MEMBER(m: tuple<mtype, mname>)
  * {{remove_parens(m.mtype)}} {{m.mname}};
@@ -12,3 +23,18 @@
 #define UNCURSED_PP_DECLARE_MEMBER_BODY1(mtype, mname) BOOST_PP_REMOVE_PARENS(mtype) mname;
 #define UNCURSED_PP_DECLARE_MEMBER_BODY1_D(...) UNCURSED_PP_DECLARE_MEMBER_BODY1(__VA_ARGS__)
 #define DECLARE_MEMBER(m) UNCURSED_PP_DECLARE_MEMBER_BODY1_D(UNCURSED_PP_KW_SPREAD m)
+
+/* # No commas: no wrapping needed, remove_parens is a no-op.
+ * #?  DECLARE_MEMBER((int, count))
+ * #=>     int count;
+ */
+
+/* # Comma-containing type: wrap at the call site, template unwraps.
+ * #?  DECLARE_MEMBER(((map<int, int>), items))
+ * #=>     map<int, int> items;
+ */
+
+/* # Only ONE layer is stripped — an initializer keeps its own parens.
+ * #?  DECLARE_MEMBER((((1, 2)), pair_default))
+ * #=>     (1, 2) pair_default;
+ */

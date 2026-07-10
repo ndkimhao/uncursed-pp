@@ -12,6 +12,10 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # Deep nesting: loops inside @if branches, @ifs inside @ifs, and loops
+ * # inside loops (up to 4 deep) are all fine; only loop depth 5+ is rejected.
+ */
+
 /* uncursed-pp source:
  * # @for inside an @else branch
  * @macro OPT(xs: seq<token>)
@@ -110,3 +114,32 @@
 #define UNCURSED_PP_TRIAGE_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_TRIAGE_SMALL1, UNCURSED_PP_TRIAGE_BIG1)
 #define UNCURSED_PP_TRIAGE_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_TRIAGE_EACH1, ~, seq)
 #define TRIAGE(xs) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), 1), UNCURSED_PP_TRIAGE_THEN1, UNCURSED_PP_TRIAGE_ELSE2)(xs)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  OPT((a))
+ * #=>     solo(a)
+ */
+
+/* #?  OPT((a)(b))
+ * #=>     many(a); many(b);
+ */
+
+/* #?  GRADE((a))
+ * #=>     tiny
+ */
+
+/* #?  GRADE((a)(b))
+ * #=>     small
+ */
+
+/* #?  GRADE((a)(b)(c))
+ * #=>     big
+ */
+
+/* #?  TRIAGE(((1, a)))
+ * #=>     only(a);
+ */
+
+/* #?  TRIAGE(((1, a))((2, b))((1, c)))
+ * #=>     urgent(a); routine(2, b); urgent(c);
+ */

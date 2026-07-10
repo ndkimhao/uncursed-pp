@@ -8,6 +8,32 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 #include "acme_runtime.h"
 
+/* # ── @pragma: configuration lives in the template ─────────────────────
+ * #
+ * # All configuration is written in the .uncursed file itself, so a
+ * # header regenerates identically from the source alone — the CLI takes
+ * # only the input path and -o. This file renames the generated helper
+ * # namespace (ACME_ instead of UNCURSED_PP_) and the companion runtime
+ * # header it ships with — see both in the committed .h next to this
+ * # file, and the committed acme_runtime.h beside it.
+ * #
+ * # The full pragma set:
+ * #   @pragma helper_prefix P      prefix of generated helper macros
+ * #   @pragma runtime_name F       filename of the shared runtime header
+ * #   @pragma pp_prefix P          preprocessor library prefix (needs a
+ * #                                matching library; can't be spec-tested
+ * #                                against the vendored BOOST_PP_ headers)
+ * #   @pragma pp_include H         one header instead of granular includes
+ * #   @pragma pp_include_dir D     root of the granular includes
+ * #   @pragma include H            extra #include, repeatable (a spec'd
+ * #                                system include would drag that header's
+ * #                                every token into the expected expansion,
+ * #                                so none is used here)
+ * #   @pragma loop_chain on|off    consumption-chain loop codegen toggle
+ * #   @pragma loop_chain_limit N   seq size where chains fall back to
+ * #                                SEQ_FOR_EACH
+ */
+
 /* uncursed-pp source:
  * @macro DECLARE_OPTIONS(opts: seq<tuple<otype, oname>>)
  * @for (otype, oname) in opts
@@ -37,3 +63,8 @@
 #define ACME_DECLARE_OPTIONS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(ACME_LE16_, n), ACME_DECLARE_OPTIONS_SMALL1, ACME_DECLARE_OPTIONS_BIG1)
 #define ACME_DECLARE_OPTIONS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(ACME_DECLARE_OPTIONS_EACH1, ~, seq)
 #define DECLARE_OPTIONS(opts) ACME_DECLARE_OPTIONS_PICK1(BOOST_PP_SEQ_SIZE(opts))(opts)
+
+/* #?  DECLARE_OPTIONS(((int, verbosity))((const char *, log_path)))
+ * #=>     int verbosity;
+ * #=>     const char * log_path;
+ */

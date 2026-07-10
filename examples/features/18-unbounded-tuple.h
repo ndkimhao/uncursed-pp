@@ -12,6 +12,36 @@
 #include <boost/preprocessor/tuple/to_seq.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── Unbounded tuples: a variable number of elements, one paren pair ──
+ * #
+ * # `row: tuple` accepts (a, b, c) — commas between elements, ONE pair of
+ * # parens. Compare the seq call site (a)(b)(c): seqs shine for long
+ * # element-wise data, unbounded tuples for short comma lists that read
+ * # like ordinary C argument lists. Bare `tuple` is shorthand for
+ * # `tuple<token...>`; the element type goes before the ellipsis:
+ * #
+ * #     row: tuple                     F((a, b, c))
+ * #     row: tuple<token...>           same, explicit
+ * #     ps:  tuple<tuple<k, v>...>     F(((x, 1), (y, 2)))  — named pairs
+ * #
+ * # (`tuple<token>` — no ellipsis — is something else entirely: a fixed
+ * # 1-tuple whose element is NAMED "token".)
+ * #
+ * # The empty tuple works: `()` means ZERO elements. Loops run zero
+ * # times and len() reports 0, even though to the raw preprocessor ()
+ * # looks like one empty element — the generated code carries an
+ * # emptiness gate (see the committed .h next to this file).
+ * #
+ * # Call-site rules: elements cap at 64 (vs 256 for seqs); an element
+ * # containing commas must be wrapped in parens like everywhere else;
+ * # and a value that is itself the NAME of a function-like macro can
+ * # confuse the emptiness probe — same family as the "keywords must not
+ * # be #define'd" rule.
+ * #
+ * # Scenario: a lookup table whose length is derived, not repeated.
+ * # (`tuple<token...>` written out — the ellipsis marks unboundedness.)
+ */
+
 /* uncursed-pp source:
  * @macro DEFINE_LUT(name, vals: tuple<token...>)
  * static const int {{name}}[] = { @join vals as v with ", ": {{v}}@end };
@@ -24,6 +54,24 @@
 #define DEFINE_LUT(name, vals) \
     static const int name[] = { BOOST_PP_IIF(UNCURSED_PP_18_UNBOUNDED_TUPLE_H1(vals), UNCURSED_PP_DEFINE_LUT_NIL1, UNCURSED_PP_DEFINE_LUT_LOOP1)(vals) }; \
     enum { BOOST_PP_CAT(name, _len) = BOOST_PP_IIF(UNCURSED_PP_18_UNBOUNDED_TUPLE_H1(vals), 0, BOOST_PP_TUPLE_SIZE(vals)) };
+
+/* #?  DEFINE_LUT(gamma, (0, 12, 34))
+ * #=>     static const int gamma[] = { 0, 12, 34 };
+ * #=>     enum { gamma_len = 3 };
+ */
+
+/* # () is a real, useful input: zero elements, length 0.
+ * #?  DEFINE_LUT(placeholder, ())
+ * #=>     static const int placeholder[] = { };
+ * #=>     enum { placeholder_len = 0 };
+ */
+
+/* # ── typed elements: tuple<tuple<k, v>...> ────────────────────────────
+ * #
+ * # The element type goes before the ellipsis. Named-tuple elements
+ * # unpack in loops and give single-paren call sites — compare the
+ * # double parens a seq<tuple<k, v>> would need: ((dark,1))((huge,2)).
+ */
 
 /* uncursed-pp source:
  * @macro DEFINE_MODES(ms: tuple<tuple<mode, bit>...>)
@@ -57,6 +105,18 @@
 #define UNCURSED_PP_DEFINE_MODES_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_DEFINE_MODES_EACH1, ~, seq)
 #define DEFINE_MODES(ms) BOOST_PP_IIF(UNCURSED_PP_18_UNBOUNDED_TUPLE_H1(ms), UNCURSED_PP_DEFINE_MODES_NIL1, UNCURSED_PP_DEFINE_MODES_LOOP1)(ms)
 
+/* #?  DEFINE_MODES(((DARK, 0), (HUGE, 1)))
+ * #=>     DARK = 1 << 0,
+ * #=>     HUGE = 1 << 1,
+ */
+
+/* # ── is_empty(): branch on it directly ────────────────────────────────
+ * #
+ * # The optional-trailing-arguments pattern: () means "no extras", so
+ * # the comma after ctx must disappear with them. Bare `tuple` is the
+ * # `tuple<token...>` shorthand.
+ */
+
 /* uncursed-pp source:
  * @macro CALL_CTX(fn, extras: tuple)
  * @if is_empty(extras)
@@ -71,3 +131,11 @@
 #define UNCURSED_PP_CALL_CTX_NIL1(extras)
 #define UNCURSED_PP_CALL_CTX_ELSE1(fn, extras) fn(ctx, BOOST_PP_IIF(UNCURSED_PP_18_UNBOUNDED_TUPLE_H1(extras), UNCURSED_PP_CALL_CTX_NIL1, UNCURSED_PP_CALL_CTX_LOOP1)(extras));
 #define CALL_CTX(fn, extras) BOOST_PP_IIF(UNCURSED_PP_18_UNBOUNDED_TUPLE_H1(extras), UNCURSED_PP_CALL_CTX_THEN1, UNCURSED_PP_CALL_CTX_ELSE1)(fn, extras)
+
+/* #?  CALL_CTX(reset, ())
+ * #=>     reset(ctx);
+ */
+
+/* #?  CALL_CTX(configure, (VERBOSE, 2))
+ * #=>     configure(ctx, VERBOSE, 2);
+ */

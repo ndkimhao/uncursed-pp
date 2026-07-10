@@ -19,3 +19,17 @@
     }
 #define UNCURSED_PP_GETTER_BODY1_D(...) UNCURSED_PP_GETTER_BODY1(__VA_ARGS__)
 #define GETTER(field) UNCURSED_PP_GETTER_BODY1_D(UNCURSED_PP_KW_SPREAD field)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  GETTER((int, age))
+ * #=>     int get_age(const struct self *s) { return s->age; }
+ */
+
+/* #?  GETTER((char *, name))
+ * #=>     char * get_name(const struct self *s) { return s->name; }
+ */
+
+/* # edge: identifier with digits/underscores pastes cleanly
+ * #?  GETTER((unsigned long, x2_raw))
+ * #=>     unsigned long get_x2_raw(const struct self *s) { return s->x2_raw; }
+ */

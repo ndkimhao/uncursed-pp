@@ -79,3 +79,17 @@
 #define UNCURSED_PP_OBJ_DISPATCH(n) UNCURSED_PP_OBJ_DISPATCH_I(n)
 #define UNCURSED_PP_OBJ_DISPATCH_I(n) UNCURSED_PP_OBJ_ ## n
 #define OBJ(...) UNCURSED_PP_OBJ_DISPATCH(UNCURSED_PP_OBJ_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  USE((x, y))
+ * #=>     first = x;
+ */
+
+/* #?  OBJ(o, FIELDS(((int, x))((float, y))))
+ * #=>     struct o { int x; float y; };
+ */
+
+/* # edge: empty default -> is_paren is false -> empty struct body
+ * #?  OBJ(o)
+ * #=>     struct o { };
+ */

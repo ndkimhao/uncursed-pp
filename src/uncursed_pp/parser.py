@@ -374,25 +374,30 @@ def parse_file(source: str, filename: str) -> File:
     macros: list[MacroDef] = []
     pragmas: dict[str, str] = {}
     extra_includes: list[str] = []
+    comments: list[tuple[int, str]] = []
     lines = source.split("\n")
     i = 0
-    attached: list[str] = []  # comment lines directly above the next macro
+    pending: list[str] = []  # contiguous comment/spec lines, not yet placed
+
+    def flush_standalone(upto: int | None = None) -> None:
+        """Emit pending[:upto] as one standalone comment group."""
+        count = len(pending) if upto is None else upto
+        if count:
+            comments.append((len(macros), "\n".join(pending[:count])))
+        del pending[:count]
 
     while i < len(lines):
         stripped = lines[i].strip()
         if not stripped:
-            attached = []
+            flush_standalone()
             i += 1
             continue
         if stripped.startswith("#"):
-            if stripped.startswith(("#?", "#=>")):
-                attached = []  # spec comments belong to the test harness
-            else:
-                attached.append(lines[i])
+            pending.append(lines[i])
             i += 1
             continue
         if stripped.startswith("@pragma "):
-            attached = []
+            flush_standalone()
             key, value = _parse_pragma(stripped, filename, i + 1)
             if key == "include":
                 extra_includes.append(value)
@@ -401,15 +406,26 @@ def parse_file(source: str, filename: str) -> File:
             i += 1
             continue
         if stripped.startswith("@macro ") or stripped == "@macro":
+            # the trailing run of non-spec comment lines documents the macro
+            # and joins its source block; anything before it (incl. #?/#=>
+            # spec lines) stands alone
+            split = len(pending)
+            while split > 0 and not pending[split - 1].strip().startswith(("#?", "#=>")):
+                split -= 1
+            flush_standalone(split)
+            attached = pending[:]
+            pending.clear()
             start = i
             macro, i = _parse_macro(lines, i, filename)
             macro.source = "\n".join(attached + lines[start:i])
-            attached = []
             macros.append(macro)
             continue
         raise UncursedPpError(f"unexpected line: {stripped!r}", filename, i + 1)
+    flush_standalone()
 
-    return File(macros=macros, pragmas=pragmas, extra_includes=extra_includes)
+    return File(
+        macros=macros, pragmas=pragmas, extra_includes=extra_includes, comments=comments
+    )
 
 
 def _parse_pragma(stripped: str, filename: str, lineno: int) -> tuple[str, str]:

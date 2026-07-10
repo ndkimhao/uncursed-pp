@@ -58,6 +58,13 @@ A `.uncursed` file contains, in any order at the top level:
 - **Invocation specs** — `#?` / `#=>` comments used by the test suite (see §12).
   They are ordinary comments to the compiler.
 
+All top-level comments — file banners, section notes between macros,
+end-of-file notes, and the `#?`/`#=>` spec lines themselves — are
+reproduced verbatim as C comments in the generated header, at their
+source positions (a header carries its own usage examples). Comments
+sitting directly above a macro join that macro's embedded source block
+instead.
+
 A macro definition:
 
 ```text

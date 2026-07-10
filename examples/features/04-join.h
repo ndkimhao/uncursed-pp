@@ -11,6 +11,17 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── @join: loop with a separator ─────────────────────────────────────
+ * #
+ * # `@join xs with "sep": body @end` emits the body once per element with
+ * # `sep` BETWEEN elements (never trailing). The inline form shown here
+ * # fits on one line; a block form exists too. `as name` binds the
+ * # element; for a seq<tuple<...>> the tuple's element names are bound
+ * # automatically, no `as` needed.
+ * #
+ * # Scenario: a function prototype — the classic comma-separated list.
+ */
+
 /* uncursed-pp source:
  * @macro DECLARE_FN(ret, fname, params: seq<tuple<ptype, pname>>)
  * {{ret}} {{fname}}(@join params with ", ": {{ptype}} {{pname}}@end);
@@ -39,6 +50,19 @@
 #define UNCURSED_PP_DECLARE_FN_BIG1(seq) BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_DECLARE_FN_EACH1, ~, seq)
 #define DECLARE_FN(ret, fname, params) ret fname(UNCURSED_PP_DECLARE_FN_PICK1(BOOST_PP_SEQ_SIZE(params))(params));
 
+/* #?  DECLARE_FN(int, clamp, ((int, v))((int, lo))((int, hi)))
+ * #=>     int clamp(int v, int lo, int hi);
+ */
+
+/* # One parameter: no separator emitted.
+ * #?  DECLARE_FN(void, reset, ((struct ctx *, c)))
+ * #=>     void reset(struct ctx * c);
+ */
+
+/* # Separators are arbitrary text, not just commas. `as f` names the
+ * # element explicitly.
+ */
+
 /* uncursed-pp source:
  * @macro ANY_FLAG_SET(mask, flags: seq<token>)
  * (@join flags as f with " || ": ({{mask}} & {{f}})@end)
@@ -47,3 +71,7 @@
 #define UNCURSED_PP_ANY_FLAG_SET_SEP1() ||
 #define UNCURSED_PP_ANY_FLAG_SET_EACH1(r, d, i, e) BOOST_PP_IF(i, UNCURSED_PP_ANY_FLAG_SET_SEP1, BOOST_PP_EMPTY)() (d & e)
 #define ANY_FLAG_SET(mask, flags) (BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_ANY_FLAG_SET_EACH1, mask, flags))
+
+/* #?  ANY_FLAG_SET(m, (F_DIRTY)(F_LOCKED))
+ * #=>     ((m & F_DIRTY) || (m & F_LOCKED))
+ */

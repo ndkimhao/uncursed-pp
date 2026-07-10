@@ -55,3 +55,74 @@
 #define UNCURSED_PP_STYLE_DISPATCH(n) UNCURSED_PP_STYLE_DISPATCH_I(n)
 #define UNCURSED_PP_STYLE_DISPATCH_I(n) UNCURSED_PP_STYLE_ ## n
 #define STYLE(...) UNCURSED_PP_STYLE_DISPATCH(UNCURSED_PP_STYLE_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  MAKE_WIDGET(w1)
+ * #=>     struct widget w1 = { 100, 50, };
+ */
+
+/* #?  MAKE_WIDGET(w2, HEIGHT(80))
+ * #=>     struct widget w2 = { 100, 80, };
+ */
+
+/* #?  MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))
+ * #=>     struct widget w3 = { 20, 50, BOLD };
+ */
+
+/* #?  MAKE_WIDGET(w4, WIDTH(20), HEIGHT(80), FLAGS(BOLD))
+ * #=>     struct widget w4 = { 20, 80, BOLD };
+ */
+
+/* # edge: empty keyword value
+ * #?  MAKE_WIDGET(w5, FLAGS())
+ * #=>     struct widget w5 = { 100, 50, };
+ */
+
+/* # edge: comma-containing value stays protected by its parens
+ * #?  MAKE_WIDGET(w6, WIDTH((a, b)))
+ * #=>     struct widget w6 = { (a, b), 50, };
+ */
+
+/* # edge: repeated keyword - the last one wins (setters apply left to right)
+ * #?  MAKE_WIDGET(w7, HEIGHT(80), HEIGHT(99))
+ * #=>     struct widget w7 = { 100, 99, };
+ */
+
+/* # edge: a value shaped like another keyword is NOT re-dispatched
+ * #?  MAKE_WIDGET(w8, WIDTH(HEIGHT(9)))
+ * #=>     struct widget w8 = { HEIGHT(9), 50, };
+ */
+
+/* # edge: string-literal value
+ * #?  MAKE_WIDGET(w9, FLAGS(""))
+ * #=>     struct widget w9 = { 100, 50, "" };
+ */
+
+/* #?  STYLE(s1)
+ * #=>     unsigned s1[] = { none };
+ */
+
+/* #?  STYLE(s2, COLORS(red))
+ * #=>     unsigned s2[] = { red };
+ */
+
+/* # edge: bare commas allowed in a 'named variadic' keyword value
+ * #?  STYLE(s3, COLORS(red, green, blue))
+ * #=>     unsigned s3[] = { red, green, blue };
+ */
+
+/* # edge: values pass through verbatim - the setter's wrap and the
+ * # interpolation's unwrap cancel out, so parens are preserved exactly
+ * #?  STYLE(s4, COLORS((a, b)))
+ * #=>     unsigned s4[] = { (a, b) };
+ */
+
+/* # edge: negative number as a keyword value (multi-token, no commas)
+ * #?  MAKE_WIDGET(wn, WIDTH(-1))
+ * #=>     struct widget wn = { -1, 50, };
+ */
+
+/* # documented caveat: a misspelled keyword is a C compile error, not a
+ * # silent default
+ * #?! MAKE_WIDGET(wbad, WIDHT(9))
+ */

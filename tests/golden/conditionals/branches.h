@@ -76,3 +76,24 @@
 #define UNCURSED_PP_BRANCHES_H1()
 #define UNCURSED_PP_SIZE_CLASS_THEN2() double
 #define SIZE_CLASS(xs) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), 1), UNCURSED_PP_SIZE_CLASS_THEN1, UNCURSED_PP_BRANCHES_H1)()BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), 2), UNCURSED_PP_SIZE_CLASS_THEN2, UNCURSED_PP_BRANCHES_H1)()
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  REPORT(p, q, (x))
+ * #=>     one(p)
+ */
+
+/* #?  REPORT(p, q, (x)(y))
+ * #=>     many(q, 2)
+ */
+
+/* #?  EMIT(((1, a))((2, b))((1, c)))
+ * #=>     one(a); other(2, b); one(c);
+ */
+
+/* #?  SIZE_CLASS((a))
+ * #=>     single
+ */
+
+/* #?  SIZE_CLASS((a)(b))
+ * #=>     double
+ */

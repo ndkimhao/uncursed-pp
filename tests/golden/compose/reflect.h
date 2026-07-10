@@ -10,6 +10,19 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # A tiny reflection system: one field list is the single source of truth
+ * # for a struct definition, a name/type/offset metadata table, a field
+ * # count, and a debug printer.
+ * #
+ * #   REFLECT(Point, (int, x, "%d"), (float, y, "%f"))
+ * #
+ * # expands (at C compile time) to:
+ * #   typedef struct { int x; float y; } Point;
+ * #   static const uncursed_field Point_fields[] = { {"x","int",offsetof(...)}, ... };
+ * #   enum { Point_field_count = 2 };
+ * #   static void print_Point(const Point *v) { printf(... "%d" ..., v->x); ... }
+ */
+
 /* uncursed-pp source:
  * @macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
  * typedef struct {
@@ -112,3 +125,29 @@
     DEFINE_STRUCT(sname, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \
     DEFINE_FIELD_TABLE(sname, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \
     DEFINE_PRINTER(sname, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  REFLECT(Point, (int, x, "%d"), (float, y, "%f"))
+ * #=>     typedef struct { int x; float y; } Point;
+ * #=>     static const uncursed_field Point_fields[] = {
+ * #=>         { "x", "int", offsetof(Point, x) },
+ * #=>         { "y", "float", offsetof(Point, y) },
+ * #=>     };
+ * #=>     enum { Point_field_count = 2 };
+ * #=>     static void print_Point(const Point *v) {
+ * #=>         printf("  " "x" " = " "%d" "\n", v->x);
+ * #=>         printf("  " "y" " = " "%f" "\n", v->y);
+ * #=>     }
+ */
+
+/* # edge: single-field struct
+ * #?  REFLECT(Id, (unsigned long, value, "%lu"))
+ * #=>     typedef struct { unsigned long value; } Id;
+ * #=>     static const uncursed_field Id_fields[] = {
+ * #=>         { "value", "unsigned long", offsetof(Id, value) },
+ * #=>     };
+ * #=>     enum { Id_field_count = 1 };
+ * #=>     static void print_Id(const Id *v) {
+ * #=>         printf("  " "value" " = " "%lu" "\n", v->value);
+ * #=>     }
+ */

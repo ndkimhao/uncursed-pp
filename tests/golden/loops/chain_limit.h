@@ -265,6 +265,11 @@
 #define UNCURSED_PP_LE4_255 0
 #define UNCURSED_PP_LE4_256 0
 
+/* # loop_chain_limit tuning: chains cover seqs up to K elements; larger
+ * # seqs take the SEQ_FOR_EACH fallback. K=4 here so the specs can cross
+ * # the boundary cheaply. A non-default K also emits a local LE4 size table.
+ */
+
 /* uncursed-pp source:
  * @macro FIELDS4(fields: seq<tuple<t, n>>)
  * @for (t, n) in fields
@@ -282,3 +287,17 @@
 #define UNCURSED_PP_FIELDS4_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE4_, n), UNCURSED_PP_FIELDS4_SMALL1, UNCURSED_PP_FIELDS4_BIG1)
 #define UNCURSED_PP_FIELDS4_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_FIELDS4_EACH1, ~, seq)
 #define FIELDS4(fields) UNCURSED_PP_FIELDS4_PICK1(BOOST_PP_SEQ_SIZE(fields))(fields)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  FIELDS4(((int, a)))
+ * #=>     int a;
+ */
+
+/* #?  FIELDS4(((int, a))((long, b))((char, c))((short, d)))
+ * #=>     int a; long b; char c; short d;
+ */
+
+/* # edge: one past the chain cap - the FOR_EACH fallback path
+ * #?  FIELDS4(((int, a))((long, b))((char, c))((short, d))((float, e)))
+ * #=>     int a; long b; char c; short d; float e;
+ */

@@ -12,3 +12,13 @@
  * @endmacro
  */
 #define ZIP(ks, vs) k(BOOST_PP_SEQ_SIZE(ks)): BOOST_PP_SEQ_ENUM(ks) / v: BOOST_PP_SEQ_ENUM(vs)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  ZIP((a)(b), (x)(y))
+ * #=>     k(2): a, b / v: x, y
+ */
+
+/* # edge: single-element seqs, no separators emitted
+ * #?  ZIP((only), (one))
+ * #=>     k(1): only / v: one
+ */

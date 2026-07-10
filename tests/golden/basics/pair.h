@@ -13,3 +13,22 @@
 #define UNCURSED_PP_PAIR_BODY1(a, b) S{ BOOST_PP_REMOVE_PARENS(a) | b }
 #define UNCURSED_PP_PAIR_BODY1_D(...) UNCURSED_PP_PAIR_BODY1(__VA_ARGS__)
 #define PAIR(p) UNCURSED_PP_PAIR_BODY1_D(UNCURSED_PP_KW_SPREAD p)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  PAIR((a, b))
+ * #=>     S{ a | b }
+ */
+
+/* #?  PAIR(((pair<int,int>), b))
+ * #=>     S{ pair<int,int> | b }
+ */
+
+/* # edge: both elements contain commas; only the wrapped one is unwrapped
+ * #?  PAIR(((a, b), (c, d)))
+ * #=>     S{ a, b | (c, d) }
+ */
+
+/* # edge: empty first element
+ * #?  PAIR((, b))
+ * #=>     S{ | b }
+ */

@@ -8,6 +8,16 @@
 #include <boost/preprocessor/stringize.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── stringize(): C strings from computed tokens ──────────────────────
+ * #
+ * # The C `#` operator only stringizes DIRECT macro parameters. For
+ * # anything computed — a loop variable, a tuple element, a concat()
+ * # result — use {{stringize(x)}}, which compiles to BOOST_PP_STRINGIZE
+ * # and works on the token's final value.
+ * #
+ * # Scenario: an error-name table indexed by the enum value itself.
+ */
+
 /* uncursed-pp source:
  * @macro DEFINE_ERROR_NAMES(codes: seq<token>)
  * static const char *error_name[] = {
@@ -41,3 +51,11 @@
     static const char *error_name[] = { \
     UNCURSED_PP_DEFINE_ERROR_NAMES_PICK1(BOOST_PP_SEQ_SIZE(codes))(codes) \
     };
+
+/* #?  DEFINE_ERROR_NAMES((E_OK)(E_IO)(E_NOMEM))
+ * #=>     static const char *error_name[] = {
+ * #=>         [E_OK] = "E_OK",
+ * #=>         [E_IO] = "E_IO",
+ * #=>         [E_NOMEM] = "E_NOMEM",
+ * #=>     };
+ */

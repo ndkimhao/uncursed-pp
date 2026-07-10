@@ -58,3 +58,18 @@
 #define UNCURSED_PP_CLEAN_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_CLEAN_SMALL1, UNCURSED_PP_CLEAN_BIG1)
 #define UNCURSED_PP_CLEAN_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_CLEAN_EACH1, ~, seq)
 #define CLEAN(fields) UNCURSED_PP_CLEAN_PICK1(BOOST_PP_SEQ_SIZE(fields))(fields)
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  FUSE((foo, bar))
+ * #=>     foobar
+ */
+
+/* # stringize of an element and of a computed size (expands before #)
+ * #?  STR0((alpha)(beta))
+ * #=>     "alpha" / "2"
+ */
+
+/* # per-element paren stripping: only wrapped types lose their wrapper
+ * #?  CLEAN((((unsigned long), x))((float, y)))
+ * #=>     unsigned long x; float y;
+ */

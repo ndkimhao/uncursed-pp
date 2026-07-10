@@ -8,6 +8,16 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── Combined example: a finite state machine from a transition list ──
+ * #
+ * # Features composing: two seq parameters, @for over tokens AND over
+ * # tuples, concat() for derived names, trailing free use of a macro
+ * # parameter inside loop bodies.
+ * #
+ * # The states seq defines the enum; the transitions seq defines step().
+ * # An event that matches no transition leaves the state unchanged.
+ */
+
 /* uncursed-pp source:
  * @macro DEFINE_FSM(fsm, states: seq<token>, transitions: seq<tuple<src, evt, dst>>)
  * enum {{concat(fsm, _state)}} {
@@ -72,3 +82,15 @@
     UNCURSED_PP_DEFINE_FSM_PICK2(BOOST_PP_SEQ_SIZE(transitions))(transitions) \
     return s; \
     }
+
+/* #?  DEFINE_FSM(door, (CLOSED)(OPEN), ((CLOSED, EV_OPEN, OPEN))((OPEN, EV_CLOSE, CLOSED)))
+ * #=>     enum door_state {
+ * #=>       CLOSED,
+ * #=>       OPEN,
+ * #=>     };
+ * #=>     static int door_step(int s, int ev) {
+ * #=>       if (s == CLOSED && ev == EV_OPEN) return OPEN;
+ * #=>       if (s == OPEN && ev == EV_CLOSE) return CLOSED;
+ * #=>       return s;
+ * #=>     }
+ */

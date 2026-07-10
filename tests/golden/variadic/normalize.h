@@ -40,3 +40,26 @@
 #define UNCURSED_PP_NORMALIZE_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_NORMALIZE_SMALL1, UNCURSED_PP_NORMALIZE_BIG1)
 #define UNCURSED_PP_NORMALIZE_BIG1(seq) BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_NORMALIZE_EACH1, ~, seq)
 #define NORMALIZE(...) S{ UNCURSED_PP_NORMALIZE_PICK1(BOOST_PP_SEQ_SIZE(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) }
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  NORMALIZE(a)
+ * #=>     S{ (a, omit) }
+ */
+
+/* #?  NORMALIZE((a, b))
+ * #=>     S{ (a, b) }
+ */
+
+/* #?  NORMALIZE(a, (b,c), d)
+ * #=>     S{ (a, omit), (b,c), (d, omit) }
+ */
+
+/* # edge: doubly-parenthesized element is parenthesized - kept verbatim
+ * #?  NORMALIZE(((a)))
+ * #=>     S{ ((a)) }
+ */
+
+/* # edge: string literal is a bare (non-paren) token - padded
+ * #?  NORMALIZE("s")
+ * #=>     S{ ("s", omit) }
+ */

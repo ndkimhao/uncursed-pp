@@ -4,6 +4,19 @@
 #include <boost/preprocessor/cat.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── concat(): explicit token pasting ─────────────────────────────────
+ * #
+ * # uncursed-pp NEVER pastes tokens implicitly. Writing get_{{name}}
+ * # produces TWO tokens (`get_` then the value) — see 17-adjacency for
+ * # why that's a feature. To build one identifier, paste explicitly:
+ * # {{concat(get_, f.fname)}} compiles to BOOST_PP_CAT.
+ * #
+ * # Inside concat(), a bare name is a variable if one is in scope,
+ * # otherwise it's a literal token (get_ and set_ below are literals).
+ * #
+ * # Scenario: accessor pairs for a struct field.
+ */
+
 /* uncursed-pp source:
  * @macro DEFINE_ACCESSORS(sname, f: tuple<ftype, fname>)
  * static {{f.ftype}} {{concat(get_, f.fname)}}(const struct {{sname}} *o) { return o->{{f.fname}}; }
@@ -15,3 +28,13 @@
     static void BOOST_PP_CAT(set_, fname)(struct sname *o, ftype v) { o->fname = v; }
 #define UNCURSED_PP_DEFINE_ACCESSORS_BODY1_D(...) UNCURSED_PP_DEFINE_ACCESSORS_BODY1(__VA_ARGS__)
 #define DEFINE_ACCESSORS(sname, f) UNCURSED_PP_DEFINE_ACCESSORS_BODY1_D(sname, UNCURSED_PP_KW_SPREAD f)
+
+/* #?  DEFINE_ACCESSORS(point, (int, x))
+ * #=>     static int get_x(const struct point *o) { return o->x; }
+ * #=>     static void set_x(struct point *o, int v) { o->x = v; }
+ */
+
+/* #?  DEFINE_ACCESSORS(config, (unsigned, retries))
+ * #=>     static unsigned get_retries(const struct config *o) { return o->retries; }
+ * #=>     static void set_retries(struct config *o, unsigned v) { o->retries = v; }
+ */

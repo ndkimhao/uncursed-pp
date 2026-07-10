@@ -14,3 +14,22 @@
 #define UNCURSED_PP_NORM_THEN1(x) BOOST_PP_REMOVE_PARENS(x)
 #define UNCURSED_PP_NORM_ELSE1(x) x
 #define NORM(x) BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(x), UNCURSED_PP_NORM_THEN1, UNCURSED_PP_NORM_ELSE1)(x)
+
+/* # ── invocation specs (verified through cc -E by test_e2e_specs) ──
+ * #?  NORM(q)
+ * #=>     q
+ */
+
+/* #?  NORM((a, b))
+ * #=>     a, b
+ */
+
+/* # edge: single-element parens still count as parenthesized
+ * #?  NORM((a))
+ * #=>     a
+ */
+
+/* # edge: only ONE paren layer is stripped; inner structure survives
+ * #?  NORM(((a, (b, c))))
+ * #=>     (a, (b, c))
+ */

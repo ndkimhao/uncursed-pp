@@ -18,3 +18,12 @@
  * @endmacro
  */
 #define SECOND_NAME(xs) BOOST_PP_TUPLE_ELEM(1, BOOST_PP_SEQ_ELEM(1, xs))
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  HEADTAIL((a)(b))
+ * #=>     a ... b
+ */
+
+/* #?  SECOND_NAME(((int, x))((float, y)))
+ * #=>     y
+ */

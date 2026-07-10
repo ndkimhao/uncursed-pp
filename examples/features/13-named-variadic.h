@@ -4,6 +4,16 @@
 #include <boost/preprocessor/cat.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── named variadic: keywords that take bare commas ───────────────────
+ * #
+ * # A plain `named` keyword takes ONE token-sequence — KEY(a, b) is a
+ * # compile error naming the keyword's setter. Declaring the parameter
+ * # `named variadic` opts in to bare commas: the whole argument list
+ * # passes through verbatim.
+ * #
+ * # Scenario: a color gradient where stops are naturally a bare list.
+ */
+
 /* uncursed-pp source:
  * @macro DEFINE_GRADIENT(name, named variadic STOPS = black)
  * static const int {{name}}[] = { {{STOPS}} };
@@ -23,3 +33,13 @@
 #define UNCURSED_PP_DEFINE_GRADIENT_DISPATCH(n) UNCURSED_PP_DEFINE_GRADIENT_DISPATCH_I(n)
 #define UNCURSED_PP_DEFINE_GRADIENT_DISPATCH_I(n) UNCURSED_PP_DEFINE_GRADIENT_ ## n
 #define DEFINE_GRADIENT(...) UNCURSED_PP_DEFINE_GRADIENT_DISPATCH(UNCURSED_PP_DEFINE_GRADIENT_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+/* # Default:
+ * #?  DEFINE_GRADIENT(fade)
+ * #=>     static const int fade[] = { black };
+ */
+
+/* # Bare commas pass through verbatim:
+ * #?  DEFINE_GRADIENT(fade, STOPS(red, green, blue))
+ * #=>     static const int fade[] = { red, green, blue };
+ */

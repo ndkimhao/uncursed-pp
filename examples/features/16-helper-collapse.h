@@ -7,6 +7,28 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── Codegen: helper collapse ─────────────────────────────────────────
+ * #
+ * # This example is about the GENERATED code — open the committed
+ * # 16-helper-collapse.h next to this file. The two macros below have
+ * # identical loop bodies, so the emitter's collapse pass merges their
+ * # helpers into the SAME shared, stem-namespaced identifiers: a plain
+ * # per-element callback UNCURSED_PP_16_HELPER_COLLAPSE_H1 (for large
+ * # seqs, via BOOST_PP_SEQ_FOR_EACH) and a size-dispatched chain family
+ * # UNCURSED_PP_16_HELPER_COLLAPSE_HC2_1 .. HC2_16 (for small seqs, via
+ * # token pasting). Both TRACE_CALLS and AUDIT_CALLS route through the
+ * # very same H1/HC2_* definitions — nothing is duplicated per macro
+ * # (the file stem namespaces them so two generated headers can't
+ * # collide inside one translation unit).
+ * #
+ * # History note: chain families are a regression trap for collapse —
+ * # each chain entry is picked by size via token pasting, so the
+ * # collapse pass must move a whole chain family as one unit, never
+ * # split across the two macros. These specs (deliberately SMALL seqs,
+ * # so they hit the chain-family path) pin that behavior through the
+ * # real preprocessor.
+ */
+
 /* uncursed-pp source:
  * @macro TRACE_CALLS(fns: seq<token>)
  * @for f in fns
@@ -47,3 +69,13 @@
 #define UNCURSED_PP_AUDIT_CALLS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_AUDIT_CALLS_SMALL1, UNCURSED_PP_AUDIT_CALLS_BIG1)
 #define UNCURSED_PP_AUDIT_CALLS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_16_HELPER_COLLAPSE_H1, ~, seq)
 #define AUDIT_CALLS(fns) UNCURSED_PP_AUDIT_CALLS_PICK1(BOOST_PP_SEQ_SIZE(fns))(fns)
+
+/* # Both macros expand through the SAME shared helpers:
+ * #?  TRACE_CALLS((open_file)(read_file))
+ * #=>     trace_enter(open_file);
+ * #=>     trace_enter(read_file);
+ */
+
+/* #?  AUDIT_CALLS((close_file))
+ * #=>     trace_enter(close_file);
+ */

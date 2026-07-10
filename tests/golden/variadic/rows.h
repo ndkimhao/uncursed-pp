@@ -18,6 +18,12 @@
 #include <boost/preprocessor/tuple/to_seq.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # Unbounded tuples: `tuple<T...>` (bare `tuple` = `tuple<token...>`) hold
+ * # a VARIABLE number of elements in one pair of parens - commas between
+ * # elements, unlike a seq's (a)(b)(c). Loops and len() are emptiness-gated:
+ * # () means zero elements. Elements cap at 64 (BOOST_PP_VARIADIC_SIZE).
+ */
+
 /* uncursed-pp source:
  * @macro CALL_ALL(fn, row: tuple)
  * @for x in row
@@ -30,6 +36,15 @@
 #define UNCURSED_PP_CALL_ALL_NIL1(row, fn)
 #define UNCURSED_PP_ROWS_H1(x) BOOST_PP_IS_EMPTY x
 #define CALL_ALL(fn, row) BOOST_PP_IIF(UNCURSED_PP_ROWS_H1(row), UNCURSED_PP_CALL_ALL_NIL1, UNCURSED_PP_CALL_ALL_LOOP1)(row, fn)
+
+/* #?  CALL_ALL(handle, (a, b, c))
+ * #=>     handle(a); handle(b); handle(c);
+ */
+
+/* # () iterates ZERO times - the markers prove nothing stray is emitted
+ * #?  begin CALL_ALL(handle, ()) end
+ * #=>     begin end
+ */
 
 /* uncursed-pp source:
  * # is_empty() branches; len() reports 0 for ()
@@ -68,6 +83,14 @@
 #define UNCURSED_PP_DESCRIBE_BIG1(seq) BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_DESCRIBE_EACH1, ~, seq)
 #define DESCRIBE(row) BOOST_PP_IIF(UNCURSED_PP_ROWS_H1(row), UNCURSED_PP_DESCRIBE_THEN1, UNCURSED_PP_DESCRIBE_ELSE1)(row)
 
+/* #?  DESCRIBE((p, q))
+ * #=>     2 items: p + q
+ */
+
+/* #?  DESCRIBE(())
+ * #=>     nothing
+ */
+
 /* uncursed-pp source:
  * # typed elements: named pairs give single-paren call sites
  * @macro SET_ALL(ps: tuple<tuple<key, value>...>)
@@ -100,6 +123,15 @@
 #define UNCURSED_PP_SET_ALL_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_SET_ALL_SMALL1, UNCURSED_PP_SET_ALL_BIG1)
 #define UNCURSED_PP_SET_ALL_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_SET_ALL_EACH1, ~, seq)
 #define SET_ALL(ps) BOOST_PP_IIF(UNCURSED_PP_ROWS_H1(ps), UNCURSED_PP_SET_ALL_NIL1, UNCURSED_PP_SET_ALL_LOOP1)(ps)
+
+/* #?  SET_ALL(((retries, 3), (timeout, 30)))
+ * #=>     cfg_set("retries", 3);
+ * #=>     cfg_set("timeout", 30);
+ */
+
+/* #?  begin SET_ALL(()) end
+ * #=>     begin end
+ */
 
 /* uncursed-pp source:
  * # collapse interaction: two macros with identical no-free-var loop bodies
@@ -147,6 +179,18 @@
 #define UNCURSED_PP_AUDIT_ROW_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_ROWS_H3, ~, seq)
 #define AUDIT_ROW(row) BOOST_PP_IIF(UNCURSED_PP_ROWS_H1(row), UNCURSED_PP_ROWS_H2, UNCURSED_PP_AUDIT_ROW_LOOP1)(row)
 
+/* #?  TRACE_ROW((a, b))
+ * #=>     trace(a); trace(b);
+ */
+
+/* #?  AUDIT_ROW((z))
+ * #=>     trace(z);
+ */
+
+/* #?  begin AUDIT_ROW(()) end
+ * #=>     begin end
+ */
+
 /* uncursed-pp source:
  * # nesting: a seq of variable-width rows; the inner tuple may be empty
  * @macro FLATTEN(rows: seq<tuple<token...>>)
@@ -159,3 +203,7 @@
 #define UNCURSED_PP_FLATTEN_LOOP1(row) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_TO_SEQ(row)), UNCURSED_PP_FLATTEN_EACH1, BOOST_PP_TUPLE_TO_SEQ(row))
 #define UNCURSED_PP_FLATTEN_EACH2(r, d, e) { BOOST_PP_IIF(UNCURSED_PP_ROWS_H1(e), UNCURSED_PP_ROWS_H2, UNCURSED_PP_FLATTEN_LOOP1)(e) }
 #define FLATTEN(rows) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_FLATTEN_EACH2, ~, rows)
+
+/* #?  FLATTEN(((a, b))((c))(()))
+ * #=>     { a, b } { c } { }
+ */

@@ -15,6 +15,12 @@
 #include <boost/preprocessor/tuple/to_seq.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # Hybrid tuples: `tuple<n1, .., nk, T...>` — fixed NAMED head fields,
+ * # then an unbounded typed tail. Named access reads the head; iteration,
+ * # len(), is_empty() and [i] are all TAIL-scoped so they agree with each
+ * # other. Call site (x, int, F1, F2); (x, int) is an empty tail.
+ */
+
 /* uncursed-pp source:
  * @macro DECL_FIELD(f: tuple<fname, ftype, token...>)
  * @if is_empty(f)
@@ -33,6 +39,15 @@
 #define UNCURSED_PP_DECL_FIELD_ELSE1(f) BOOST_PP_TUPLE_ELEM(1, f) BOOST_PP_TUPLE_ELEM(0, f) __attribute__((BOOST_PP_IIF(UNCURSED_PP_HYBRID_H2(UNCURSED_PP_DECL_FIELD_TL2(f)), UNCURSED_PP_HYBRID_H1, UNCURSED_PP_DECL_FIELD_LOOP1)(f)));
 #define DECL_FIELD(f) BOOST_PP_IIF(UNCURSED_PP_HYBRID_H2(UNCURSED_PP_DECL_FIELD_TL2(f)), UNCURSED_PP_DECL_FIELD_THEN1, UNCURSED_PP_DECL_FIELD_ELSE1)(f)
 
+/* #?  DECL_FIELD((x, int, packed, unused))
+ * #=>     int x __attribute__((packed, unused));
+ */
+
+/* # empty tail: just the head fields
+ * #?  DECL_FIELD((y, float))
+ * #=>     float y;
+ */
+
 /* uncursed-pp source:
  * # len() and [i] are tail-scoped: the head does not count
  * @macro TAIL_INFO(f: tuple<n, token...>)
@@ -42,6 +57,14 @@
 #define UNCURSED_PP_HYBRID_H4(t) UNCURSED_PP_HYBRID_H3 t
 #define UNCURSED_PP_HYBRID_H3(f0, ...) (__VA_ARGS__)
 #define TAIL_INFO(f) BOOST_PP_TUPLE_ELEM(0, f): BOOST_PP_IIF(UNCURSED_PP_HYBRID_H2(UNCURSED_PP_HYBRID_H4(f)), 0, BOOST_PP_TUPLE_SIZE(UNCURSED_PP_HYBRID_H4(f))) flags, first BOOST_PP_TUPLE_ELEM(0, UNCURSED_PP_HYBRID_H4(f))
+
+/* #?  TAIL_INFO((cfg, RO, SYNC, DIRECT))
+ * #=>     cfg: 3 flags, first RO
+ */
+
+/* #?  TAIL_INFO((bare))
+ * #=>     bare: 0 flags, first
+ */
 
 /* uncursed-pp source:
  * # typed tails unpack; heads stay named
@@ -78,6 +101,12 @@
 #define ROUTE(r) \
     BOOST_PP_CAT(switch_, BOOST_PP_TUPLE_ELEM(0, r)): \
     BOOST_PP_IIF(UNCURSED_PP_HYBRID_H2(UNCURSED_PP_HYBRID_H4(r)), UNCURSED_PP_ROUTE_NIL1, UNCURSED_PP_ROUTE_LOOP1)(r)
+
+/* #?  ROUTE((GET, (200, ok), (404, missing)))
+ * #=>     switch_GET:
+ * #=>     case 200: ok();
+ * #=>     case 404: missing();
+ */
 
 /* uncursed-pp source:
  * # collapse interaction: identical tail loops in two macros share one
@@ -126,6 +155,18 @@
 #define UNCURSED_PP_EMIT_B_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_HYBRID_H5, ~, seq)
 #define EMIT_B(f) BOOST_PP_IIF(UNCURSED_PP_HYBRID_H2(UNCURSED_PP_HYBRID_H4(f)), UNCURSED_PP_HYBRID_H1, UNCURSED_PP_EMIT_B_LOOP1)(f)
 
+/* #?  EMIT_A((h, one, two))
+ * #=>     emit(one); emit(two);
+ */
+
+/* #?  EMIT_B((h, three))
+ * #=>     emit(three);
+ */
+
+/* #?  begin EMIT_B((h)) end
+ * #=>     begin end
+ */
+
 /* uncursed-pp source:
  * # hybrids as seq elements: per-row heads, variable-width tails
  * @macro ROWS(fs: seq<tuple<n, token...>>)
@@ -138,3 +179,7 @@
 #define UNCURSED_PP_ROWS_LOOP1(f) BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(BOOST_PP_TUPLE_TO_SEQ(UNCURSED_PP_HYBRID_H4(f))), UNCURSED_PP_ROWS_EACH1, BOOST_PP_TUPLE_TO_SEQ(UNCURSED_PP_HYBRID_H4(f)))
 #define UNCURSED_PP_ROWS_EACH2(r, d, e) BOOST_PP_TUPLE_ELEM(0, e)[ BOOST_PP_IIF(UNCURSED_PP_HYBRID_H2(UNCURSED_PP_HYBRID_H4(e)), UNCURSED_PP_HYBRID_H1, UNCURSED_PP_ROWS_LOOP1)(e) ]
 #define ROWS(fs) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_ROWS_EACH2, ~, fs)
+
+/* #?  ROWS(((r1, a, b))((r2))((r3, c)))
+ * #=>     r1[ a, b ] r2[ ] r3[ c ]
+ */

@@ -8,6 +8,28 @@
 #include <boost/preprocessor/tuple/size.hpp>
 #include <boost/preprocessor/tuple/to_seq.hpp>
 
+/* # ── Hybrid tuples: named head fields + an unbounded tail ─────────────
+ * #
+ * # `tuple<fname, ftype, token...>` declares fixed NAMED fields followed
+ * # by a variable tail: the call site is (x, int, RO, LOGGED) — head
+ * # first, then any number of tail elements. `(x, int)` is a legal empty
+ * # tail. The tail's element type goes before the ellipsis, and may
+ * # itself be a named tuple: tuple<verb, tuple<code, action>...>.
+ * #
+ * # The rule that keeps this predictable: NAMED ACCESS reads the head;
+ * # EVERYTHING ELSE is tail-scoped. `@for`/`@join` iterate the tail only,
+ * # `len()` counts the tail, `is_empty()` asks "is the tail empty", and
+ * # `f[i]` indexes the tail. They all agree — a loop never revisits data
+ * # you address by name, and len() always matches what iteration sees.
+ * #
+ * # Call-site rules: at least the named fields must be present; head plus
+ * # tail cap at 64 elements total; a trailing comma after the head reads
+ * # as one EMPTY tail element (same footgun family as `()`).
+ * #
+ * # Scenario: struct field descriptors — every field has a name and type,
+ * # SOME fields carry extra attributes.
+ */
+
 /* uncursed-pp source:
  * @macro DECL(f: tuple<fname, ftype, token...>)
  * @if is_empty(f)
@@ -26,6 +48,17 @@
 #define UNCURSED_PP_DECL_ELSE1(f) BOOST_PP_TUPLE_ELEM(1, f) BOOST_PP_TUPLE_ELEM(0, f) __attribute__((BOOST_PP_IIF(UNCURSED_PP_19_HYBRID_TUPLE_H1(UNCURSED_PP_DECL_TL2(f)), UNCURSED_PP_DECL_NIL1, UNCURSED_PP_DECL_LOOP1)(f)));
 #define DECL(f) BOOST_PP_IIF(UNCURSED_PP_19_HYBRID_TUPLE_H1(UNCURSED_PP_DECL_TL2(f)), UNCURSED_PP_DECL_THEN1, UNCURSED_PP_DECL_ELSE1)(f)
 
+/* #?  DECL((flags, unsigned, packed))
+ * #=>     unsigned flags __attribute__((packed));
+ */
+
+/* # empty tail: the plain declaration
+ * #?  DECL((count, int))
+ * #=>     int count;
+ */
+
+/* # ── the head never counts: len()/[i] see only the tail ─────────────── */
+
 /* uncursed-pp source:
  * @macro SUMMARY(f: tuple<owner, token...>)
  * {{f.owner}} has {{len(f)}} tags
@@ -34,3 +67,11 @@
 #define UNCURSED_PP_SUMMARY_TL1(t) UNCURSED_PP_SUMMARY_TL1_I t
 #define UNCURSED_PP_SUMMARY_TL1_I(f0, ...) (__VA_ARGS__)
 #define SUMMARY(f) BOOST_PP_TUPLE_ELEM(0, f) has BOOST_PP_IIF(UNCURSED_PP_19_HYBRID_TUPLE_H1(UNCURSED_PP_SUMMARY_TL1(f)), 0, BOOST_PP_TUPLE_SIZE(UNCURSED_PP_SUMMARY_TL1(f))) tags
+
+/* #?  SUMMARY((alice, admin, staff))
+ * #=>     alice has 2 tags
+ */
+
+/* #?  SUMMARY((bob))
+ * #=>     bob has 0 tags
+ */

@@ -10,6 +10,16 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include "uncursed_pp_runtime.h"
 
+/* # ── variadic: comma-separated call sites ─────────────────────────────
+ * #
+ * # `items: variadic` makes the macro take trailing `...` arguments; the
+ * # body sees them as a seq, so @for and @join work unchanged. A variadic
+ * # parameter must be last, must receive at least one argument, and
+ * # excludes tail defaults / named parameters in the same macro.
+ * #
+ * # Scenario: releasing a batch of resources.
+ */
+
 /* uncursed-pp source:
  * @macro FREE_ALL(ptrs: variadic)
  * @for p in ptrs
@@ -38,6 +48,16 @@
 #define UNCURSED_PP_FREE_ALL_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_FREE_ALL_SMALL1, UNCURSED_PP_FREE_ALL_BIG1)
 #define UNCURSED_PP_FREE_ALL_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_FREE_ALL_EACH1, ~, seq)
 #define FREE_ALL(...) UNCURSED_PP_FREE_ALL_PICK1(BOOST_PP_SEQ_SIZE(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+
+/* #?  FREE_ALL(line_buf, name_buf, path_buf)
+ * #=>     free(line_buf);
+ * #=>     free(name_buf);
+ * #=>     free(path_buf);
+ */
+
+/* # `variadic<tuple<...>>` gives SINGLE-paren tuple call sites — compare
+ * # the double parens a seq<tuple<...>> parameter would need.
+ */
 
 /* uncursed-pp source:
  * @macro SET_DEFAULTS(pairs: variadic<tuple<key, value>>)
@@ -68,3 +88,8 @@
 #define UNCURSED_PP_SET_DEFAULTS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_SET_DEFAULTS_SMALL1, UNCURSED_PP_SET_DEFAULTS_BIG1)
 #define UNCURSED_PP_SET_DEFAULTS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_SET_DEFAULTS_EACH1, ~, seq)
 #define SET_DEFAULTS(...) UNCURSED_PP_SET_DEFAULTS_PICK1(BOOST_PP_SEQ_SIZE(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)))(BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+
+/* #?  SET_DEFAULTS((timeout, 30), (retries, 3))
+ * #=>     config_set("timeout", 30);
+ * #=>     config_set("retries", 3);
+ */

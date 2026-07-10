@@ -41,3 +41,15 @@
 #define LOOKUP_TABLE(tname, keys) \
     static const char *tname[BOOST_PP_SEQ_SIZE(keys)] = { UNCURSED_PP_LOOKUP_TABLE_PICK1(BOOST_PP_SEQ_SIZE(keys))(keys) }; \
     enum { BOOST_PP_CAT(tname, _len) = BOOST_PP_SEQ_SIZE(keys) };
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  LOOKUP_TABLE(names, (alpha)(beta))
+ * #=>     static const char *names[2] = { "alpha", "beta" };
+ * #=>     enum { names_len = 2 };
+ */
+
+/* # edge: single key
+ * #?  LOOKUP_TABLE(one, (solo))
+ * #=>     static const char *one[1] = { "solo" };
+ * #=>     enum { one_len = 1 };
+ */

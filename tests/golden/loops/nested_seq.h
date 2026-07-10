@@ -39,3 +39,13 @@
 #define UNCURSED_PP_FIRST_ROW_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_FIRST_ROW_SMALL1, UNCURSED_PP_FIRST_ROW_BIG1)
 #define UNCURSED_PP_FIRST_ROW_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_FIRST_ROW_EACH1, ~, seq)
 #define FIRST_ROW(grid) UNCURSED_PP_FIRST_ROW_PICK1(BOOST_PP_SEQ_SIZE(BOOST_PP_SEQ_ELEM(0, grid)))(BOOST_PP_SEQ_ELEM(0, grid))
+
+/* # ── invocation specs (verified through cc -E by the spec harness) ──
+ * #?  FIRST_ROW(((a)(b))((c)(d)))
+ * #=>     cell(a); cell(b);
+ */
+
+/* # edge: single row, single cell
+ * #?  FIRST_ROW(((z)))
+ * #=>     cell(z);
+ */
