@@ -1,0 +1,38 @@
+# ── @if / @else with len() ───────────────────────────────────────────
+#
+# Conditionals run at C-preprocess time too. `len(xs)` is the element
+# count of a seq (or variadic); comparisons support == != < > <= >=
+# against literals 0-256. Seq elements are also indexable: {{xs[0]}}.
+#
+# Scenario: a buffer declaration — one dimension gets a plain array,
+# several dimensions multiply out.
+
+macro DECLARE_BUFFER(name, dims: seq<token>)
+@if len(dims) == 1
+  static char {{name}}[{{dims[0]}}];
+@else
+  static char {{name}}[@join dims as d with " * ": {{d}}@end];
+@end
+end
+
+#?  DECLARE_BUFFER(io_buf, (4096))
+#=>     static char io_buf[4096];
+
+#?  DECLARE_BUFFER(grid, (16)(16)(4))
+#=>     static char grid[16 * 16 * 4];
+
+# Relational tests: pick a strategy by list size.
+
+macro PICK_SEARCH(xs: seq<token>)
+@if len(xs) <= 3
+  linear_scan
+@else
+  binary_search
+@end
+end
+
+#?  PICK_SEARCH((a)(b))
+#=>     linear_scan
+
+#?  PICK_SEARCH((a)(b)(c)(d))
+#=>     binary_search
