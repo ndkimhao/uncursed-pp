@@ -27,6 +27,7 @@ from .nodes import (
     TokenT,
     TupleT,
     Type,
+    VariadicT,
     VarRef,
 )
 from .parser import CursedppError, parse_file
@@ -124,9 +125,15 @@ class _MacroEmitter:
         pos = [p for p in self.macro.params if not p.named and p.default is None]
         defaulted = [p for p in self.macro.params if not p.named and p.default is not None]
         named = [p for p in self.macro.params if p.named]
-        self._validate_params(pos, defaulted, named)
+        variadic = [p for p in self.macro.params if isinstance(p.type, VariadicT)]
+        self._validate_params(pos, defaulted, named, variadic)
 
         env = {p.name: _Binding(p.name, p.type) for p in self.macro.params}
+        for p in variadic:
+            # the body sees the variadic tail as a token seq
+            env[p.name] = _Binding(
+                f"{self.pp('VARIADIC_TO_SEQ')}(__VA_ARGS__)", SeqT(TokenT())
+            )
         body = self._render_block(self.macro.body, env)
 
         if defaulted:
@@ -134,21 +141,37 @@ class _MacroEmitter:
         elif named:
             self._emit_named(pos, named, body)
         else:
-            params = ", ".join(p.name for p in self.macro.params)
-            self.out.defines.append(_format_define(f"{self.macro.name}({params})", body))
+            heads = ["..." if isinstance(p.type, VariadicT) else p.name for p in self.macro.params]
+            self.out.defines.append(_format_define(f"{self.macro.name}({', '.join(heads)})", body))
         return self.out
 
     def _validate_params(
-        self, pos: list[Param], defaulted: list[Param], named: list[Param]
+        self,
+        pos: list[Param],
+        defaulted: list[Param],
+        named: list[Param],
+        variadic: list[Param],
     ) -> None:
         line = self.macro.line
+        if variadic:
+            if len(variadic) > 1:
+                raise CursedppError("at most one variadic parameter", self.filename, line)
+            if not isinstance(self.macro.params[-1].type, VariadicT):
+                raise CursedppError(
+                    "the variadic parameter must be last", self.filename, line
+                )
+            if defaulted or named:
+                raise CursedppError(
+                    "a variadic parameter excludes tail defaults and named params",
+                    self.filename,
+                    line,
+                )
         if defaulted and named:
             raise CursedppError(
                 "a macro may use tail defaults OR named params, not both",
                 self.filename,
                 line,
             )
-        ordered = [("pos", p) for p in self.macro.params if not p.named and p.default is None]
         seen_special = False
         for p in self.macro.params:
             special = p.named or p.default is not None

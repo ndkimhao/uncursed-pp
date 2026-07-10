@@ -15,6 +15,7 @@ from cursedpp.nodes import (
     SeqT,
     Text,
     TupleT,
+    VariadicT,
     VarRef,
 )
 from cursedpp.parser import CursedppError, parse_file
@@ -197,3 +198,9 @@ def test_parse_named_params():
         ("HEIGHT", "50", True),
         ("FLAGS", "", True),
     ]
+
+
+def test_parse_variadic_param():
+    src = "macro F(prefix, items: variadic)\n{{prefix}}: {{items[0]}}\nend\n"
+    [macro] = parse_file(src, "t.cursed").macros
+    assert macro.params[1].type == VariadicT()

@@ -38,6 +38,7 @@ from .nodes import (
     Text,
     TokenT,
     TupleT,
+    VariadicT,
     VarRef,
 )
 
@@ -99,6 +100,9 @@ class _Ast(Transformer[Any, Any]):
 
     def token_type(self, _items: list[Any]) -> TokenT:
         return TokenT()
+
+    def variadic_type(self, _items: list[Any]) -> VariadicT:
+        return VariadicT()
 
     def name_list(self, items: list[Any]) -> tuple[str, ...]:
         return tuple(str(n) for n in items)

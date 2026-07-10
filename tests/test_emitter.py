@@ -130,3 +130,30 @@ def test_named_args_emit_probe_and_fold():
         "#define MAKE_WIDGET(...) "
         "BOOST_PP_OVERLOAD(CURSEDPP_MAKE_WIDGET_, __VA_ARGS__)(__VA_ARGS__)\n" in out
     )
+
+
+FOO_VARIADIC_SRC = (
+    "macro FOO(items: variadic)\n"
+    'S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @end@end }\n'
+    "end\n"
+)
+
+
+def test_variadic_param_compiles_to_va_args_seq():
+    out = compile_source(FOO_VARIADIC_SRC, "foo.cursed")
+    assert "#define FOO(...)" in out
+    assert "BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)" in out
+
+
+def test_variadic_must_be_last():
+    from cursedpp.parser import CursedppError
+
+    with pytest.raises(CursedppError):
+        compile_source("macro F(items: variadic, x)\n{{x}}\nend\n", "f.cursed")
+
+
+def test_variadic_excludes_defaults():
+    from cursedpp.parser import CursedppError
+
+    with pytest.raises(CursedppError):
+        compile_source("macro F(a = 1, items: variadic)\n{{a}}\nend\n", "f.cursed")

@@ -11,6 +11,7 @@ DEFAULT: /[^,()\s][^,()]*/
 type: "seq" "<" type ">"        -> seq_type
     | "tuple" "<" name_list ">" -> tuple_type
     | "token"                   -> token_type
+    | "variadic"                -> variadic_type
 name_list: CNAME ("," CNAME)*
 
 for_line: "for" for_target "in" CNAME

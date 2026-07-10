@@ -23,7 +23,12 @@ class SeqT:
     elem: TupleT | TokenT
 
 
-Type = TokenT | TupleT | SeqT
+@dataclass(frozen=True)
+class VariadicT:
+    """Trailing ... parameter; body sees it as a seq of tokens."""
+
+
+Type = TokenT | TupleT | SeqT | VariadicT
 
 
 # ── Expressions (inside {{...}} and conditions) ──────────────────────

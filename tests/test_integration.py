@@ -145,3 +145,16 @@ def test_widget_named_args(tmp_path):
     assert canon("struct widget w3 = { 20, 50, BOLD };") in preprocess_src(
         tmp_path, WIDGET_SRC, "w3", "MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))"
     )
+
+
+FOO_VARIADIC_SRC = (
+    "macro FOO(items: variadic)\n"
+    'S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @end@end }\n'
+    "end\n"
+)
+
+
+@requires_boost
+def test_variadic_paren_normalization(tmp_path):
+    out = preprocess_src(tmp_path, FOO_VARIADIC_SRC, "foo", "FOO(a, (b,c), d)")
+    assert canon("S{ (a, omit), (b,c), (d, omit) }") in out
