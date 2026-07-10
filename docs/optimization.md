@@ -144,6 +144,19 @@ Prototype postmortem: the first chain sketch had a real mechanism bug (a seq
 element's parens become the call parens, so members receive the tuple as one
 argument and unpack via AP) — caught by the token-identity requirement.
 
+Shipped-bug postmortem: the initial release let the collapse pass merge chain
+members *individually*; the dispatch references the family only as a
+CAT-assembled **prefix** (`CAT(<M>_CH1_, size)`), which whole-name renames
+never see, so two macros with identical loop bodies expanded to an undefined
+identifier on the small-seq path. Escaped because the collapse tests were
+pinned to `loop_chain off` (blinding the interaction) and string-matched
+without running cc. Fixed by family-unit merging (`HC<n>_` shared prefix,
+prefix-level rename reaches the CAT) plus a two-identical-loops golden with
+small-seq specs. Lesson: when a name is assembled by paste at C time, every
+pass that renames must operate on the assembling prefix, and every
+interaction of two features needs at least one through-the-compiler test
+with both enabled.
+
 ## Explicitly accepted costs
 
 - `SEQ_FOR_EACH` / `REPEAT` iteration machinery for loops that **reference

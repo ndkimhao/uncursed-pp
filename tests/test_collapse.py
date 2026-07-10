@@ -111,3 +111,50 @@ def test_shared_helpers_are_namespaced_per_file():
     import re
 
     assert not re.search(r"\bUNCURSED_PP_H1\b", out_a + out_b)
+
+
+# ── chain families merge as units, never member-by-member ───────────
+
+TWO_IDENTICAL_CHAINS = (
+    "macro A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+    "macro B(ys: seq<token>)\n@for y in ys\nf({{y}});\n@end\nend\n"
+)
+
+
+def _cat_prefixes_are_defined(out: str) -> list[str]:
+    """Every family prefix assembled via CAT must have member defines."""
+    import re
+
+    defined = set(re.findall(r"#define (\w+)\(", out))
+    dangling = []
+    for prefix in re.findall(r"BOOST_PP_CAT\((\w+_CH\w*?_|\w+_HC\d+_), ", out):
+        if f"{prefix}1" not in defined:
+            dangling.append(prefix)
+    return dangling
+
+
+def test_identical_chain_families_merge_without_dangling_cat():
+    out = compile_source(TWO_IDENTICAL_CHAINS, "t.uncursed")
+    # regression: members used to cascade-merge individually, leaving the
+    # CAT-assembled family reference in SMALL pointing at deleted names
+    assert _cat_prefixes_are_defined(out) == []
+    # the two identical families share one definition set
+    assert out.count("(e) f(e)") <= 17  # one family's worth, not two
+
+
+def test_different_chain_families_stay_separate():
+    src = (
+        "macro A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+        "macro B(ys: seq<token>)\n@for y in ys\ng({{y}});\n@end\nend\n"
+    )
+    out = compile_source(src, "t.uncursed")
+    assert _cat_prefixes_are_defined(out) == []
+
+
+@requires_boost
+def test_merged_chain_families_expand_correctly(tmp_path):
+    # the exact reported repro: small seq hits the (merged) chain path
+    out = preprocess_src(tmp_path, TWO_IDENTICAL_CHAINS, "mc", "A((a)(b))\nB((u)(v))")
+    assert canon("f(a); f(b);") in out
+    assert canon("f(u); f(v);") in out
+    assert "CH1_" not in out  # nothing undefined leaks into the C output

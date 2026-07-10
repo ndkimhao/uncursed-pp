@@ -31,6 +31,11 @@ _TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|\w+|[^\w\s]")
 # Loop helpers own the spare `d` data argument; other kinds do not.
 _LOOP_PARAMS = {"r, d, e", "r, d, i, e"}
 
+# Chain members are referenced by CAT-assembled *prefix* (SMALL does
+# BOOST_PP_CAT(<family>, size)), a name the \b<whole-name>\b rename can
+# never see - so they must merge as whole families, never individually.
+_CHAIN_MEMBER_RE = re.compile(r"^(?P<family>.+_(?:CH|HC)\d+_)(?P<idx>\d+)$")
+
 
 @dataclass
 class _Site:
@@ -42,6 +47,7 @@ def collapse(outs: list[_MacroOut], shared_prefix: str) -> None:
     counter = _SharedCounter(shared_prefix)
     while _merge_exact(outs, counter):
         pass
+    _merge_chain_families(outs, counter)
     _merge_parameterized(outs, counter)
 
 
@@ -53,6 +59,10 @@ class _SharedCounter:
     def next_name(self) -> str:
         self.n += 1
         return f"{self.shared_prefix}H{self.n}"
+
+    def next_family(self) -> str:
+        self.n += 1
+        return f"{self.shared_prefix}HC{self.n}_"
 
 
 def _sites(outs: list[_MacroOut]) -> list[_Site]:
@@ -85,6 +95,8 @@ def _merge_exact(outs: list[_MacroOut], counter: _SharedCounter) -> bool:
     groups: dict[tuple[str, str], list[_Site]] = {}
     for site in _sites(outs):
         h = site.helper
+        if _CHAIN_MEMBER_RE.match(h.name):
+            continue  # families merge as units in _merge_chain_families
         groups.setdefault((h.params, h.body), []).append(site)
 
     merged = False
@@ -108,6 +120,45 @@ def _merge_exact(outs: list[_MacroOut], counter: _SharedCounter) -> bool:
 
 def _is_shared(name: str, shared_prefix: str) -> bool:
     return re.fullmatch(rf"{re.escape(shared_prefix)}H\d+", name) is not None
+
+
+def _rename_family_prefix(outs: list[_MacroOut], old: str, new: str) -> None:
+    """Rewrite a chain-family prefix everywhere it appears - as the stem of
+    member names AND as the bare CAT-assembled reference in the dispatch."""
+    pattern = re.compile(rf"\b{re.escape(old)}")
+    for out in outs:
+        for helper in out.helpers:
+            helper.body = pattern.sub(new, helper.body)
+        out.defines = [pattern.sub(new, d) for d in out.defines]
+
+
+def _merge_chain_families(outs: list[_MacroOut], counter: _SharedCounter) -> None:
+    families: dict[str, list[_Site]] = {}
+    for site in _sites(outs):
+        m = _CHAIN_MEMBER_RE.match(site.helper.name)
+        if m:
+            families.setdefault(m.group("family"), []).append(site)
+
+    by_signature: dict[tuple[tuple[str, str], ...], list[str]] = {}
+    for family, sites in families.items():
+        sites.sort(key=lambda s: int(s.helper.name[len(family):]))
+        signature = tuple(
+            (s.helper.params, s.helper.body.replace(family, "\x00")) for s in sites
+        )
+        by_signature.setdefault(signature, []).append(family)
+
+    for family_list in by_signature.values():
+        if len(family_list) < 2:
+            continue
+        shared = counter.next_family()
+        canonical = family_list[0]
+        _rename_family_prefix(outs, canonical, shared)
+        for site in families[canonical]:
+            site.helper.name = shared + site.helper.name[len(canonical):]
+        for family in family_list[1:]:
+            _rename_family_prefix(outs, family, shared)
+            for site in families[family]:
+                _drop(site)
 
 
 def _merge_parameterized(outs: list[_MacroOut], counter: _SharedCounter) -> None:
