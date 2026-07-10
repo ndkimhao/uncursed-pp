@@ -66,7 +66,7 @@ takes only the input path and `-o`:
 | `runtime_name` | `<helper_prefix>_runtime.h` | filename the shared runtime header is written to |
 | `runtime_include` | `"<runtime_name>"` | the `#include` text generated headers use for it — any path, `"..."` or `<...>` |
 | `include` | — | extra `#include` for the generated header (repeatable) |
-| `loop_chain` | `on` | fast chain codegen for loops (`off` = plain `SEQ_FOR_EACH`, shorter headers) |
+| `loop_chain` | `on` | fast chain codegen for loops (`off` = plain `SEQ_FOR_EACH`, shorter headers) — [details](docs/loop-chains.md) |
 | `loop_chain_limit` | `16` | max seq length served by the chain (longer falls back); `256` covers everything and drops the fallback |
 
 ```text
@@ -141,5 +141,7 @@ include line are configurable (`@pragma runtime_name` / `runtime_include`).
 
 - [`docs/guide.md`](docs/guide.md) — full language reference
 - [`examples/`](examples/) — spec-verified feature walkthroughs
+- [`docs/codegen.md`](docs/codegen.md) — how each feature compiles, and the sharp edges
+- [`docs/loop-chains.md`](docs/loop-chains.md) — the loop-chain option in depth
 - [`docs/design.md`](docs/design.md) — architecture & design spec
 - [`docs/optimization.md`](docs/optimization.md) — generated-code performance notes
