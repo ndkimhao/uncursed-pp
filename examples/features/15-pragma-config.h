@@ -32,6 +32,10 @@
  * #   @pragma loop_chain on|off    consumption-chain loop codegen toggle
  * #   @pragma loop_chain_limit N   seq size where chains fall back to
  * #                                SEQ_FOR_EACH
+ * #   @pragma runtime_include I    the #include text headers use for the
+ * #                                runtime - any path, "..." or <...>
+ * #   @pragma arg_prefix P         prefix every generated parameter name
+ * #                                (kills body-text name capture; see 20)
  */
 
 /* uncursed-pp source:

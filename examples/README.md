@@ -33,6 +33,7 @@ call-site rules that apply to it:
 | 17 | codegen: adjacency never pastes |
 | 18 | unbounded tuples — `tuple<T...>`, `()` means zero elements |
 | 19 | hybrid tuples — named head fields + unbounded tail |
+| 20 | `@pragma arg_prefix` — body text safe from parameter capture |
 
 `combined/` shows features composing into realistic artifacts: a bitflag
 system, a finite state machine, and a unit-test registry — each driven

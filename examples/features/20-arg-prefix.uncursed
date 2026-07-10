@@ -1,0 +1,39 @@
+# ── @pragma arg_prefix: bullet-proof body text ───────────────────────
+#
+# Template variables compile to C macro parameters, and C macro
+# parameters substitute EVERYWHERE in the macro body - including raw
+# C text you wrote next to an interpolation. The generated helpers
+# also have their own parameter names (r, d, e, n, i, ...). So body
+# text that happens to mention one of those names gets captured at
+# expansion time:
+#
+#     @for $x in $xs
+#     int e = {{$x}};      <- `e` is ALSO the loop element's slot name:
+#     @end                    without protection this expands to
+#                              `int alpha = alpha;` - not `int e = alpha;`
+#
+# `@pragma arg_prefix u_` renames EVERY generated parameter - your
+# variables ($x becomes parameter u_x) and the harness slots alike -
+# so plain body text can never collide with one. The cost is noisier
+# generated code (read the committed .h next to this file); the win is
+# that no identifier in your C text is off-limits anymore.
+@pragma arg_prefix u_
+
+@macro TRACE_VARS($vars: seq<token>)
+@for $v in $vars
+int e = snapshot({{$v}});
+log(&d, &e);
+@end
+@endmacro
+
+# `e` and `d` in the body survive - they'd both be captured without
+# the pragma (e by the element slot, d by the data slot)
+#?  TRACE_VARS((rate))
+#=>     int e = snapshot(rate);
+#=>     log(&d, &e);
+
+#?  TRACE_VARS((rate)(depth))
+#=>     int e = snapshot(rate);
+#=>     log(&d, &e);
+#=>     int e = snapshot(depth);
+#=>     log(&d, &e);

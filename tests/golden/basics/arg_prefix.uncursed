@@ -1,0 +1,45 @@
+# @pragma arg_prefix: every generated parameter name (user variables AND
+# harness slots like r/d/e) is emitted with this prefix, so raw body text
+# mentioning one of those names can never be captured at expansion time.
+@pragma arg_prefix u_
+
+# the classic capture case: body text says `e`, the loop helper's element
+# slot is ALSO named e - unprefixed, `int e = ...` would expand wrong
+@macro DECLARE_COUNTERS($names: seq<token>)
+@for $x in $names
+int e = counter({{$x}});
+@end
+@endmacro
+
+#?  DECLARE_COUNTERS((alpha)(beta))
+#=>     int e = counter(alpha);
+#=>     int e = counter(beta);
+
+# a user variable name used as literal C text in ANOTHER macro: the
+# generated parameter is u_d, so the d in `d.ready` survives
+@macro POLL($flag)
+while (!d.ready) { wait({{$flag}}); }
+@endmacro
+
+#?  POLL(F_IRQ)
+#=>     while (!d.ready) { wait(F_IRQ); }
+
+# collapse interaction: identical bodies still share one helper family
+# with prefixed parameters (chain families move as units)
+@macro EMIT_A($xs: seq<token>)
+@for $x in $xs
+emit({{$x}});
+@end
+@endmacro
+
+@macro EMIT_B($ys: seq<token>)
+@for $y in $ys
+emit({{$y}});
+@end
+@endmacro
+
+#?  EMIT_A((one)(two))
+#=>     emit(one); emit(two);
+
+#?  EMIT_B((three))
+#=>     emit(three);
