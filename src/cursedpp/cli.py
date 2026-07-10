@@ -1,4 +1,9 @@
 import argparse
+import sys
+from pathlib import Path
+
+from .emitter import compile_source
+from .parser import CursedppError
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -12,8 +17,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    build_arg_parser().parse_args(argv)
-    raise SystemExit(0)
+    args = build_arg_parser().parse_args(argv)
+    input_path = Path(args.input)
+    output_path = Path(args.output) if args.output else input_path.with_suffix(".h")
+    try:
+        header = compile_source(input_path.read_text(), str(input_path))
+    except CursedppError as exc:
+        print(exc, file=sys.stderr)
+        raise SystemExit(1) from exc
+    output_path.write_text(header)
 
 
 if __name__ == "__main__":

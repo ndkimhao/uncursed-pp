@@ -20,7 +20,7 @@ macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
   {{type}} {{name}};
 @end
 end
-#   DECLARE_FIELDS((int, x)(float, y))  →  int x; float y;
+#   DECLARE_FIELDS(((int, x))((float, y)))  →  int x; float y;
 
 # ── 2. Inline @join — separator between items ───────────────────────
 macro PROTO(name, args: seq<tuple<type, argname>>)
@@ -126,9 +126,10 @@ the whole output file then:
 1. **Exact merge** — helpers with identical normalized bodies (same shape, same
    constants) share one definition regardless of which macro needed them.
 2. **Parameterized merge** — loop helpers whose bodies match after abstracting
-   constant tokens (bounded: ≤3 differing tokens, ≥2 users) collapse into one
-   shared helper; the differing constants ride through FOR_EACH's otherwise
-   unused `d` argument (a tuple when >1, read via `BOOST_PP_TUPLE_ELEM`), e.g.:
+   ONE constant token (≥2 users) collapse into one shared helper; the constant
+   rides through FOR_EACH's otherwise unused `d` argument directly. If sharing
+   would require extra machinery (>1 differing constant → tuple in `d` +
+   `TUPLE_ELEM` reads), do NOT merge — simplicity of generated code wins, e.g.:
 
    ```c
    /* DECLARE_INTS emits "int e;", DECLARE_FLOATS emits "float e;" → one helper */
@@ -138,10 +139,10 @@ the whole output file then:
    ```
 
 Shared helpers are named `CURSEDPP_H<n>` in deterministic (first-use) order so
-golden files stay stable. Trade-off: parameterized sharing adds a `TUPLE_ELEM`
-per element when >1 constant differs — accepted for smaller headers; the pass
-never fires for a single user, and no fancier unification than token-level
-abstraction is attempted (keep it simple).
+golden files stay stable. The pass never fires for a single user, never makes
+the generated code more indirect than the unshared version (beyond the `d`
+pass-through), and no fancier unification than single-token abstraction is
+attempted (keep it simple).
 
 Text splicing: `#define` bodies are single logical lines using `\`-continuations
 mirroring template line structure; segments joined with single spaces (documents
@@ -198,7 +199,7 @@ named/variadic; default-less param after defaulted one; unknown pragma.
 
 - Unit tests per stage; emitter compared against golden `.h` files.
 - Integration: compile each golden header + a snippet invoking the macro with
-  `cc -E -P`, normalize whitespace, assert expansion (e.g. `DECLARE_FIELDS((int,x)(float,y))`
+  `cc -E -P`, normalize whitespace, assert expansion (e.g. `DECLARE_FIELDS(((int,x))((float,y)))`
   → `int x; float y;`). Skipped automatically if `boost/preprocessor.hpp` isn't
   findable (probe `cc -E` on an include stub; honor `BOOST_INCLUDE_DIR` env).
 - Commands: `mise install && uv sync` → `uv run pytest` →
