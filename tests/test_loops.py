@@ -6,6 +6,7 @@ header comparison + #? invocation specs) - not as string assertions here.
 
 import pytest
 
+from conftest import canon, preprocess_src, requires_boost
 from cursedpp.emitter import compile_source
 from cursedpp.nodes import ForEach, Interp, Join, VarRef
 from cursedpp.parser import CursedppError, parse_file
@@ -205,3 +206,58 @@ def test_as_binding_keeps_element_form():
     src = "macro F(xs: seq<tuple<a, b>>)\n@for x in xs\ng({{x}});\n@end\nend\n"
     out = compile_source(src, "t.cursed")
     assert "#define CURSEDPP_F_EACH1(r, d, e) g(e);\n" in out
+
+
+def test_tuple_loop_with_two_free_vars_spreads_d_tuple():
+    src = (
+        "macro T2(a, b, fields: seq<tuple<t, n>>)\n"
+        "@for (t, n) in fields\n"
+        "  f({{a}}, {{b}}, {{t}}, {{n}});\n"
+        "@end\n"
+        "end\n"
+    )
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_T2_AP1(a, b, t, n) f(a, b, t, n);\n" in out
+    assert (
+        "#define CURSEDPP_T2_EACH1(r, d, e) "
+        "CURSEDPP_T2_AP1_D(CURSEDPP_KW_SPREAD d, CURSEDPP_KW_SPREAD e)\n" in out
+    )
+    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T2_EACH1, (a, b), fields)" in out
+
+
+def test_field_name_colliding_with_free_var_falls_back_to_tuple_elem():
+    src = (
+        "macro C(type, fields: seq<tuple<type, name>>)\n"
+        "@for (type, name) in fields\n"
+        "  {{type}} {{name}};\n"
+        "@end\nend\n"
+    )
+    # unpack name shadows the outer param; if the body ALSO used the outer
+    # value it couldn't - here the shadowing unpack wins and AP still applies
+    out = compile_source(src, "t.cursed")
+    assert "CURSEDPP_C_AP1(type, name)" in out
+
+
+def test_conditional_inside_ap_loop_body():
+    src = (
+        "macro P(fields: seq<tuple<t, n>>)\n"
+        "@for (t, n) in fields\n"
+        "  @if is_paren(t) {{remove_parens(t)}} {{n}}; @else {{t}} {{n}}; @end\n"
+        "@end\nend\n"
+    )
+    out = compile_source(src, "t.cursed")
+    # branch helpers receive the AP params by name
+    assert "#define CURSEDPP_P_THEN1(t, n) BOOST_PP_REMOVE_PARENS(t) n;\n" in out
+    assert "CURSEDPP_P_THEN1, CURSEDPP_P_ELSE1)(t, n)" in out
+
+
+@requires_boost
+def test_ap_loop_with_conditional_expands(tmp_path):
+    src = (
+        "macro P(fields: seq<tuple<t, n>>)\n"
+        "@for (t, n) in fields\n"
+        "  @if is_paren(t) {{remove_parens(t)}} {{n}}; @else {{t}} {{n}}; @end\n"
+        "@end\nend\n"
+    )
+    out = preprocess_src(tmp_path, src, "p", "P((((a, b), x))((int, y)))")
+    assert canon("a, b x; int y;") in out

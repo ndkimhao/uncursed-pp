@@ -65,3 +65,16 @@ def test_named_without_required_param_is_error():
 def test_required_after_named_is_error():
     with pytest.raises(CursedppError):
         compile_source("macro F(a, named B = 1, c)\n{{a}}\nend\n", "t.cursed")
+
+
+def test_single_keyword_put_arity():
+    src = "macro S1(name, named ONLY = 7)\nf({{name}}, {{ONLY}})\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_S1_PUT_0_I(v, p0) (v)\n" in out
+    assert "BOOST_PP_SEQ_FOLD_LEFT(CURSEDPP_S1_STEP, (7)," in out
+
+
+def test_empty_default_in_fold_seed():
+    src = "macro S2(name, named A = 1, named B = )\nf({{A}}, {{B}})\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "(1, )," in out  # empty default keeps its slot in the seed tuple

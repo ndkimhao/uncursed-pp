@@ -135,3 +135,35 @@ def test_whole_tuple_use_falls_back_to_tuple_elem():
     out = compile_source(src, "t.cursed")
     assert "BOOST_PP_TUPLE_ELEM(0, p)" in out
     assert "BODY1" not in out
+
+
+def test_two_tuple_params_both_spread():
+    src = "macro Z(p: tuple<a, b>, q: tuple<c, d2>)\n{{p.a}}{{q.c}} {{p.b}}{{q.d2}};\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_Z_BODY1(a, b, c, d2)" in out
+    assert (
+        "#define Z(p, q) CURSEDPP_Z_BODY1_D(CURSEDPP_KW_SPREAD p, CURSEDPP_KW_SPREAD q)\n"
+        in out
+    )
+
+
+def test_field_collision_with_param_falls_back():
+    src = "macro Y(a, p: tuple<a, b>)\n{{a}} {{p.a}} {{p.b}};\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "BODY1" not in out
+    assert "BOOST_PP_TUPLE_ELEM(0, p)" in out
+
+
+def test_whole_use_in_condition_falls_back():
+    src = "macro W2(p: tuple<a, b>)\n@if is_paren(p) yes @else no @end\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "BODY1" not in out
+    assert "BOOST_PP_IS_BEGIN_PARENS(p)" in out
+
+
+def test_tuple_param_with_tail_defaults_keeps_tuple_elem():
+    src = "macro D2(p: tuple<a, b>, lvl = 0)\n{{p.a}} {{lvl}};\nend\n"
+    out = compile_source(src, "t.cursed")
+    # spread applies only to the simple dispatch path
+    assert "BODY1" not in out
+    assert "BOOST_PP_TUPLE_ELEM(0, p)" in out
