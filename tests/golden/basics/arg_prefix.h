@@ -111,3 +111,19 @@
 /* #?  EMIT_B((three))
  * #=>     emit(three);
  */
+
+/* uncursed-pp source:
+ * # spread tuple params: the public define's heads are prefixed exactly
+ * # like the arguments it forwards (they used to disagree under arg_prefix,
+ * # leaving the forward unbound)
+ * @macro PT($p: tuple<$x, $y>)
+ * pair({{$p.$x}}, {{$p.$y}});
+ * @endmacro
+ */
+#define UNCURSED_PP_PT_BODY1(u_x, u_y) pair(u_x, u_y);
+#define UNCURSED_PP_PT_BODY1_D(...) UNCURSED_PP_PT_BODY1(__VA_ARGS__)
+#define PT(u_p) UNCURSED_PP_PT_BODY1_D(UNCURSED_PP_KW_SPREAD u_p)
+
+/* #?  PT((3, 4))
+ * #=>     pair(3, 4);
+ */

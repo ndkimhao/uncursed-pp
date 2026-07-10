@@ -308,3 +308,17 @@ def test_arg_prefix_prevents_body_text_capture_e2e(tmp_path):
 
     out = preprocess_src(tmp_path, src, "t", "F((a)(b))")
     assert out == canon("int e = a; int e = b;")
+
+
+@requires_boost
+def test_arg_prefix_spread_tuple_param_e2e(tmp_path):
+    # the spread-BODY1 path: the public define's parameter heads must be
+    # prefixed like the arguments it forwards, or the forward is unbound
+    src = (
+        "@pragma arg_prefix u_\n"
+        "@macro PT($p: tuple<$x, $y>)\npair({{$p.$x}}, {{$p.$y}});\n@endmacro\n"
+    )
+    from conftest import preprocess_src
+
+    out = preprocess_src(tmp_path, src, "t", "PT((3, 4))")
+    assert canon("pair(3, 4);") in out

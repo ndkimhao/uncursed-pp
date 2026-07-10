@@ -13,3 +13,12 @@
 
 #?  SECOND_NAME(((int, x))((float, y)))
 #=>     y
+
+# is_empty($p) is a WHOLE-value use: it must consult the tuple itself,
+# never a stray identifier left behind by the spread pass
+@macro PROBE($p: tuple<$x, $y>)
+{{$p.$x}}/{{$p.$y}} empty={{is_empty($p)}}
+@endmacro
+
+#?  PROBE((3, 4))
+#=>     3/4 empty=0

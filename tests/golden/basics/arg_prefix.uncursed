@@ -43,3 +43,13 @@ emit({{$y}});
 
 #?  EMIT_B((three))
 #=>     emit(three);
+
+# spread tuple params: the public define's heads are prefixed exactly
+# like the arguments it forwards (they used to disagree under arg_prefix,
+# leaving the forward unbound)
+@macro PT($p: tuple<$x, $y>)
+pair({{$p.$x}}, {{$p.$y}});
+@endmacro
+
+#?  PT((3, 4))
+#=>     pair(3, 4);

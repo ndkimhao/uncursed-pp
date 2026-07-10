@@ -251,7 +251,7 @@ class _MacroEmitter:
             _format_define(f"{base}BODY1({', '.join(body_params)})", body)
         )
         self.out.defines.append(f"#define {base}BODY1_D(...) {base}BODY1(__VA_ARGS__)\n")
-        heads = ", ".join(p.name for p in self.macro.params)
+        heads = ", ".join(self.arg(p.name) for p in self.macro.params)
         self.out.defines.append(
             f"#define {self.macro.name}({heads}) {base}BODY1_D({', '.join(args)})\n"
         )
@@ -1140,7 +1140,7 @@ def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
             return expr_whole(e.base)
         if isinstance(e, Concat):
             return any(expr_whole(a) for a in e.args)
-        if isinstance(e, (RemoveParens, Stringize, Len, IsParen)):
+        if isinstance(e, (RemoveParens, Stringize, Len, IsParen, IsEmpty)):
             return expr_whole(e.arg)
         return False
 

@@ -72,6 +72,19 @@ def test_is_empty_takes_exactly_one_argument():
         parse_file("@macro F(a, b)\n@if is_empty(a, b)\nx\n@end\n@endmacro\n", "t.uncursed")
 
 
+def test_is_empty_is_a_whole_value_use(tmp_path):
+    # is_empty($a) must consult the tuple itself: the spread pass used to
+    # erase $a (IsEmpty was missing from the whole-use walk), leaving the
+    # probe reading a stray identifier a call-site '#define a' could flip
+    from conftest import CC, canon, preprocess_src
+
+    if CC is None:
+        pytest.skip("no C compiler available")
+    src = '@macro S2($a: tuple<$x, $y>)\n{{$a.$x}}/{{$a.$y}} empty={{is_empty($a)}}\n@endmacro\n'
+    out = preprocess_src(tmp_path, src, "ie", "#define a\nS2((3, 4))")
+    assert canon("3/4 empty=0") in out
+
+
 # ── error paths ──────────────────────────────────────────────────────
 
 
