@@ -10,7 +10,8 @@
 #include <boost/preprocessor/seq/for_each_i.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
-#define CURSEDPP_CALL2_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) BOOST_PP_TUPLE_ELEM(1, e)
+#define CURSEDPP_CALL2_AP1(type, argname) argname
+#define CURSEDPP_CALL2_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) CURSEDPP_CALL2_AP1 e
 #define CALL2(fn, args) fn(BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_CALL2_EACH1, ~, args), BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_CALL2_EACH1, ~, args))
 
 #define CURSEDPP_PICK_THEN1(x) BOOST_PP_REMOVE_PARENS(x)

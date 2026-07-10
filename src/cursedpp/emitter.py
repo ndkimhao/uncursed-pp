@@ -98,6 +98,7 @@ class _MacroOut:
 class _Binding:
     c_expr: str
     type: Type | None  # None/TokenT = plain token, arity/shape unknown
+    spread: bool = False  # tuple param whose fields are direct BODY params
 
 
 _Env = dict[str, _Binding]
@@ -145,16 +146,64 @@ class _MacroEmitter:
             if p.variadic_value:
                 # value travels parenthesized; interpolation auto-unwraps
                 env[p.name] = _Binding(f"{self.pp('REMOVE_PARENS')}({p.name})", TokenT())
+        spread_params: set[str] = set()
+        if not defaulted and not named:
+            spread_params = self._spreadable_tuple_params()
+            for name in spread_params:
+                env[name] = _Binding(name, env[name].type, spread=True)
         body = self._render_block(self.macro.body, env)
 
         if defaulted:
             self._emit_overload_chain(pos, defaulted, body)
         elif named:
             self._emit_named(pos, named, body)
+        elif spread_params:
+            self._emit_spread_body(spread_params, body)
         else:
             heads = ["..." if isinstance(p.type, VariadicT) else p.name for p in self.macro.params]
             self.out.defines.append(_format_define(f"{self.macro.name}({', '.join(heads)})", body))
         return self.out
+
+    def _spreadable_tuple_params(self) -> set[str]:
+        """Tuple params whose fields can become direct BODY parameters."""
+        taken = {p.name for p in self.macro.params}
+        chosen: set[str] = set()
+        for p in self.macro.params:
+            if not isinstance(p.type, TupleT):
+                continue
+            fields = p.type.names
+            if any(f in taken for f in fields) or len(set(fields)) != len(fields):
+                continue
+            if _uses_whole(self.macro.body, p.name):
+                continue
+            taken |= set(fields)
+            chosen.add(p.name)
+        return chosen
+
+    def _emit_spread_body(self, spread_params: set[str], body: str) -> None:
+        """Tuple params spread into a BODY define: every field is a direct
+        macro parameter, replacing per-use TUPLE_ELEM dispatches."""
+        self.file_state["kw_utils"] = True
+        base = f"{self.config.helper_prefix}{self.macro.name}_"
+        spread = f"{self.config.helper_prefix}KW_SPREAD"
+        body_params: list[str] = []
+        args: list[str] = []
+        for p in self.macro.params:
+            if p.name in spread_params:
+                assert isinstance(p.type, TupleT)
+                body_params.extend(p.type.names)
+                args.append(f"{spread} {p.name}")
+            else:
+                body_params.append(p.name)
+                args.append(p.name)
+        self.out.defines.append(
+            _format_define(f"{base}BODY1({', '.join(body_params)})", body)
+        )
+        self.out.defines.append(f"#define {base}BODY1_D(...) {base}BODY1(__VA_ARGS__)\n")
+        heads = ", ".join(p.name for p in self.macro.params)
+        self.out.defines.append(
+            f"#define {self.macro.name}({heads}) {base}BODY1_D({', '.join(args)})\n"
+        )
 
     def _validate_params(
         self,
@@ -361,6 +410,8 @@ class _MacroEmitter:
                     self.filename,
                     line,
                 )
+            if base.spread:
+                return _Binding(expr.accessor, TokenT())
             idx = base.type.names.index(expr.accessor)
             return _Binding(f"{self.pp('TUPLE_ELEM')}({idx}, {base.c_expr})", TokenT())
         if not isinstance(base.type, SeqT):
@@ -532,29 +583,65 @@ class _MacroEmitter:
                 node.line,
             )
 
+    def _loop_body(
+        self, node: ForEach | Join, env: _Env, elem_type: Type
+    ) -> tuple[str, str]:
+        """Render a loop body; returns (each-helper body core, data argument).
+
+        For tuple elements the body goes into an AP helper applied to the
+        element by juxtaposition (`AP e`), so every field is a direct macro
+        parameter instead of a per-use BOOST_PP_TUPLE_ELEM dispatch. Free
+        outer variables ride the `d` slot and are spread into AP params too.
+        """
+        unpack = node.unpack if isinstance(node, ForEach) else None
+        loop_env = self._loop_env(env, unpack, node.var, elem_type, node)
+        data, loop_env = self._loop_data(node, env, loop_env)
+
+        field_names: tuple[str, ...] = ()
+        if node.var is None and isinstance(elem_type, TupleT):
+            field_names = unpack or elem_type.names
+        # free vars are the ones _loop_data rebound onto the d slot,
+        # kept in slot order
+        free = [n for n, b in loop_env.items() if b.c_expr == "d" or b.c_expr.endswith(", d)")]
+        free.sort(key=lambda n: int(m.group(1)) if (m := re.search(r"\((\d+), d\)", loop_env[n].c_expr)) else 0)
+        ap_params = free + list(field_names)
+
+        use_ap = bool(field_names) and len(set(ap_params)) == len(ap_params)
+        render_env = loop_env
+        if use_ap:
+            render_env = dict(loop_env)
+            for name in ap_params:
+                render_env[name] = _Binding(name, loop_env[name].type)
+        self._loop_depth += 1
+        try:
+            body = _collapse_ws(self._render_block(node.body, render_env))
+        finally:
+            self._loop_depth -= 1
+        if not use_ap:
+            return body, data
+
+        ap = self._add_helper("AP", ", ".join(ap_params), body)
+        if not free:
+            return f"{ap} e", data
+        self.file_state["kw_utils"] = True
+        spread = f"{self.config.helper_prefix}KW_SPREAD"
+        d_part = "d" if len(free) == 1 else f"{spread} d"
+        self.out.helpers.append(
+            _Helper(name=f"{ap}_D", params="...", body=f"{ap}(__VA_ARGS__)")
+        )
+        return f"{ap}_D({d_part}, {spread} e)", data
+
     def _render_foreach(self, loop: ForEach, env: _Env) -> str:
         self._reject_nested_loop(loop)
         seq_expr, elem_type = self._iterable_binding(loop.iterable, env, loop)
-        loop_env = self._loop_env(env, loop.unpack, loop.var, elem_type, loop)
-        data, loop_env = self._loop_data(loop, env, loop_env)
-        self._loop_depth += 1
-        try:
-            body = _collapse_ws(self._render_block(loop.body, loop_env))
-        finally:
-            self._loop_depth -= 1
+        body, data = self._loop_body(loop, env, elem_type)
         helper = self._add_helper("EACH", "r, d, e", body)
         return f"{self.pp('SEQ_FOR_EACH')}({helper}, {data}, {seq_expr})"
 
     def _render_join(self, join: Join, env: _Env) -> str:
         self._reject_nested_loop(join)
         seq_expr, elem_type = self._iterable_binding(join.iterable, env, join)
-        loop_env = self._loop_env(env, None, join.var, elem_type, join)
-        data, loop_env = self._loop_data(join, env, loop_env)
-        self._loop_depth += 1
-        try:
-            body = _collapse_ws(self._render_block(join.body, loop_env))
-        finally:
-            self._loop_depth -= 1
+        body, data = self._loop_body(join, env, elem_type)
         sep = join.sep.strip()
         if sep == ",":
             each_body = f"{self.pp('COMMA_IF')}(i) {body}"
@@ -570,6 +657,44 @@ class _MacroEmitter:
         name = f"{self.config.helper_prefix}{self.macro.name}_{kind}{count}"
         self.out.helpers.append(_Helper(name=name, params=params, body=body))
         return name
+
+
+def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
+    """True if `name` is referenced as a whole value (not only via .field)."""
+
+    def expr_whole(e: Expr) -> bool:
+        if isinstance(e, VarRef):
+            return e.name == name
+        if isinstance(e, ElemAccess):
+            if isinstance(e.base, VarRef) and isinstance(e.accessor, str):
+                return False  # field access, not whole use
+            return expr_whole(e.base)
+        if isinstance(e, Concat):
+            return any(expr_whole(a) for a in e.args)
+        if isinstance(e, (RemoveParens, Stringize, Len, IsParen)):
+            return expr_whole(e.arg)
+        return False
+
+    def walk(nodes: list[BodyNode]) -> bool:
+        for n in nodes:
+            if isinstance(n, Interp) and expr_whole(n.expr):
+                return True
+            if isinstance(n, Let):
+                if isinstance(n.expr, (Join, If)):
+                    if walk([n.expr]):
+                        return True
+                elif expr_whole(n.expr):
+                    return True
+            if isinstance(n, (ForEach, Join)):
+                if n.iterable == name or walk(n.body):
+                    return True
+            if isinstance(n, If):
+                cond_expr = n.cond.arg if isinstance(n.cond, IsParen) else n.cond.lhs
+                if expr_whole(cond_expr) or walk(n.then) or walk(n.else_):
+                    return True
+        return False
+
+    return walk(nodes)
 
 
 def _collapse_ws(text: str) -> str:

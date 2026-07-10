@@ -10,6 +10,7 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 
 #define CURSEDPP_CTOR_THEN1(name, args) explicit_single_arg_init(name)
-#define CURSEDPP_CTOR_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) BOOST_PP_TUPLE_ELEM(1, e)
+#define CURSEDPP_CTOR_AP1(type, argname) argname
+#define CURSEDPP_CTOR_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) CURSEDPP_CTOR_AP1 e
 #define CURSEDPP_CTOR_ELSE1(name, args) BOOST_PP_CAT(name, _init)(BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_CTOR_EACH1, ~, args))
 #define CTOR(name, args) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(args), 1), CURSEDPP_CTOR_THEN1, CURSEDPP_CTOR_ELSE1)(name, args)

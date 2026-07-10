@@ -7,24 +7,28 @@
 #include <boost/preprocessor/stringize.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
+#include "cursedpp_runtime.h"
 
-#define CURSEDPP_DEFINE_STRUCT_EACH1(r, d, e) BOOST_PP_TUPLE_ELEM(0, e) BOOST_PP_TUPLE_ELEM(1, e);
+#define CURSEDPP_DEFINE_STRUCT_AP1(type, name, fmt) type name;
+#define CURSEDPP_H1(r, d, e) d e
 #define DEFINE_STRUCT(sname, fields) \
     typedef struct { \
-    BOOST_PP_SEQ_FOR_EACH(CURSEDPP_DEFINE_STRUCT_EACH1, ~, fields) \
+    BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, CURSEDPP_DEFINE_STRUCT_AP1, fields) \
     } sname;
 
-#define CURSEDPP_DEFINE_FIELD_TABLE_EACH1(r, d, e) { BOOST_PP_STRINGIZE(BOOST_PP_TUPLE_ELEM(1, e)), BOOST_PP_STRINGIZE(BOOST_PP_TUPLE_ELEM(0, e)), offsetof(d, BOOST_PP_TUPLE_ELEM(1, e)) },
+#define CURSEDPP_DEFINE_FIELD_TABLE_AP1(sname, type, name, fmt) { BOOST_PP_STRINGIZE(name), BOOST_PP_STRINGIZE(type), offsetof(sname, name) },
+#define CURSEDPP_DEFINE_FIELD_TABLE_AP1_D(...) CURSEDPP_DEFINE_FIELD_TABLE_AP1(__VA_ARGS__)
+#define CURSEDPP_DEFINE_FIELD_TABLE_EACH1(r, d, e) CURSEDPP_DEFINE_FIELD_TABLE_AP1_D(d, CURSEDPP_KW_SPREAD e)
 #define DEFINE_FIELD_TABLE(sname, fields) \
     static const cursed_field BOOST_PP_CAT(sname, _fields)[] = { \
     BOOST_PP_SEQ_FOR_EACH(CURSEDPP_DEFINE_FIELD_TABLE_EACH1, sname, fields) \
     }; \
     enum { BOOST_PP_CAT(sname, _field_count) = BOOST_PP_SEQ_SIZE(fields) };
 
-#define CURSEDPP_DEFINE_PRINTER_EACH1(r, d, e) printf(" " BOOST_PP_STRINGIZE(BOOST_PP_TUPLE_ELEM(1, e)) " = " BOOST_PP_TUPLE_ELEM(2, e) "\n", v->BOOST_PP_TUPLE_ELEM(1, e));
+#define CURSEDPP_DEFINE_PRINTER_AP1(type, name, fmt) printf(" " BOOST_PP_STRINGIZE(name) " = " fmt "\n", v->name);
 #define DEFINE_PRINTER(sname, fields) \
     static void BOOST_PP_CAT(print_, sname)(const sname *v) { \
-    BOOST_PP_SEQ_FOR_EACH(CURSEDPP_DEFINE_PRINTER_EACH1, ~, fields) \
+    BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, CURSEDPP_DEFINE_PRINTER_AP1, fields) \
     }
 
 #define REFLECT(sname, ...) \

@@ -41,7 +41,7 @@ def test_pragma_pp_prefix_and_include():
     out = compile_source(src, "t.cursed")
     assert "#include <mylib/preprocessor.hpp>" in out
     assert "MYLIB_PP_SEQ_FOR_EACH" in out
-    assert "MYLIB_PP_TUPLE_ELEM" in out
+    assert "MYLIB_PP_" in out and "BOOST_PP_" not in out
     assert "BOOST_PP_" not in out
 
 

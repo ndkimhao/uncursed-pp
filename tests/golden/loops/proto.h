@@ -5,5 +5,6 @@
 #include <boost/preprocessor/seq/for_each_i.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
-#define CURSEDPP_PROTO_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) BOOST_PP_TUPLE_ELEM(0, e) BOOST_PP_TUPLE_ELEM(1, e)
+#define CURSEDPP_PROTO_AP1(type, argname) type argname
+#define CURSEDPP_PROTO_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) CURSEDPP_PROTO_AP1 e
 #define PROTO(name, args) void name(BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_PROTO_EACH1, ~, args));

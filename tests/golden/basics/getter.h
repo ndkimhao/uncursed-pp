@@ -2,9 +2,11 @@
 #pragma once
 
 #include <boost/preprocessor/cat.hpp>
-#include <boost/preprocessor/tuple/elem.hpp>
+#include "cursedpp_runtime.h"
 
-#define GETTER(field) \
-    BOOST_PP_TUPLE_ELEM(0, field) BOOST_PP_CAT(get_, BOOST_PP_TUPLE_ELEM(1, field))(const struct self *s) { \
-    return s->BOOST_PP_TUPLE_ELEM(1, field); \
+#define CURSEDPP_GETTER_BODY1(type, name) \
+    type BOOST_PP_CAT(get_, name)(const struct self *s) { \
+    return s->name; \
     }
+#define CURSEDPP_GETTER_BODY1_D(...) CURSEDPP_GETTER_BODY1(__VA_ARGS__)
+#define GETTER(field) CURSEDPP_GETTER_BODY1_D(CURSEDPP_KW_SPREAD field)

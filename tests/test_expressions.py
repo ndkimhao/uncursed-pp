@@ -109,3 +109,29 @@ def test_let_rejects_mixed_inline_and_text():
     src = 'macro F(xs: seq<token>)\n@let j := prefix @join xs with ",": {{xs}}@end\n{{j}}\nend\n'
     with pytest.raises(CursedppError):
         parse_file(src, "t.cursed")
+
+
+# ── AP unpacking for tuple-typed macro params ───────────────────────
+
+
+def test_tuple_param_spreads_into_body_define():
+    src = "macro PAIR2(p: tuple<a, b>)\nS{ {{p.a}} | {{p.b}} }\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_PAIR2_BODY1(a, b) S{ a | b }\n" in out
+    assert "#define CURSEDPP_PAIR2_BODY1_D(...) CURSEDPP_PAIR2_BODY1(__VA_ARGS__)\n" in out
+    assert "#define PAIR2(p) CURSEDPP_PAIR2_BODY1_D(CURSEDPP_KW_SPREAD p)\n" in out
+    assert "TUPLE_ELEM" not in out
+
+
+def test_tuple_param_mixed_with_plain_params():
+    src = "macro G(pre, f: tuple<t, n>)\n{{pre}} {{f.t}} {{f.n}};\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_G_BODY1(pre, t, n) pre t n;\n" in out
+    assert "#define G(pre, f) CURSEDPP_G_BODY1_D(pre, CURSEDPP_KW_SPREAD f)\n" in out
+
+
+def test_whole_tuple_use_falls_back_to_tuple_elem():
+    src = "macro H(p: tuple<a, b>)\nfirst {{p.a}} whole {{p}}\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "BOOST_PP_TUPLE_ELEM(0, p)" in out
+    assert "BODY1" not in out

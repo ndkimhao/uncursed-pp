@@ -2,6 +2,8 @@
 #pragma once
 
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
-#include <boost/preprocessor/tuple/elem.hpp>
+#include "cursedpp_runtime.h"
 
-#define PAIR(p) S{ BOOST_PP_REMOVE_PARENS(BOOST_PP_TUPLE_ELEM(0, p)) | BOOST_PP_TUPLE_ELEM(1, p) }
+#define CURSEDPP_PAIR_BODY1(a, b) S{ BOOST_PP_REMOVE_PARENS(a) | b }
+#define CURSEDPP_PAIR_BODY1_D(...) CURSEDPP_PAIR_BODY1(__VA_ARGS__)
+#define PAIR(p) CURSEDPP_PAIR_BODY1_D(CURSEDPP_KW_SPREAD p)

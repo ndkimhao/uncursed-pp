@@ -7,9 +7,14 @@
 #include <boost/preprocessor/stringize.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
+#include "cursedpp_runtime.h"
 
-#define CURSEDPP_DEFINE_ENUM_EACH1(r, d, e) BOOST_PP_CAT(d, BOOST_PP_CAT(_, BOOST_PP_TUPLE_ELEM(0, e))) = BOOST_PP_TUPLE_ELEM(1, e),
-#define CURSEDPP_DEFINE_ENUM_EACH2(r, d, e) case BOOST_PP_TUPLE_ELEM(1, e): return BOOST_PP_STRINGIZE(BOOST_PP_CAT(d, BOOST_PP_CAT(_, BOOST_PP_TUPLE_ELEM(0, e))));
+#define CURSEDPP_DEFINE_ENUM_AP1(ename, name, value) BOOST_PP_CAT(ename, BOOST_PP_CAT(_, name)) = value,
+#define CURSEDPP_DEFINE_ENUM_AP1_D(...) CURSEDPP_DEFINE_ENUM_AP1(__VA_ARGS__)
+#define CURSEDPP_DEFINE_ENUM_EACH1(r, d, e) CURSEDPP_DEFINE_ENUM_AP1_D(d, CURSEDPP_KW_SPREAD e)
+#define CURSEDPP_DEFINE_ENUM_AP2(ename, name, value) case value: return BOOST_PP_STRINGIZE(BOOST_PP_CAT(ename, BOOST_PP_CAT(_, name)));
+#define CURSEDPP_DEFINE_ENUM_AP2_D(...) CURSEDPP_DEFINE_ENUM_AP2(__VA_ARGS__)
+#define CURSEDPP_DEFINE_ENUM_EACH2(r, d, e) CURSEDPP_DEFINE_ENUM_AP2_D(d, CURSEDPP_KW_SPREAD e)
 #define DEFINE_ENUM(ename, ...) \
     typedef enum { \
     BOOST_PP_SEQ_FOR_EACH(CURSEDPP_DEFINE_ENUM_EACH1, ename, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \

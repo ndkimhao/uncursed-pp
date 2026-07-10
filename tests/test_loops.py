@@ -166,3 +166,42 @@ def test_loop_inside_if_branch_is_fine():
     )
     out = compile_source(src, "t.cursed")  # no loop encloses the @if
     assert "CURSEDPP_OPT_EACH1" in out
+
+# ── AP unpacking: tuple elements become direct macro params ─────────
+
+
+def test_tuple_loop_unpacks_via_ap_juxtaposition():
+    src = "macro DECL(fields: seq<tuple<type, name>>)\n@for (type, name) in fields\n  {{type}} {{name}};\n@end\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_DECL_AP1(type, name) type name;\n" in out
+    assert "#define CURSEDPP_DECL_EACH1(r, d, e) CURSEDPP_DECL_AP1 e\n" in out
+    assert "TUPLE_ELEM" not in out
+
+
+def test_tuple_loop_with_free_var_spreads_through_d():
+    src = (
+        "macro TBL(sname, fields: seq<tuple<type, name>>)\n"
+        "@for (type, name) in fields\n"
+        "  { {{stringize(name)}}, offsetof({{sname}}, {{name}}) },\n"
+        "@end\n"
+        "end\n"
+    )
+    out = compile_source(src, "t.cursed")
+    assert (
+        "#define CURSEDPP_TBL_AP1(sname, type, name) "
+        "{ BOOST_PP_STRINGIZE(name), offsetof(sname, name) },\n" in out
+    )
+    assert "#define CURSEDPP_TBL_AP1_D(...) CURSEDPP_TBL_AP1(__VA_ARGS__)\n" in out
+    assert (
+        "#define CURSEDPP_TBL_EACH1(r, d, e) CURSEDPP_TBL_AP1_D(d, CURSEDPP_KW_SPREAD e)\n"
+        in out
+    )
+    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_TBL_EACH1, sname, fields)" in out
+    assert '#include "cursedpp_runtime.h"' in out
+    assert "TUPLE_ELEM" not in out
+
+
+def test_as_binding_keeps_element_form():
+    src = "macro F(xs: seq<tuple<a, b>>)\n@for x in xs\ng({{x}});\n@end\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_F_EACH1(r, d, e) g(e);\n" in out
