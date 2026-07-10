@@ -932,9 +932,18 @@ class _MacroEmitter:
         if k >= 256:
             # full-range chain: no seq can exceed it (BOOST_PP_LIMIT_SEQ),
             # so the size pick, the FOR_EACH fallback, and its include are
-            # all unnecessary - dispatch straight into the chain
+            # all unnecessary - but the dispatch still routes through a
+            # SMALL wrapper: a computed seq (variadic tail, tuple
+            # lowering, to_seq value) must pre-expand as a macro ARGUMENT
+            # before the chain member can juxtapose-consume it
             self._big_name = ""
-            return f"{self.pp('CAT')}({chain}, {self.pp('SEQ_SIZE')}({seq_expr})) {seq_expr}"
+            small = f"{base}SMALL{count}"
+            seq_ = self.arg("seq")
+            self.out.defines.append(
+                f"#define {small}({seq_}) "
+                f"{self.pp('CAT')}({chain}, {self.pp('SEQ_SIZE')}({seq_})) {seq_}\n"
+            )
+            return f"{small}({seq_expr})"
         self.file_state["chain_tables"].add(k)
         table = f"{self.config.helper_prefix}LE{k}_"
         small = f"{base}SMALL{count}"

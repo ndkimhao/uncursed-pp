@@ -1,0 +1,40 @@
+# loop_chain_limit 256: the chain covers every legal seq size
+# (BOOST_PP_LIMIT_SEQ), so the size pick and FOR_EACH fallback vanish.
+# The dispatch still routes through a SMALL wrapper: computed seqs
+# (variadic tails, tuple lowerings) reach the chain as UNEXPANDED
+# expressions and must pre-expand as a macro argument before the chain
+# member juxtapose-consumes them.
+@pragma loop_chain_limit 256
+
+@macro CALLS($xs: seq<token>)
+@for $x in $xs
+f({{$x}});
+@end
+@endmacro
+
+@macro TAIL_CALLS($first: token, $rest: variadic<token>)
+@for $x in $rest
+v({{$x}});
+@end
+@endmacro
+
+@macro PIPE($t: tuple)
+@join $t as $x with "|"
+{{$x}}
+@end
+@endmacro
+
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
+#?  CALLS((a)(b)(c))
+#=>     f(a); f(b); f(c);
+
+# variadic tail: the seq is VARIADIC_TO_SEQ(__VA_ARGS__) at dispatch
+#?  TAIL_CALLS(head, a, b)
+#=>     v(a); v(b);
+
+# unbounded tuple: the seq is the TUPLE_TO_SEQ lowering
+#?  PIPE((p, q, r))
+#=>     p | q | r
+
+#?  begin PIPE(()) end
+#=>     begin end

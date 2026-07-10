@@ -378,8 +378,26 @@ def test_full_range_chain_limit_drops_dispatch_and_fallback():
     )
     out = compile_source(src, "t.uncursed")
     assert "#define UNCURSED_PP_D_CH1_256(e)" in out
-    assert "BOOST_PP_CAT(UNCURSED_PP_D_CH1_, BOOST_PP_SEQ_SIZE(fields)) fields" in out
-    assert "PICK" not in out and "SMALL" not in out and "BIG" not in out
+    # dispatch still routes through the SMALL wrapper: the seq must
+    # pre-expand as a macro ARGUMENT (variadic tails, tuple lowerings,
+    # to_seq lets are unexpanded expressions at this point) before the
+    # chain member juxtaposes it
+    assert (
+        "#define UNCURSED_PP_D_SMALL1(seq) "
+        "BOOST_PP_CAT(UNCURSED_PP_D_CH1_, BOOST_PP_SEQ_SIZE(seq)) seq" in out
+    )
+    assert "UNCURSED_PP_D_SMALL1(fields)" in out
+    assert "PICK" not in out and "BIG" not in out
     assert "SEQ_FOR_EACH" not in out
     assert "seq/for_each.hpp" not in out
     assert "LE256" not in out  # no size table needed either
+
+
+@requires_boost
+def test_full_range_chain_expands_computed_seqs(tmp_path):
+    src = (
+        '@pragma loop_chain_limit 256\n'
+        '@macro V($first: token, $rest: variadic<token>)\n@for $x in $rest\nv({{$x}});\n@end\n@endmacro\n'
+    )
+    out = preprocess_src(tmp_path, src, "cf", "V(f, a, b)")
+    assert canon("v(a); v(b);") in out
