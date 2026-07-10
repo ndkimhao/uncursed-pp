@@ -8,10 +8,14 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/stringize.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
+#include "cursedpp_runtime.h"
 
-#define FUSE(p) BOOST_PP_CAT(BOOST_PP_TUPLE_ELEM(0, p), BOOST_PP_TUPLE_ELEM(1, p))
+#define CURSEDPP_FUSE_BODY1(a, b) BOOST_PP_CAT(a, b)
+#define CURSEDPP_FUSE_BODY1_D(...) CURSEDPP_FUSE_BODY1(__VA_ARGS__)
+#define FUSE(p) CURSEDPP_FUSE_BODY1_D(CURSEDPP_KW_SPREAD p)
 
 #define STR0(xs) BOOST_PP_STRINGIZE(BOOST_PP_SEQ_ELEM(0, xs)) / BOOST_PP_STRINGIZE(BOOST_PP_SEQ_SIZE(xs))
 
-#define CURSEDPP_CLEAN_EACH1(r, d, e) BOOST_PP_REMOVE_PARENS(BOOST_PP_TUPLE_ELEM(0, e)) BOOST_PP_TUPLE_ELEM(1, e);
+#define CURSEDPP_CLEAN_AP1(t, n) BOOST_PP_REMOVE_PARENS(t) n;
+#define CURSEDPP_CLEAN_EACH1(r, d, e) CURSEDPP_CLEAN_AP1 e
 #define CLEAN(fields) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_CLEAN_EACH1, ~, fields)
