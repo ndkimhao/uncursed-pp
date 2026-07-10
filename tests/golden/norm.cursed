@@ -2,3 +2,7 @@
 macro NORM(x)
 @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end
 end
+
+# ── invocation specs (verified through cc -E by test_integration) ──
+#? NORM(q) => q
+#? NORM((a, b)) => a, b

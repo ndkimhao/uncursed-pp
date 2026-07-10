@@ -2,3 +2,7 @@
 macro PROTO(name, args: seq<tuple<type, argname>>)
 void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
 end
+
+# ── invocation specs (verified through cc -E by test_integration) ──
+#? PROTO(init, ((int, only))) => void init(int only);
+#? PROTO(draw, ((struct ctx *, ctx))((int, flags))((char *, label))) => void draw(struct ctx * ctx, int flags, char * label);

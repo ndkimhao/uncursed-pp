@@ -3,3 +3,8 @@
 macro NORMALIZE(items: variadic)
 S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @end@end }
 end
+
+# ── invocation specs (verified through cc -E by test_integration) ──
+#? NORMALIZE(a) => S{ (a, omit) }
+#? NORMALIZE((a, b)) => S{ (a, b) }
+#? NORMALIZE(a, (b,c), d) => S{ (a, omit), (b,c), (d, omit) }

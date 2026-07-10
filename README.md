@@ -33,6 +33,10 @@ make typecheck      # mypy --strict
 uv run cursedpp input.cursed -o output.h
 ```
 
+Golden templates in `tests/golden/` are self-testing: `#? INVOCATION => expected`
+comments (one `#?` plus `#=>` lines for multi-part assertions) are discovered by
+the test suite and verified through the real preprocessor.
+
 Flags (each also settable per file via `@pragma <name> <value>`):
 
 | Flag | Default | Meaning |

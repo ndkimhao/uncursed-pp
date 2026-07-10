@@ -26,6 +26,10 @@ consult it before changing DSL syntax or codegen.
 
 - TDD: every feature lands with a failing test first; golden files in `tests/golden/`
   are updated deliberately, never regenerated blindly.
+- Golden templates carry their own e2e specs as `#? INVOCATION => expected`
+  comments (or `#?` + `#=>` lines for multiple assertions); `test_integration.py`
+  discovers them and verifies each through `cc -E`. New goldens must include
+  specs — `test_every_golden_template_has_specs` enforces it.
 - Generated helpers are namespaced `CURSEDPP_<MACRO>_*` (shared collapsed helpers:
   `CURSEDPP_H<n>` in first-use order — output must stay deterministic).
 - The `BOOST_PP_` prefix is never hardcoded in emitter output paths; always go

@@ -43,3 +43,16 @@ DEFINE_STRUCT({{sname}}, {{fields}})
 DEFINE_FIELD_TABLE({{sname}}, {{fields}})
 DEFINE_PRINTER({{sname}}, {{fields}})
 end
+
+# ── invocation specs (verified through cc -E by test_integration) ──
+#? REFLECT(Point, (int, x, "%d"), (float, y, "%f"))
+#=> typedef struct { int x; float y; } Point;
+#=> { "x", "int", offsetof(Point, x) },
+#=> { "y", "float", offsetof(Point, y) },
+#=> enum { Point_field_count = 2 };
+#=> static void print_Point(const Point *v)
+#=> printf("  " "x" " = " "%d" "\n", v->x);
+# edge: single-field struct
+#? REFLECT(Id, (unsigned long, value, "%lu"))
+#=> typedef struct { unsigned long value; } Id;
+#=> enum { Id_field_count = 1 };

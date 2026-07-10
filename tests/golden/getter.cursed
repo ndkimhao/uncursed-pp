@@ -5,3 +5,7 @@ macro GETTER(field: tuple<type, name>)
   return s->{{field.name}};
 }
 end
+
+# ── invocation specs (verified through cc -E by test_integration) ──
+#? GETTER((int, age)) => int get_age(const struct self *s) { return s->age; }
+#? GETTER((char *, name)) => char * get_name(const struct self *s) { return s->name; }

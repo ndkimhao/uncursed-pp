@@ -3,3 +3,8 @@
 macro LOG(msg, level = INFO, out = stderr)
 fprintf({{out}}, "[" #{{level}} "] %s\n", {{msg}});
 end
+
+# ── invocation specs (verified through cc -E by test_integration) ──
+#? LOG(m) => fprintf(stderr, "[" "INFO" "] %s\n", m);
+#? LOG(m, WARN) => fprintf(stderr, "[" "WARN" "] %s\n", m);
+#? LOG(m, WARN, stdout) => fprintf(stdout, "[" "WARN" "] %s\n", m);
