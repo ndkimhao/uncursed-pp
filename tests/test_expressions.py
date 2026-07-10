@@ -8,11 +8,12 @@ import pytest
 from conftest import canon, preprocess_src, requires_boost
 from uncursed_pp.emitter import compile_source
 from uncursed_pp.nodes import (
-    Literal,
     Concat,
     ElemAccess,
     Interp,
     Let,
+    Literal,
+    ToSeq,
     RemoveParens,
     Stringize,
     VarRef,
@@ -231,3 +232,65 @@ def test_let_join_used_inside_if_branch_is_rejected():
     with pytest.raises(UncursedPpError) as excinfo:
         compile_source(src, "t.uncursed")
     assert "inline" in str(excinfo.value)
+
+
+# ── to_seq() / to_tuple(): explicit shape conversions ────────────────
+
+
+def test_to_seq_parses():
+    src = "@macro F($row: tuple)\n@let $s := to_seq($row)\n{{$s}}\n@endmacro\n"
+    [macro] = parse_file(src, "t.uncursed").macros
+    let = next(n for n in macro.body if isinstance(n, Let))
+    assert let.expr == ToSeq(VarRef("row"))
+
+
+def test_to_seq_result_is_seq_typed_and_iterable():
+    src = (
+        "@macro F($row: tuple)\n"
+        "@let $s := to_seq($row)\n"
+        "@for $x in $s\nf({{$x}});\n@end\n@endmacro\n"
+    )
+    compile_source(src, "t.uncursed")  # loop over the converted value
+
+
+def test_to_seq_on_a_seq_is_identity():
+    src = "@macro F($xs: seq<token>)\n{{to_seq($xs)}}\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    assert "#define F(xs) xs\n" in out
+
+
+def test_to_seq_rejects_plain_tokens():
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source("@macro F($x)\n{{to_seq($x)}}\n@endmacro\n", "t.uncursed")
+    assert "to_seq" in str(excinfo.value)
+
+
+def test_to_tuple_result_supports_tuple_ops():
+    src = (
+        "@macro F($xs: seq<token>)\n"
+        "@let $t := to_tuple($xs)\n"
+        "{{len($t)}}: {{remove_parens($t)}}\n@endmacro\n"
+    )
+    compile_source(src, "t.uncursed")
+
+
+def test_to_tuple_on_a_tuple_is_identity():
+    src = "@macro F($row: tuple)\n{{to_tuple($row)}}\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    assert "#define F(row) row\n" in out
+
+
+def test_to_tuple_rejects_plain_tokens():
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source("@macro F($x)\n{{to_tuple($x)}}\n@endmacro\n", "t.uncursed")
+    assert "to_tuple" in str(excinfo.value)
+
+
+def test_to_seq_on_hybrid_converts_the_tail():
+    src = (
+        "@macro F($f: tuple<$n, token...>)\n"
+        "@let $s := to_seq($f)\n"
+        "{{$f.$n}}: {{$s}}\n@endmacro\n"
+    )
+    out = compile_source(src, "t.uncursed")
+    assert "TL1" in out  # tail extraction feeds the conversion

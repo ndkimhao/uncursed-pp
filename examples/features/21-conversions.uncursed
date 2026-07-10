@@ -1,0 +1,35 @@
+# ── Converting between shapes: seq ⇄ tuple ⇄ comma list ──────────────
+#
+# The three variable-count shapes and how to move between them:
+#
+#   AUTOMATIC   variadic → seq      the body already sees a variadic
+#                                   parameter as a seq, and passing it
+#                                   on ({{$items}}) hands the converted
+#                                   seq to any seq-typed macro
+#   to_seq($t)  tuple → seq         (a, b, c)  →  (a)(b)(c); identity
+#                                   on seqs; a hybrid converts its TAIL
+#   to_tuple($s) seq → tuple        (a)(b)(c)  →  (a, b, c); identity
+#                                   on tuples
+#   remove_parens($t)  tuple → bare commas   (a, b, c)  →  a, b, c
+#   @join $xs with ", "  seq → bare commas   the identity comma join
+#
+# Rules: seqs cannot be empty, so to_seq(()) is a call-site error like
+# any other empty seq; to_tuple's result obeys tuple semantics (len(),
+# [i], is_empty(), iteration — all tail-scoped for hybrids).
+#
+# Scenario: one comma-list call site fans out to seq-shaped helpers.
+
+@macro DECLARE_ALL($types: seq<token>)
+@for $t in $types
+{{$t}} {{concat(make_, $t)}}(void);
+@end
+@endmacro
+
+@macro EXPORTS($row: tuple)
+/* {{len($row)}} exports */
+DECLARE_ALL({{to_seq($row)}})
+@endmacro
+
+#?  EXPORTS((widget, gadget))
+#=>     widget make_widget(void);
+#=>     gadget make_gadget(void);

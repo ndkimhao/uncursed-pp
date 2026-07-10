@@ -29,6 +29,8 @@ from .nodes import (
     SeqT,
     Stringize,
     Text,
+    ToSeq,
+    ToTuple,
     TokenT,
     TupleT,
     Type,
@@ -77,6 +79,7 @@ _PP_HEADERS = {
     "IS_BEGIN_PARENS": "punctuation/is_begin_parens.hpp",
     "IS_EMPTY": "facilities/is_empty_variadic.hpp",
     "TUPLE_TO_SEQ": "tuple/to_seq.hpp",
+    "SEQ_TO_TUPLE": "seq/to_tuple.hpp",
     "TUPLE_SIZE": "tuple/size.hpp",
     "IF": "control/if.hpp",
     "IIF": "control/iif.hpp",
@@ -477,6 +480,31 @@ class _MacroEmitter:
             if isinstance(inner.type, VarTupleT):
                 return _Binding(f"{self._isnil()}({self._vtuple_view(inner)})", TokenT())
             return _Binding(f"{self.pp('IS_EMPTY')}({inner.c_expr})", TokenT())
+        if isinstance(expr, ToSeq):
+            inner = self._resolve(expr.arg, env, line)
+            if isinstance(inner.type, SeqT):
+                return inner  # identity
+            if isinstance(inner.type, VarTupleT):
+                # hybrids convert their TAIL (consistent with len/iteration)
+                return _Binding(
+                    f"{self.pp('TUPLE_TO_SEQ')}({self._vtuple_view(inner)})",
+                    SeqT(inner.type.elem),
+                )
+            raise UncursedPpError(
+                "to_seq() needs a tuple- or seq-typed value", self.filename, line
+            )
+        if isinstance(expr, ToTuple):
+            inner = self._resolve(expr.arg, env, line)
+            if isinstance(inner.type, VarTupleT):
+                return inner  # identity
+            if isinstance(inner.type, SeqT):
+                return _Binding(
+                    f"{self.pp('SEQ_TO_TUPLE')}({inner.c_expr})",
+                    VarTupleT(inner.type.elem),
+                )
+            raise UncursedPpError(
+                "to_tuple() needs a seq- or tuple-typed value", self.filename, line
+            )
         raise NotImplementedError(f"cannot emit expression {expr!r}")  # pragma: no cover
 
     def _resolve_access(self, expr: ElemAccess, env: _Env, line: int) -> _Binding:
@@ -615,7 +643,7 @@ class _MacroEmitter:
             elif isinstance(e, Concat):
                 for a in e.args:
                     walk_expr(a)
-            elif isinstance(e, (RemoveParens, Stringize, Len, IsParen, IsEmpty)):
+            elif isinstance(e, (RemoveParens, Stringize, Len, IsParen, IsEmpty, ToSeq, ToTuple)):
                 walk_expr(e.arg)
 
         def loop_names(n: ForEach | Join) -> set[str]:

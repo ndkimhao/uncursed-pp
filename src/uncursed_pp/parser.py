@@ -39,6 +39,8 @@ from .nodes import (
     SeqT,
     Stringize,
     Text,
+    ToSeq,
+    ToTuple,
     TokenT,
     TupleT,
     VariadicT,
@@ -225,7 +227,15 @@ def _build_call(name: str, args: tuple[Expr, ...]) -> Expr:
         if len(args) != 1:
             raise ValueError("is_empty() takes exactly one argument")
         return IsEmpty(args[0])
-    known = "concat, is_empty, is_paren, len, remove_parens, stringize"
+    if name == "to_seq":
+        if len(args) != 1:
+            raise ValueError("to_seq() takes exactly one argument")
+        return ToSeq(args[0])
+    if name == "to_tuple":
+        if len(args) != 1:
+            raise ValueError("to_tuple() takes exactly one argument")
+        return ToTuple(args[0])
+    known = "concat, is_empty, is_paren, len, remove_parens, stringize, to_seq, to_tuple"
     raise ValueError(f"unknown function: {name}() (known: {known})")
 
 

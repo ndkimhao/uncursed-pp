@@ -103,8 +103,25 @@ class IsEmpty:
     arg: "Expr"
 
 
+@dataclass(frozen=True)
+class ToSeq:
+    """Explicit shape conversion: unbounded-tuple value -> seq (hybrids
+    convert their tail); identity on values already seq-typed."""
+
+    arg: "Expr"
+
+
+@dataclass(frozen=True)
+class ToTuple:
+    """Explicit shape conversion: seq value -> unbounded tuple; identity
+    on values already tuple-typed."""
+
+    arg: "Expr"
+
+
 Expr = (
-    VarRef | Literal | ElemAccess | Concat | RemoveParens | Stringize | Len | IsParen | IsEmpty
+    VarRef | Literal | ElemAccess | Concat | RemoveParens | Stringize
+    | Len | IsParen | IsEmpty | ToSeq | ToTuple
 )
 
 

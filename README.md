@@ -143,6 +143,7 @@ include line are configurable (`@pragma runtime_name` / `runtime_include`).
 - [`docs/guide.md`](docs/guide.md) — full language reference
 - [`examples/`](examples/) — spec-verified feature walkthroughs
 - [`docs/codegen.md`](docs/codegen.md) — how each feature compiles, and the sharp edges
+- [`docs/conversions.md`](docs/conversions.md) — moving between seq, tuple, variadic, and comma lists
 - [`docs/loop-chains.md`](docs/loop-chains.md) — the loop-chain option in depth
 - [`docs/design.md`](docs/design.md) — architecture & design spec
 - [`docs/optimization.md`](docs/optimization.md) — generated-code performance notes

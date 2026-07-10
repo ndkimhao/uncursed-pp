@@ -1,0 +1,34 @@
+# Shape conversions: to_seq() / to_tuple() bridge the two variable-count
+# shapes; identity on already-right-shaped values; hybrids convert their
+# TAIL. Composition is the point: a tuple<T...> value can now feed any
+# seq-typed macro.
+
+@macro TAKES_SEQ($xs: seq<token>)
+@for $x in $xs
+f({{$x}});
+@end
+@endmacro
+
+@macro FROM_TUPLE($row: tuple)
+TAKES_SEQ({{to_seq($row)}})
+@endmacro
+
+#?  FROM_TUPLE((a, b, c))
+#=>     f(a); f(b); f(c);
+
+# seq -> tuple, then tuple ops apply: len() and remove_parens()
+@macro SEQ_STATS($xs: seq<token>)
+@let $t := to_tuple($xs)
+count {{len($t)}}: {{remove_parens($t)}}
+@endmacro
+
+#?  SEQ_STATS((p)(q)(r))
+#=>     count 3: p, q, r
+
+# hybrids convert their tail (consistent with len/iteration/[i])
+@macro TAIL_SEQ($f: tuple<$owner, token...>)
+{{$f.$owner}}[ TAKES_SEQ({{to_seq($f)}}) ]
+@endmacro
+
+#?  TAIL_SEQ((root, x, y))
+#=>     root[ f(x); f(y); ]

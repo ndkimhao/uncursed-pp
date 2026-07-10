@@ -198,6 +198,8 @@ parameter (C cannot overload on a zero-argument call).
 | `len($xs)` | element count of a seq/variadic/unbounded tuple | `BOOST_PP_SEQ_SIZE(xs)`; tuples: emptiness-gated `BOOST_PP_TUPLE_SIZE` (so `len(()) == 0`) |
 | `is_paren($x)` | 1 if `$x` is parenthesized else 0 | `BOOST_PP_IS_BEGIN_PARENS(x)` |
 | `is_empty($x)` | 1 if `$x` has no tokens (unbounded tuple: no elements) | `BOOST_PP_IS_EMPTY`; conditions, like `is_paren` |
+| `to_seq($t)` | tuple → seq (identity on seqs; hybrid tails) | `BOOST_PP_TUPLE_TO_SEQ`; see [conversions.md](conversions.md) |
+| `to_tuple($s)` | seq → tuple (identity on tuples) | `BOOST_PP_SEQ_TO_TUPLE` |
 
 Three rules that surprise newcomers:
 

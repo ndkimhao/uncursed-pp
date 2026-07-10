@@ -37,6 +37,7 @@ call-site rules that apply to it:
 | 18 | unbounded tuples — `tuple<T...>`, `()` means zero elements |
 | 19 | hybrid tuples — named head fields + unbounded tail |
 | 20 | `@pragma arg_prefix` — body text safe from parameter capture |
+| 21 | conversions — `to_seq()`, `to_tuple()`, and the automatic ones |
 
 `combined/` shows features composing into realistic artifacts: a bitflag
 system, a finite state machine, and a unit-test registry — each driven
