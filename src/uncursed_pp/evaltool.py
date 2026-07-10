@@ -25,6 +25,7 @@ from .speccheck import (
     DEFAULT_TIMEOUT_S,
     CppError,
     _default_cc,
+    parse_specs,
     run_cpp,
 )
 
@@ -94,6 +95,7 @@ def _fill_specs(
 ) -> tuple[int, list[str]]:
     """Replace every single-`<???>` expectation with the real expansion.
     Returns (filled count, error messages)."""
+    crlf = b"\r\n" in path.read_bytes()  # preserve the file's line endings
     lines = path.read_text().split("\n")
     out: list[str] = []
     errors: list[str] = []
@@ -102,7 +104,12 @@ def _fill_specs(
     expectation_lines_seen = 0
     for i, line in enumerate(lines):
         stripped = line.strip()
-        if stripped.startswith("#?") and not stripped.startswith("#?!"):
+        if stripped.startswith("#?!"):
+            # expect-failure specs never have expectations to fill
+            current_invocation = None
+            out.append(line)
+            continue
+        if stripped.startswith("#?"):
             current_invocation = stripped[2:].strip()
             expectation_lines_seen = 0
             out.append(line)
@@ -124,7 +131,19 @@ def _fill_specs(
                 text = expansion
                 if fmt is not None:
                     text = _clang_format(expansion, fmt, timeout, fmt_args).rstrip("\n")
-                for expanded_line in text.split("\n"):
+                # blank lines (empty expansion, clang-format spacing) would
+                # write bare '#=>' lines the checker rejects
+                fill_lines = [l for l in text.split("\n") if l.strip()]
+                if not fill_lines:
+                    errors.append(
+                        f"{current_invocation}: expansion is empty - wrap the "
+                        f"invocation in anchor text (e.g. 'begin "
+                        f"{current_invocation} end') so the expectation has "
+                        "tokens, then re-run"
+                    )
+                    out.append(line)
+                    continue
+                for expanded_line in fill_lines:
                     out.append(f"#=>     {expanded_line}")
                 filled += 1
                 continue
@@ -132,7 +151,7 @@ def _fill_specs(
             continue
         out.append(line)
     if filled:
-        path.write_text("\n".join(out))
+        path.write_text("\n".join(out), newline="\r\n" if crlf else "")
     return filled, errors
 
 
@@ -238,6 +257,13 @@ def main(argv: list[str] | None = None) -> None:
                 print(expansion)
             raise SystemExit(0)
 
+        try:
+            # a malformed spec file must not be rewritten: filling from it
+            # can attach expansions to the wrong invocation
+            parse_specs(path.read_text())
+        except ValueError as exc:
+            print(f"uncursed-pp-eval: {path}: {exc}", file=sys.stderr)
+            raise SystemExit(2) from exc
         try:
             filled, errors = _fill_specs(
                 path, ev, fmt=fmt, fmt_args=args.format_arg, timeout=args.timeout

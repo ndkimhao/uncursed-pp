@@ -99,9 +99,11 @@ def test_work_dir_keeps_artifacts(tmp_path):
     src.write_text(PASSING)
     work = tmp_path / "scratch"
     assert _run([str(src), "--work-dir", str(work)]) == 0
-    assert (work / "dbg.h").exists()
-    assert (work / "dbg_spec_1.c").exists()
-    assert '#include "dbg.h"' in (work / "dbg_spec_1.c").read_text()
+    # artifacts live in a per-template subdirectory (same-stem templates
+    # from different directories must not clobber each other)
+    [header] = work.rglob("dbg.h")
+    [snippet] = work.rglob("dbg_spec_1.c")
+    assert '#include "dbg.h"' in snippet.read_text()
 
 
 def test_directory_input_checks_all_templates_recursively(tmp_path, capsys):
@@ -189,3 +191,57 @@ def test_use_color_detection(monkeypatch):
     monkeypatch.setattr(sys, "stdout", SimpleNamespace(isatty=lambda: False))
     monkeypatch.delenv("NO_COLOR", raising=False)
     assert sc._use_color() is False
+
+
+# ── review-finding regressions ───────────────────────────────────────
+
+
+def test_canon_keeps_pp_numbers_whole():
+    from uncursed_pp.speccheck import canon
+
+    # '1e+5' is ONE C pp-number; splitting at the exponent sign made
+    # float specs compare equal to genuinely different token streams
+    assert canon("1e+5") != canon("1e + 5")
+    assert canon("1.5e-3f") == "1.5e-3f"
+    assert canon("x+5") == "x + 5"  # identifier + operator still split
+
+
+def test_expect_failure_does_not_pass_on_timeout(tmp_path):
+    from uncursed_pp.speccheck import SpecResult, check_file
+
+    src = tmp_path / "t.uncursed"
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n#?! ID(7)\n')
+    # a timeout is not evidence the invocation is invalid: with an
+    # absurdly small timeout the #?! spec must FAIL, not pass
+    [result] = check_file(src, cc="cc", timeout=1e-9)
+    assert not result.ok
+    assert "timed out" in result.detail
+
+
+def test_work_dir_separates_same_stem_templates(tmp_path):
+    a_dir = tmp_path / "a"
+    b_dir = tmp_path / "b"
+    a_dir.mkdir(), b_dir.mkdir()
+    (a_dir / "x.uncursed").write_text(
+        '@macro FA($v)\nfa({{$v}})\n@endmacro\n#?  FA(1)\n#=>     fa(1)\n'
+    )
+    (b_dir / "x.uncursed").write_text(
+        '@macro FB($v)\nfb({{$v}})\n@endmacro\n#?  FB(1)\n#=>     fb(1)\n'
+    )
+    work = tmp_path / "scratch"
+    assert _run([str(a_dir / "x.uncursed"), str(b_dir / "x.uncursed"),
+                 "--work-dir", str(work)]) == 0
+    headers = sorted(p for p in work.rglob("x.h"))
+    assert len(headers) == 2, headers
+    texts = [h.read_text() for h in headers]
+    assert any("FA" in t for t in texts) and any("FB" in t for t in texts)
+
+
+def test_directory_discovery_follows_symlinked_subdirs(tmp_path):
+    real = tmp_path / "real"
+    real.mkdir()
+    (real / "t.uncursed").write_text(PASSING)
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "linked").symlink_to(real, target_is_directory=True)
+    assert _run([str(root)]) == 0

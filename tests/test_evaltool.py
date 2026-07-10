@@ -129,3 +129,40 @@ def test_bad_format_arg_is_a_clean_error(tmp_path, capsys):
     src.write_text(TEMPLATE)
     assert _run([str(src), "PAIR(1, 2)", "--format", "--format-arg=--definitely-not-a-flag"]) == 2
     assert "clang-format" in capsys.readouterr().err
+
+
+# ── review-finding regressions ───────────────────────────────────────
+
+
+def test_update_specs_never_fills_from_a_stale_invocation(tmp_path):
+    # a lone sentinel under '#?!' must not be filled using the PREVIOUS
+    # '#?' invocation ('#?!' specs cannot have expectations at all)
+    src = tmp_path / "t.uncursed"
+    src.write_text(TEMPLATE + "\n#?  PAIR(a, b)\n#=>     { a, b }\n\n#?! PAIR(1\n#=> <???>\n")
+    assert _run([str(src), "--update-specs"]) == 2
+    assert "<???>" in src.read_text()  # nothing rewritten
+
+
+def test_update_specs_reports_empty_expansions_instead_of_corrupting(tmp_path):
+    src = tmp_path / "t.uncursed"
+    src.write_text(
+        "@macro NOTHING($x)\n@if is_paren($x) a @end\n@endmacro\n"
+        "\n#?  NOTHING(y)\n#=> <???>\n"
+    )
+    assert _run([str(src), "--update-specs"]) == 1
+    text = src.read_text()
+    assert "<???>" in text  # sentinel kept
+    assert "\n#=>\n" not in text and not any(
+        line.rstrip() == "#=>" for line in text.splitlines()
+    )
+
+
+def test_update_specs_preserves_crlf(tmp_path):
+    src = tmp_path / "t.uncursed"
+    body = TEMPLATE + "\n#?  PAIR(x, y)\n#=> <???>\n"
+    src.write_bytes(body.replace("\n", "\r\n").encode())
+    assert _run([str(src), "--update-specs"]) == 0
+    raw = src.read_bytes()
+    assert b"\r\n" in raw and b"<???>" not in raw
+    # no mixed endings: every newline is CRLF
+    assert raw.count(b"\n") == raw.count(b"\r\n")

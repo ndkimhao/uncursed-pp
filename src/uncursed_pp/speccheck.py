@@ -26,7 +26,9 @@ from .parser import UncursedPpError
 _C_TOKEN = re.compile(
     C_LITERAL_PATTERN      # raw/prefixed string and char literals, verbatim
     + r"|[A-Za-z_]\w*"     # identifier
-    + r"|\d[\w.]*"        # number
+    # C pp-number: may continue through e+/E-/p+/P- exponent signs -
+    # '1e+5' is ONE token and must not canonicalize equal to '1e + 5'
+    + r"|\.?\d(?:[eEpP][+-]|[\w.])*"
     # multi-char operators stay whole: << and < < are different token
     # streams and must not canonicalize equal
     + r"|<<=|>>=|\.\.\."
@@ -157,6 +159,11 @@ class CppError(Exception):
     """Preprocessing failed, timed out, or blew its resource cap."""
 
 
+class CppResourceError(CppError):
+    """Timeout or resource-cap kill: proves nothing about the input's
+    validity, so '#?!' expect-failure specs must not pass on it."""
+
+
 def run_cpp(
     c_file: Path,
     *,
@@ -177,9 +184,13 @@ def run_cpp(
             preexec_fn=_limit_cpp_resources,
         )
     except subprocess.TimeoutExpired:
-        raise CppError(
+        raise CppResourceError(
             f"preprocessing timed out after {timeout:g}s: {' '.join(cmd)}"
         ) from None
+    if run.returncode < 0:  # killed by a signal (e.g. the memory cap)
+        raise CppResourceError(
+            f"preprocessor killed by signal {-run.returncode}: {' '.join(cmd)}"
+        )
     if run.returncode != 0:
         raise CppError(
             f"preprocessing failed: {' '.join(cmd)}\n--- compiler stderr ---\n{run.stderr}"
@@ -206,14 +217,17 @@ def check_file(
     absent specs and UncursedPpError when the template does not compile.
 
     With work_dir, all artifacts (header, runtime companion, one numbered
-    snippet per spec) are written there and KEPT for debugging; otherwise
-    a temp dir is used and cleaned up."""
+    snippet per spec) are written to a per-template subdirectory of it and
+    KEPT for debugging (the subdirectory keeps same-stem templates from
+    clobbering each other); otherwise a temp dir is used and cleaned up."""
     source = path.read_text()
     specs = parse_specs(source)
     if not specs:
         raise ValueError(f"{path}: no #? specs found")
     result = compile_template(source, path.name)
     if work_dir is not None:
+        slug = re.sub(r"[^\w.-]+", "_", str(path.with_suffix(""))).strip("_")
+        work_dir = work_dir / slug
         work_dir.mkdir(parents=True, exist_ok=True)
         return _run_specs(path, specs, result, work_dir, cc, cflags, timeout)
     with tempfile.TemporaryDirectory() as td:
@@ -239,6 +253,10 @@ def _run_specs(
         snippet.write_text(f'#include "{header.name}"\n{invocation}\n')
         try:
             out = canon(run_cpp(snippet, cc=cc, flags=cflags, timeout=timeout))
+        except CppResourceError as exc:
+            # a timeout/kill is not evidence the invocation is invalid
+            results.append(SpecResult(invocation, False, str(exc)))
+            continue
         except CppError as exc:
             if expect_failure:
                 results.append(SpecResult(invocation, True))
@@ -308,8 +326,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "write the generated header, runtime companion and one numbered "
-            ".c snippet per spec into this directory and KEEP them (for "
-            "debugging; default: a cleaned-up temp dir)"
+            ".c snippet per spec into a per-template subdirectory of this "
+            "directory and KEEP them (for debugging; default: a cleaned-up "
+            "temp dir)"
         ),
     )
     return parser
@@ -335,7 +354,13 @@ def main(argv: list[str] | None = None) -> None:
     for name in args.inputs:
         p = Path(name)
         if p.is_dir():
-            found = sorted(p.rglob("*.uncursed"))
+            # os.walk with followlinks: rglob skips symlinked subdirectories
+            found = sorted(
+                Path(root) / f
+                for root, _dirs, files in os.walk(p, followlinks=True)
+                for f in files
+                if f.endswith(".uncursed")
+            )
             if not found:
                 print(
                     f"uncursed-pp-check: no .uncursed templates under {p}", file=sys.stderr
