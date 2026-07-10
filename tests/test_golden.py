@@ -5,7 +5,7 @@ exactly its committed .h neighbor. Goldens are organized by category
 
 import pytest
 
-from conftest import golden_id, golden_templates
+from conftest import EXAMPLES, GOLDEN, golden_id, golden_templates
 from uncursed_pp.emitter import compile_source
 
 
@@ -34,3 +34,17 @@ def test_no_orphaned_golden_headers():
 def test_examples_tree_is_discovered():
     ids = [golden_id(p) for p in golden_templates()]
     assert any(i.startswith("examples/features/") for i in ids), ids
+
+
+def test_no_orphaned_headers():
+    """Every committed .h under the golden roots must have a generating
+    template next to it (runtime companions excepted) — a stray header
+    would sit unregenerated and rot silently."""
+    companions = {"uncursed_pp_runtime.h", "acme_runtime.h"}
+    orphans = [
+        str(header)
+        for root in (GOLDEN, EXAMPLES)
+        for header in sorted(root.rglob("*.h"))
+        if header.name not in companions and not header.with_suffix(".uncursed").exists()
+    ]
+    assert not orphans, f"headers with no generating template: {orphans}"
