@@ -45,6 +45,9 @@ class EmitConfig:
     pp_include_dir: str = "boost/preprocessor"  # root of granular includes
     helper_prefix: str = "UNCURSED_PP_"
     runtime_name: str | None = None  # None = derived from helper_prefix
+    runtime_include: str | None = None  # include TEXT for the companion
+    # (<...> kept verbatim, else quoted); None = quoted runtime_name.
+    # runtime_name stays the filename the companion is WRITTEN to.
     extra_includes: tuple[str, ...] = ()  # user includes appended verbatim
     loop_chain: bool = True  # consumption chains for no-free-var loops
     loop_chain_limit: int = 16  # chain length; larger seqs take FOR_EACH
@@ -1171,7 +1174,7 @@ def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None)
         chunks.append("\n")
         chunks.extend(f"#include <{inc}>\n" for inc in includes)
     if file_state["kw_utils"] or 16 in file_state["chain_tables"]:
-        chunks.append(f'#include "{runtime_name(config)}"\n')
+        chunks.append(f"#include {runtime_include_text(config)}\n")
     for k in sorted(file_state["chain_tables"] - {16}):
         hp = config.helper_prefix
         chunks.append(f"\n/* size-class table for loop_chain_limit {k} */\n")
@@ -1193,6 +1196,17 @@ def runtime_name(config: EmitConfig) -> str:
         return config.runtime_name
     slug = config.helper_prefix.lower().rstrip("_")
     return f"{slug}_runtime.h"
+
+
+def runtime_include_text(config: EmitConfig) -> str:
+    """The token generated headers #include for the companion runtime:
+    `<...>` kept verbatim, anything else quoted. Fully decoupled from
+    where the file is written (runtime_name) - resolving a custom path
+    is the caller's include-path contract."""
+    if config.runtime_include is not None:
+        inc = config.runtime_include
+        return inc if inc.startswith("<") else f'"{inc}"'
+    return f'"{runtime_name(config)}"'
 
 
 def runtime_header(config: EmitConfig) -> str:
@@ -1249,7 +1263,7 @@ def compile_template(
         source_name=filename.rsplit("/", 1)[-1],
         config=config,
     )
-    needs_runtime = f'#include "{runtime_name(config)}"' in header
+    needs_runtime = f"#include {runtime_include_text(config)}" in header
     return CompileResult(
         header=header,
         runtime=runtime_header(config) if needs_runtime else None,
@@ -1271,6 +1285,7 @@ def _apply_pragmas(config: EmitConfig, pragmas: dict[str, str]) -> EmitConfig:
         pp_include_dir=pragmas.get("pp_include_dir", config.pp_include_dir),
         helper_prefix=pragmas.get("helper_prefix", config.helper_prefix),
         runtime_name=pragmas.get("runtime_name", config.runtime_name),
+        runtime_include=pragmas.get("runtime_include", config.runtime_include),
         loop_chain=pragmas.get("loop_chain", "on" if config.loop_chain else "off") != "off",
         loop_chain_limit=int(pragmas.get("loop_chain_limit", config.loop_chain_limit)),
     )

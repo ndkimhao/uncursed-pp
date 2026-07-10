@@ -182,3 +182,53 @@ def test_committed_example_runtime_headers_are_fresh():
     for p in found:
         expected = runtime_header(EmitConfig(helper_prefix=prefixes[p.name]))
         assert p.read_text() == expected, f"stale companion: {p}"
+
+
+# ── runtime_include: fully custom #include line for the companion ────
+
+
+def test_runtime_include_pragma_quoted_path():
+    src = '@pragma runtime_include "myproj/pp/rt.h"\n' + SPREAD_SRC
+    result = compile_template(src, "w.uncursed")
+    assert '#include "myproj/pp/rt.h"' in result.header
+    assert '"uncursed_pp_runtime.h"' not in result.header
+    # needs-runtime detection must follow the custom line
+    assert result.runtime is not None
+    # the WRITTEN filename is still runtime_name's business
+    assert result.runtime_name == "uncursed_pp_runtime.h"
+
+
+def test_runtime_include_pragma_angle_form():
+    src = "@pragma runtime_include <acme/pp_runtime.h>\n" + SPREAD_SRC
+    result = compile_template(src, "w.uncursed")
+    assert "#include <acme/pp_runtime.h>" in result.header
+    assert result.runtime is not None
+
+
+def test_runtime_include_config_api():
+    result = compile_template(
+        SPREAD_SRC, "w.uncursed", config=EmitConfig(runtime_include="pp/rt.h")
+    )
+    assert '#include "pp/rt.h"' in result.header
+
+
+def test_default_runtime_include_is_quoted_runtime_name():
+    result = compile_template(SPREAD_SRC, "w.uncursed")
+    assert '#include "uncursed_pp_runtime.h"' in result.header
+
+
+from conftest import requires_boost, run_cpp, canon  # noqa: E402
+
+
+@requires_boost
+def test_runtime_include_path_resolves_e2e(tmp_path):
+    src = '@pragma runtime_include "myproj/pp/rt.h"\n' + SPREAD_SRC
+    result = compile_template(src, "w.uncursed")
+    (tmp_path / "w.h").write_text(result.header)
+    rt = tmp_path / "myproj" / "pp" / "rt.h"
+    rt.parent.mkdir(parents=True)
+    assert result.runtime is not None
+    rt.write_text(result.runtime)
+    snippet = tmp_path / "main.c"
+    snippet.write_text('#include "w.h"\nSP((int, x))\n')
+    assert canon(run_cpp(snippet)) == canon("int x")

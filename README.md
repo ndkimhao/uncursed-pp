@@ -60,7 +60,8 @@ takes only the input path and `-o`:
 | `pp_include` | *(granular)* | single header to include instead of granular ones |
 | `pp_include_dir` | `boost/preprocessor` | root of the granular usage-derived includes |
 | `helper_prefix` | `UNCURSED_PP_` | prefix of generated helper macros |
-| `runtime_name` | `<helper_prefix>_runtime.h` | filename of the shared runtime header |
+| `runtime_name` | `<helper_prefix>_runtime.h` | filename the shared runtime header is written to |
+| `runtime_include` | `"<runtime_name>"` | the `#include` text generated headers use for it — any path, `"..."` or `<...>` |
 | `include` | — | extra `#include` for the generated header (repeatable) |
 
 ```text

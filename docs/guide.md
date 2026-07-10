@@ -324,7 +324,8 @@ identically from the source file alone:
 | `pp_include "H"` | *(granular)* | single header to include instead of granular ones |
 | `pp_include_dir D` | `boost/preprocessor` | root of granular usage-derived includes |
 | `helper_prefix P` | `UNCURSED_PP_` | prefix of generated helper macros |
-| `runtime_name "F"` | `<helper_prefix>_runtime.h` | filename of the shared runtime header |
+| `runtime_name "F"` | `<helper_prefix>_runtime.h` | filename the shared runtime header is written to |
+| `runtime_include I` | `"<runtime_name>"` | the `#include` text generated headers use for the runtime — a path and/or `<...>` form; where the file lives is your include-path contract |
 | `loop_chain on\|off` | `on` | consumption-chain iteration for loops without free outer variables (~25x cheaper preprocessing) |
 | `loop_chain_limit K` | `16` | chain length: seqs up to K elements take the chain, longer ones the `SEQ_FOR_EACH` fallback (~0.5% overhead). Non-default K emits a local size table; `256` covers every possible seq, dropping the fallback, the size pick, and the `for_each.hpp` include entirely |
 | `include "H"` or `include <H>` | — | extra `#include`s appended in order (repeatable) |

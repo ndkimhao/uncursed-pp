@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .emitter import compile_template, runtime_header
+from .emitter import compile_template, runtime_header, runtime_include_text
 from .parser import UncursedPpError
 
 
@@ -65,7 +65,7 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(1) from exc
     if args.emit_runtime is None and result.runtime is not None:
         print(
-            f'uncursed-pp: note: {output_path.name} includes "{result.runtime_name}"; '
+            f"uncursed-pp: note: {output_path.name} includes {runtime_include_text(result.config)}; "
             "pass --emit-runtime to write it (or --no-emit-runtime to silence this note)",
             file=sys.stderr,
         )
