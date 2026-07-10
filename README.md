@@ -33,13 +33,22 @@ make typecheck      # mypy --strict
 uv run cursedpp input.cursed -o output.h
 ```
 
-Flags: `--pp-prefix` (default `BOOST_PP_`), `--pp-include` (default: granular
-`boost/preprocessor/*.hpp` includes derived from usage), `--helper-prefix`
-(default `CURSEDPP_`). Each is overridable per file:
+Flags (each also settable per file via `@pragma <name> <value>`):
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--pp-prefix` | `BOOST_PP_` | prefix of the preprocessor library's macros |
+| `--pp-include` | *(granular)* | single header to include instead of granular ones |
+| `--pp-include-dir` | `boost/preprocessor` | root of the granular usage-derived includes |
+| `--helper-prefix` | `CURSEDPP_` | prefix of generated helper macros |
+| `--runtime-name` | `<helper-prefix>_runtime.h` | filename of the shared runtime header |
+| `--include` | — | extra `#include` for the generated header (repeatable) |
 
 ```text
 @pragma pp_prefix  MYLIB_PP_
-@pragma pp_include "mylib/preprocessor.hpp"
+@pragma pp_include_dir boost_foo/preprocessor
+@pragma include "myproj/types.h"
+@pragma include <stdio.h>
 ```
 
 ## The language

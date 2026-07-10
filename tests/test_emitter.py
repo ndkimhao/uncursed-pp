@@ -247,3 +247,49 @@ def test_compile_template_reports_runtime_dependency():
 
     plain = compile_template("macro ID(x)\n{{x}}\nend\n", "id.cursed")
     assert plain.runtime is None
+
+
+def test_extra_includes_via_config():
+    from cursedpp.emitter import EmitConfig
+
+    out = compile_source(
+        "macro ID(x)\n{{x}}\nend\n",
+        "t.cursed",
+        config=EmitConfig(extra_includes=("myproj/types.h", "<stdio.h>")),
+    )
+    assert '#include "myproj/types.h"\n' in out
+    assert "#include <stdio.h>\n" in out
+
+
+def test_extra_includes_via_pragma_repeatable_ordered():
+    src = (
+        '@pragma include "first.h"\n'
+        "@pragma include <second.h>\n"
+        "macro ID(x)\n{{x}}\nend\n"
+    )
+    out = compile_source(src, "t.cursed")
+    first = out.index('#include "first.h"')
+    second = out.index("#include <second.h>")
+    assert first < second
+
+
+def test_pp_include_dir_rewrites_granular_includes():
+    from cursedpp.emitter import EmitConfig
+
+    src = "macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+    out = compile_source(src, "t.cursed", config=EmitConfig(pp_include_dir="boost_foo/preprocessor"))
+    assert "#include <boost_foo/preprocessor/seq/for_each.hpp>" in out
+    assert "boost/preprocessor/" not in out
+
+
+def test_pp_include_dir_applies_to_runtime():
+    from cursedpp.emitter import EmitConfig, runtime_header
+
+    rt = runtime_header(EmitConfig(pp_include_dir="boost_foo/preprocessor"))
+    assert "#include <boost_foo/preprocessor/tuple/replace.hpp>" in rt
+
+
+def test_custom_pp_prefix_ok_with_custom_include_dir():
+    src = "@pragma pp_prefix MYPP_\n@pragma pp_include_dir vendored/pp\nmacro ID(x)\n{{x}}\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "MYPP_" not in out  # plain macro uses no primitives; compiles fine

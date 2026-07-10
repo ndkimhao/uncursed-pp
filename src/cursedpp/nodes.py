@@ -155,3 +155,4 @@ class MacroDef:
 class File:
     macros: list[MacroDef]
     pragmas: dict[str, str] = field(default_factory=dict)
+    extra_includes: list[str] = field(default_factory=list)

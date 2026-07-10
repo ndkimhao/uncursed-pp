@@ -33,6 +33,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="filename of the shared runtime header (default: derived from --helper-prefix)",
     )
+    parser.add_argument(
+        "--pp-include-dir",
+        default="boost/preprocessor",
+        help="root of the granular preprocessor includes (default: boost/preprocessor)",
+    )
+    parser.add_argument(
+        "--include",
+        action="append",
+        default=[],
+        metavar="HEADER",
+        help='extra #include for generated headers (repeatable; "<...>" for angle form)',
+    )
     return parser
 
 
@@ -45,6 +57,8 @@ def main(argv: list[str] | None = None) -> None:
         pp_include=args.pp_include,
         helper_prefix=args.helper_prefix,
         runtime_name=args.runtime_name,
+        pp_include_dir=args.pp_include_dir,
+        extra_includes=tuple(args.include),
     )
     try:
         result = compile_template(input_path.read_text(), str(input_path), config=config)

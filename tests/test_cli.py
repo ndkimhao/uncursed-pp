@@ -80,3 +80,20 @@ def test_cli_runtime_name_flag(tmp_path):
     main([str(src), "--runtime-name", "acme_common.h"])
     assert (tmp_path / "acme_common.h").exists()
     assert '#include "acme_common.h"' in (tmp_path / "w.h").read_text()
+
+
+def test_cli_extra_include_and_pp_include_dir(tmp_path):
+    src = tmp_path / "d.cursed"
+    src.write_text("macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n")
+    main(
+        [
+            str(src),
+            "--include", "myproj/types.h",
+            "--include", "<stdio.h>",
+            "--pp-include-dir", "boost_foo/preprocessor",
+        ]
+    )
+    text = (tmp_path / "d.h").read_text()
+    assert '#include "myproj/types.h"' in text
+    assert "#include <stdio.h>" in text
+    assert "#include <boost_foo/preprocessor/seq/for_each.hpp>" in text

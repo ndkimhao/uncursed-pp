@@ -314,12 +314,13 @@ class _Block:
     line: int = 0
 
 
-_KNOWN_PRAGMAS = {"pp_prefix", "pp_include", "helper_prefix", "runtime_name"}
+_KNOWN_PRAGMAS = {"pp_prefix", "pp_include", "pp_include_dir", "helper_prefix", "runtime_name", "include"}
 
 
 def parse_file(source: str, filename: str) -> File:
     macros: list[MacroDef] = []
     pragmas: dict[str, str] = {}
+    extra_includes: list[str] = []
     lines = source.split("\n")
     i = 0
 
@@ -330,7 +331,10 @@ def parse_file(source: str, filename: str) -> File:
             continue
         if stripped.startswith("@pragma "):
             key, value = _parse_pragma(stripped, filename, i + 1)
-            pragmas[key] = value
+            if key == "include":
+                extra_includes.append(value)
+            else:
+                pragmas[key] = value
             i += 1
             continue
         if stripped.startswith("macro "):
@@ -339,7 +343,7 @@ def parse_file(source: str, filename: str) -> File:
             continue
         raise CursedppError(f"unexpected line: {stripped!r}", filename, i + 1)
 
-    return File(macros=macros, pragmas=pragmas)
+    return File(macros=macros, pragmas=pragmas, extra_includes=extra_includes)
 
 
 def _parse_pragma(stripped: str, filename: str, lineno: int) -> tuple[str, str]:
