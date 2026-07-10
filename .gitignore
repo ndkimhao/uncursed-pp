@@ -6,3 +6,4 @@ dist/
 .boost-pp/
 .claude/
 docs/superpowers/
+.superpowers/
