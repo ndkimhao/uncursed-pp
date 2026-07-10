@@ -1,0 +1,37 @@
+# ── @pragma: configuration lives in the template ─────────────────────
+#
+# All configuration is written in the .uncursed file itself, so a
+# header regenerates identically from the source alone — the CLI takes
+# only the input path and -o. This file renames the generated helper
+# namespace (ACME_ instead of UNCURSED_PP_) and the companion runtime
+# header it ships with — see both in the committed .h next to this
+# file, and the committed acme_runtime.h beside it.
+#
+# The full pragma set:
+#   @pragma helper_prefix P      prefix of generated helper macros
+#   @pragma runtime_name F       filename of the shared runtime header
+#   @pragma pp_prefix P          preprocessor library prefix (needs a
+#                                matching library; can't be spec-tested
+#                                against the vendored BOOST_PP_ headers)
+#   @pragma pp_include H         one header instead of granular includes
+#   @pragma pp_include_dir D     root of the granular includes
+#   @pragma include H            extra #include, repeatable (a spec'd
+#                                system include would drag that header's
+#                                every token into the expected expansion,
+#                                so none is used here)
+#   @pragma loop_chain on|off    consumption-chain loop codegen toggle
+#   @pragma loop_chain_limit N   seq size where chains fall back to
+#                                SEQ_FOR_EACH
+
+@pragma helper_prefix ACME_
+@pragma runtime_name acme_runtime.h
+
+macro DECLARE_OPTIONS(opts: seq<tuple<otype, oname>>)
+@for (otype, oname) in opts
+  {{otype}} {{oname}};
+@end
+end
+
+#?  DECLARE_OPTIONS(((int, verbosity))((const char *, log_path)))
+#=>     int verbosity;
+#=>     const char * log_path;

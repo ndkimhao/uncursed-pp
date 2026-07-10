@@ -1,0 +1,32 @@
+# ── variadic: comma-separated call sites ─────────────────────────────
+#
+# `items: variadic` makes the macro take trailing `...` arguments; the
+# body sees them as a seq, so @for and @join work unchanged. A variadic
+# parameter must be last, must receive at least one argument, and
+# excludes tail defaults / named parameters in the same macro.
+#
+# Scenario: releasing a batch of resources.
+
+macro FREE_ALL(ptrs: variadic)
+@for p in ptrs
+  free({{p}});
+@end
+end
+
+#?  FREE_ALL(line_buf, name_buf, path_buf)
+#=>     free(line_buf);
+#=>     free(name_buf);
+#=>     free(path_buf);
+
+# `variadic<tuple<...>>` gives SINGLE-paren tuple call sites — compare
+# the double parens a seq<tuple<...>> parameter would need.
+
+macro SET_DEFAULTS(pairs: variadic<tuple<key, value>>)
+@for (key, value) in pairs
+  config_set({{stringize(key)}}, {{value}});
+@end
+end
+
+#?  SET_DEFAULTS((timeout, 30), (retries, 3))
+#=>     config_set("timeout", 30);
+#=>     config_set("retries", 3);

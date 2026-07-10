@@ -169,3 +169,16 @@ def test_pp_include_dir_e2e_through_gcc(tmp_path):
     # resolve their own nested <boost/preprocessor/...> includes through it
     out = run_cpp(tmp_path / "main.c", "-I", str(tmp_path))
     assert canon("f(a); f(b);") in canon(out)
+
+
+def test_committed_example_runtime_headers_are_fresh():
+    """Companion runtime headers committed under examples/ must match
+    what the current emitter generates for their prefix — generated
+    files never depend on a human remembering to regenerate them."""
+    prefixes = {"uncursed_pp_runtime.h": "UNCURSED_PP_", "acme_runtime.h": "ACME_"}
+    examples = Path(__file__).parent.parent / "examples"
+    found = sorted(examples.rglob("*runtime.h"))
+    assert found, "expected committed runtime companions under examples/"
+    for p in found:
+        expected = runtime_header(EmitConfig(helper_prefix=prefixes[p.name]))
+        assert p.read_text() == expected, f"stale companion: {p}"
