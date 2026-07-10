@@ -140,3 +140,32 @@ def test_runtime_name_pragma():
     result = compile_template(src, "w.cursed")
     assert result.runtime_name == "acme_common.h"
     assert '#include "acme_common.h"' in result.header
+
+
+def test_pp_include_dir_e2e_through_gcc(tmp_path):
+    """A rebased include root actually resolves and expands: symlink
+    tmp/acme_pp -> the real boost/preprocessor and preprocess."""
+    import subprocess
+
+    from conftest import BOOST_FLAGS, CC, canon, requires_boost
+
+    if not (CC and BOOST_FLAGS):
+        pytest.skip("needs cc and the vendored boost")
+    real = Path(BOOST_FLAGS[1]) / "boost" / "preprocessor"
+    (tmp_path / "acme_pp").symlink_to(real, target_is_directory=True)
+
+    src = (
+        "@pragma pp_include_dir acme_pp\n"
+        "macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+    )
+    header = compile_source(src, "d.cursed")
+    assert "#include <acme_pp/seq/for_each.hpp>" in header
+    (tmp_path / "d.h").write_text(header)
+    (tmp_path / "main.c").write_text('#include "d.h"\nD((a)(b))\n')
+    run = subprocess.run(
+        [CC, "-E", "-P", "-I", str(tmp_path), str(tmp_path / "main.c")],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert canon("f(a); f(b);") in canon(run.stdout)
