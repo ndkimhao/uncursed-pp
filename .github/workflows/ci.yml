@@ -18,7 +18,20 @@ jobs:
         run: make setup
 
       - name: Typecheck (mypy --strict) and full test suite
-        run: make check
+        run: |
+          set -o pipefail
+          make check 2>&1 | tee /tmp/job.log
+
+      - name: Report job summary
+        if: always()
+        run: |
+          {
+            echo "### check — ${{ job.status }}"
+            echo '```'
+            grep -E "Success: no issues|[0-9]+ (passed|failed)" /tmp/job.log | sed -E "s/\x1b\[[0-9;]*m|\x1b\(B//g" | tail -n 2 \
+              || echo "(no result lines - failed before the suite ran)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # The standalone checker through the real CLI entry point - same specs
   # as the suite, but exercises uncursed-pp-check itself.
@@ -32,7 +45,20 @@ jobs:
         run: make setup
 
       - name: Spec-check every template via uncursed-pp-check
-        run: make speccheck
+        run: |
+          set -o pipefail
+          make speccheck 2>&1 | tee /tmp/job.log
+
+      - name: Report job summary
+        if: always()
+        run: |
+          {
+            echo "### speccheck — ${{ job.status }}"
+            echo '```'
+            grep -E "files:|FAILED" /tmp/job.log | sed -E "s/\x1b\[[0-9;]*m|\x1b\(B//g" | tail -n 5 \
+              || echo "(no result lines - failed before the check ran)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # uncursed-pp-eval end to end: invoke mode and --update-specs mode,
   # each with and without --format.
@@ -48,7 +74,20 @@ jobs:
         run: make setup
 
       - name: Smoke uncursed-pp-eval (invoke / update-specs, +/- format)
-        run: make eval-smoke
+        run: |
+          set -o pipefail
+          make eval-smoke 2>&1 | tee /tmp/job.log
+
+      - name: Report job summary
+        if: always()
+        run: |
+          {
+            echo "### eval-cli — ${{ job.status }}"
+            echo '```'
+            grep -E "^(── |eval smoke|FAIL)" /tmp/job.log | sed -E "s/\x1b\[[0-9;]*m|\x1b\(B//g" | tail -n 6 \
+              || echo "(no result lines - failed before the smoke ran)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # After the main jobs pass: spec-check through the latest release of
   # every supported gcc (12-16) and clang (19-22) major. One serial job

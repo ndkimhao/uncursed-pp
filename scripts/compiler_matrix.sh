@@ -15,9 +15,11 @@ if [ "${1:-}" = "--worker" ]; then
   cc=$2
   echo "[$cc] started  ($($cc --version | head -n 1))"
   if make speccheck CHECK_CC="$cc" > "$LOGDIR/$cc.log" 2>&1; then
+    echo pass > "$LOGDIR/$cc.status"
     echo "[$cc] passed   ($(tail -n 1 "$LOGDIR/$cc.log"))"
     exit 0
   fi
+  echo fail > "$LOGDIR/$cc.status"
   echo "[$cc] FAILED   (full log in the group below)"
   exit 1
 fi
@@ -42,4 +44,22 @@ for cc in "${ccs[@]}"; do
   cat "$LOGDIR/$cc.log" 2>/dev/null || echo "(no log produced)"
   echo "::endgroup::"
 done
+
+# per-compiler markdown table on the GitHub run-summary page
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+  {
+    echo "### Compiler matrix (${#ccs[@]} compilers, $jobs-way parallel)"
+    echo "| compiler | version | result |"
+    echo "|---|---|---|"
+    for cc in "${ccs[@]}"; do
+      ver=$($cc --version 2>/dev/null | head -n 1 || true)
+      if [ "$(cat "$LOGDIR/$cc.status" 2>/dev/null || true)" = pass ]; then
+        result="✅ $(tail -n 1 "$LOGDIR/$cc.log")"
+      else
+        result="❌ FAILED"
+      fi
+      echo "| $cc | ${ver:-n/a} | $result |"
+    done
+  } >> "$GITHUB_STEP_SUMMARY"
+fi
 exit "$failed"
