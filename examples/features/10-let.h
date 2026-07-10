@@ -2,8 +2,13 @@
 #pragma once
 
 #include <boost/preprocessor/cat.hpp>
+#include <boost/preprocessor/control/iif.hpp>
+#include <boost/preprocessor/punctuation/comma_if.hpp>
 #include <boost/preprocessor/seq/enum.hpp>
+#include <boost/preprocessor/seq/for_each_i.hpp>
 #include <boost/preprocessor/seq/size.hpp>
+#include <boost/preprocessor/tuple/elem.hpp>
+#include "uncursed_pp_runtime.h"
 
 /* # ── @let: name a computed value once ─────────────────────────────────
  * #
@@ -35,4 +40,50 @@
 /* #?  COUNTED_ARRAY(one, (42))
  * #=>     static const int one[1] = { 42 };
  * #=>     enum { one_len = 1 };
+ */
+
+/* # ── binding an inline @join for reuse ────────────────────────────────
+ * #
+ * # @let can also bind a whole inline @join (or @if): the loop machinery
+ * # is emitted ONCE and the binding splices its call wherever reused.
+ * # Scope rules: the binding lives in its block, and it cannot travel
+ * # INTO a loop or @if branch helper (that's a compile error naming the
+ * # binding) — reuse it at the level where it was bound.
+ */
+
+/* uncursed-pp source:
+ * @macro DECLARE_PAIR($fn, $args: seq<tuple<$type, $argname>>)
+ * @let $sig := @join $args with ", ": {{$type}} {{$argname}}@end
+ * void {{concat($fn, _checked)}}({{$sig}});
+ * void {{concat($fn, _unchecked)}}({{$sig}});
+ * @endmacro
+ */
+#define UNCURSED_PP_DECLARE_PAIR_AP1(type, argname) type argname
+#define UNCURSED_PP_DECLARE_PAIR_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) UNCURSED_PP_DECLARE_PAIR_AP1 e
+#define UNCURSED_PP_DECLARE_PAIR_CH1_1(e) UNCURSED_PP_DECLARE_PAIR_AP1 e
+#define UNCURSED_PP_DECLARE_PAIR_CH1_2(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_1
+#define UNCURSED_PP_DECLARE_PAIR_CH1_3(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_2
+#define UNCURSED_PP_DECLARE_PAIR_CH1_4(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_3
+#define UNCURSED_PP_DECLARE_PAIR_CH1_5(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_4
+#define UNCURSED_PP_DECLARE_PAIR_CH1_6(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_5
+#define UNCURSED_PP_DECLARE_PAIR_CH1_7(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_6
+#define UNCURSED_PP_DECLARE_PAIR_CH1_8(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_7
+#define UNCURSED_PP_DECLARE_PAIR_CH1_9(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_8
+#define UNCURSED_PP_DECLARE_PAIR_CH1_10(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_9
+#define UNCURSED_PP_DECLARE_PAIR_CH1_11(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_10
+#define UNCURSED_PP_DECLARE_PAIR_CH1_12(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_11
+#define UNCURSED_PP_DECLARE_PAIR_CH1_13(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_12
+#define UNCURSED_PP_DECLARE_PAIR_CH1_14(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_13
+#define UNCURSED_PP_DECLARE_PAIR_CH1_15(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_14
+#define UNCURSED_PP_DECLARE_PAIR_CH1_16(e) UNCURSED_PP_DECLARE_PAIR_AP1 e, UNCURSED_PP_DECLARE_PAIR_CH1_15
+#define UNCURSED_PP_DECLARE_PAIR_SMALL1(seq) BOOST_PP_CAT(UNCURSED_PP_DECLARE_PAIR_CH1_, BOOST_PP_SEQ_SIZE(seq)) seq
+#define UNCURSED_PP_DECLARE_PAIR_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_DECLARE_PAIR_SMALL1, UNCURSED_PP_DECLARE_PAIR_BIG1)
+#define UNCURSED_PP_DECLARE_PAIR_BIG1(seq) BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_DECLARE_PAIR_EACH1, ~, seq)
+#define DECLARE_PAIR(fn, args) \
+    void BOOST_PP_CAT(fn, _checked)(UNCURSED_PP_DECLARE_PAIR_PICK1(BOOST_PP_SEQ_SIZE(args))(args)); \
+    void BOOST_PP_CAT(fn, _unchecked)(UNCURSED_PP_DECLARE_PAIR_PICK1(BOOST_PP_SEQ_SIZE(args))(args));
+
+/* #?  DECLARE_PAIR(draw, ((int, x))((float, y)))
+ * #=>     void draw_checked(int x, float y);
+ * #=>     void draw_unchecked(int x, float y);
  */

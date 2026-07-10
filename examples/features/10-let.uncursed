@@ -21,3 +21,21 @@ enum { {{concat($name, _len)}} = {{$n}} };
 #?  COUNTED_ARRAY(one, (42))
 #=>     static const int one[1] = { 42 };
 #=>     enum { one_len = 1 };
+
+# ── binding an inline @join for reuse ────────────────────────────────
+#
+# @let can also bind a whole inline @join (or @if): the loop machinery
+# is emitted ONCE and the binding splices its call wherever reused.
+# Scope rules: the binding lives in its block, and it cannot travel
+# INTO a loop or @if branch helper (that's a compile error naming the
+# binding) — reuse it at the level where it was bound.
+
+@macro DECLARE_PAIR($fn, $args: seq<tuple<$type, $argname>>)
+@let $sig := @join $args with ", ": {{$type}} {{$argname}}@end
+void {{concat($fn, _checked)}}({{$sig}});
+void {{concat($fn, _unchecked)}}({{$sig}});
+@endmacro
+
+#?  DECLARE_PAIR(draw, ((int, x))((float, y)))
+#=>     void draw_checked(int x, float y);
+#=>     void draw_unchecked(int x, float y);
