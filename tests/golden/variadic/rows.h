@@ -207,3 +207,21 @@
 /* #?  FLATTEN(((a, b))((c))(()))
  * #=>     { a, b } { c } { }
  */
+
+/* uncursed-pp source:
+ * # inside the loop the name still means the TUPLE (never the internal
+ * # seq lowering), so the whole row can ride along per element
+ * @macro EACH_WITH_ROW($t: tuple)
+ * @for $x in $t
+ * call({{$x}}, {{$t}});
+ * @end
+ * @endmacro
+ */
+#define UNCURSED_PP_EACH_WITH_ROW_EACH1(r, d, e) call(e, d);
+#define UNCURSED_PP_EACH_WITH_ROW_LOOP1(t) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_EACH_WITH_ROW_EACH1, t, BOOST_PP_TUPLE_TO_SEQ(t))
+#define UNCURSED_PP_EACH_WITH_ROW_NIL1(t)
+#define EACH_WITH_ROW(t) BOOST_PP_IIF(UNCURSED_PP_ROWS_H1(t), UNCURSED_PP_EACH_WITH_ROW_NIL1, UNCURSED_PP_EACH_WITH_ROW_LOOP1)(t)
+
+/* #?  EACH_WITH_ROW((a, b))
+ * #=>     call(a, (a, b)); call(b, (a, b));
+ */

@@ -183,3 +183,24 @@
 /* #?  ROWS(((r1, a, b))((r2))((r3, c)))
  * #=>     r1[ a, b ] r2[ ] r3[ c ]
  */
+
+/* uncursed-pp source:
+ * # named-head access works INSIDE a loop over the same hybrid's tail
+ * # (named access reads the head, iteration stays tail-scoped)
+ * @macro TAGGED($f: tuple<$name, token...>)
+ * @for $v in $f
+ * h({{$f.$name}}, {{$v}});
+ * @end
+ * @endmacro
+ */
+#define UNCURSED_PP_TAGGED_EACH1(r, d, e) h(BOOST_PP_TUPLE_ELEM(0, d), e);
+#define UNCURSED_PP_TAGGED_LOOP1(f) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_TAGGED_EACH1, f, BOOST_PP_TUPLE_TO_SEQ(UNCURSED_PP_HYBRID_H4(f)))
+#define TAGGED(f) BOOST_PP_IIF(UNCURSED_PP_HYBRID_H2(UNCURSED_PP_HYBRID_H4(f)), UNCURSED_PP_HYBRID_H1, UNCURSED_PP_TAGGED_LOOP1)(f)
+
+/* #?  TAGGED((pt, a, b))
+ * #=>     h(pt, a); h(pt, b);
+ */
+
+/* #?  begin TAGGED((pt)) end
+ * #=>     begin end
+ */

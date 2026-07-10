@@ -72,6 +72,33 @@ def test_is_empty_takes_exactly_one_argument():
         parse_file("@macro F(a, b)\n@if is_empty(a, b)\nx\n@end\n@endmacro\n", "t.uncursed")
 
 
+def test_whole_value_use_inside_own_loop(tmp_path):
+    # inside @for-over-$t the name $t still means the TUPLE, never the
+    # internal TUPLE_TO_SEQ lowering
+    from conftest import CC, canon, preprocess_src
+
+    if CC is None:
+        pytest.skip("no C compiler available")
+    src = '@macro F($t: tuple)\n@for $x in $t\ncall({{$x}}, {{$t}});\n@end\n@endmacro\n'
+    out = preprocess_src(tmp_path, src, "wv", "F((a, b))")
+    assert canon("call(a, (a, b)); call(b, (a, b));") in out
+
+
+def test_hybrid_head_access_inside_tail_loop(tmp_path):
+    # documented model: named access reads the head, iteration is
+    # tail-scoped - so both must work in the same loop body
+    from conftest import CC, canon, preprocess_src
+
+    if CC is None:
+        pytest.skip("no C compiler available")
+    src = (
+        '@macro G($f: tuple<$name, token...>)\n@for $v in $f\n'
+        'h({{$f.$name}}, {{$v}});\n@end\n@endmacro\n'
+    )
+    out = preprocess_src(tmp_path, src, "hh", "G((pt, a, b))")
+    assert canon("h(pt, a); h(pt, b);") in out
+
+
 def test_is_empty_is_a_whole_value_use(tmp_path):
     # is_empty($a) must consult the tuple itself: the spread pass used to
     # erase $a (IsEmpty was missing from the whole-use walk), leaving the

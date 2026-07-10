@@ -78,3 +78,14 @@
 
 #?  FLATTEN(((a, b))((c))(()))
 #=>     { a, b } { c } { }
+
+# inside the loop the name still means the TUPLE (never the internal
+# seq lowering), so the whole row can ride along per element
+@macro EACH_WITH_ROW($t: tuple)
+@for $x in $t
+call({{$x}}, {{$t}});
+@end
+@endmacro
+
+#?  EACH_WITH_ROW((a, b))
+#=>     call(a, (a, b)); call(b, (a, b));

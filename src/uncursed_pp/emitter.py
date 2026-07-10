@@ -153,6 +153,7 @@ class _MacroEmitter:
         self._helper_counts: dict[str, int] = {}
         self._big_name = ""
         self._loop_depth = 0
+        self._gated_nodes: set[int] = set()
 
     def pp(self, name: str) -> str:
         self.used.add(name)
@@ -746,10 +747,18 @@ class _MacroEmitter:
         return loop_env
 
     def _iterable_binding(self, name: str, env: _Env, node: ForEach | Join) -> tuple[str, Type]:
-        """Resolve an iterated name to (c_expr, element type)."""
+        """Resolve an iterated name to (c_expr, element type). Unbounded
+        tuples lower to their seq form HERE, at the point of iteration -
+        the name's own binding stays tuple-typed, so whole-value and
+        named-head uses inside the loop body still see the tuple."""
         binding = env.get(name)
         if binding is None:
             raise UncursedPpError(f"undefined variable: {name}", self.filename, node.line)
+        if isinstance(binding.type, VarTupleT):
+            return (
+                f"{self.pp('TUPLE_TO_SEQ')}({self._vtuple_view(binding)})",
+                binding.type.elem,
+            )
         if not isinstance(binding.type, SeqT):
             raise UncursedPpError(f"cannot iterate non-seq {name!r}", self.filename, node.line)
         return binding.c_expr, binding.type.elem
@@ -997,19 +1006,23 @@ class _MacroEmitter:
         binding = env.get(node.iterable)
         if binding is None or not isinstance(binding.type, VarTupleT):
             return None
+        if id(node) in self._gated_nodes:
+            return None  # already inside this node's gate branch
         free = self._free_vars([node], env, set())
         self._guard_fragile(free, env, node.line)
+        # the branch helper's params hold the raw values - including the
+        # whole tuple itself; _iterable_binding lowers it to a seq only
+        # at the point of iteration, so body uses of the name (whole
+        # value, hybrid named head) still see the tuple
         branch_env = {n: _Binding(self.arg(n), env[n].type) for n in free}
-        # hybrids iterate their TAIL; inside the branch the helper param
-        # holds the whole tuple, so extract there too
-        param_view = self._vtuple_view(_Binding(self.arg(node.iterable), binding.type))
-        branch_env[node.iterable] = _Binding(
-            f"{self.pp('TUPLE_TO_SEQ')}({param_view})", SeqT(binding.type.elem)
-        )
-        if isinstance(node, ForEach):
-            body = self._render_foreach(node, branch_env)
-        else:
-            body = self._render_join(node, branch_env)
+        self._gated_nodes.add(id(node))
+        try:
+            if isinstance(node, ForEach):
+                body = self._render_foreach(node, branch_env)
+            else:
+                body = self._render_join(node, branch_env)
+        finally:
+            self._gated_nodes.discard(id(node))
         params = ", ".join(self.arg(n) for n in free)
         loop_helper = self._add_helper("LOOP", params, _collapse_ws(body))
         nil_helper = self._add_helper("NIL", params, "")
