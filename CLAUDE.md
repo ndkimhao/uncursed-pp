@@ -28,6 +28,10 @@ and refuted ideas — the refuted list is binding).
 
 - TDD: every feature lands with a failing test first; golden files in `tests/golden/`
   are updated deliberately, never regenerated blindly.
+- Anything codegen-related — a new feature, a bug fix, a behavior change — must
+  land with a golden template (committed `.h` + `#?`/`#=>` specs) pinning it, not
+  only Python tests. For bug fixes that means a regression golden reproducing
+  the trap (see `tests/golden/compose/collapse_traps.uncursed`).
 - Tests are organized one file per feature (`tests/test_loops.py`,
   `test_conditionals.py`, `test_expressions.py`, `test_defaults.py`,
   `test_named_args.py`, `test_variadic.py`, `test_config.py`, ...); they hold
