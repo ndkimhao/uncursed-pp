@@ -1,0 +1,31 @@
+<<% raw %>>
+# ── Meta-templating: Jinja2 at generation time ───────────────────────
+#
+# Every .uncursed source passes through Jinja2 before the DSL parser,
+# using alternative delimiters so nothing clashes with uncursed-pp's
+# own syntax:
+#
+#   statements   <<% ... %>>     (set / for / if / macro / include ...)
+#   expressions  <<{ ... }>>
+#   comments     <<# ... #>>
+#
+# This is a THIRD clock: Jinja2 runs at generation time (Python),
+# the emitted Boost.PP machinery runs at C preprocessing time, and the
+# expansion is plain C. Use Jinja2 when the set of MACROS themselves is
+# data-driven; use @for/@join when each macro's expansion is data-driven.
+# A source with no meta markers skips Jinja2 entirely.
+#
+# Scenario: one accessor macro per field, from a single Python list.
+<<% endraw %>>
+<<% set fields = [("id", "uint32_t"), ("name", "const char *")] %>>
+<<% for fname, ftype in fields %>>
+@macro GET_<<{ fname.upper() }>>($obj)
+((<<{ ftype }>>)(({{$obj}})-><<{ fname }>>))
+@endmacro
+
+<<% endfor %>>
+#?  GET_ID(o)
+#=>     ((uint32_t)((o)->id))
+
+#?  GET_NAME(o)
+#=>     ((const char *)((o)->name))

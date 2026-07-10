@@ -90,6 +90,10 @@ S{ @join $items as $it with ", ": @if is_paren($it) @then {{$it}} @else ({{$it}}
 ```
 
 ### Language rules
+- Sources pass through a Jinja2 meta-templating stage before parsing
+  (statements `<<% %>>`, expressions `<<{ }>>`, comments `<<# #>>` -
+  delimiters chosen to never clash with DSL syntax; StrictUndefined;
+  marker-free sources skip the stage byte-identically).
 - Body is raw C text; `@`-directives for control flow; `{{expr}}` interpolation.
 - `@#<directive>` (top level): raw preprocessing-directive passthrough,
   emitted verbatim at its source position. Trailing `\` continues the

@@ -38,6 +38,7 @@ from .nodes import (
     VarRef,
     VarTupleT,
 )
+from .meta import render_meta
 from .parser import C_LITERAL_PATTERN as C_LITERAL_PATTERN
 from .parser import UncursedPpError, parse_file
 
@@ -1465,8 +1466,9 @@ class CompileResult:
 def compile_template(
     source: str, filename: str, *, config: EmitConfig | None = None
 ) -> CompileResult:
-    """Full pipeline: parse -> emit header (+ companion runtime if needed)."""
-    file = parse_file(source, filename)
+    """Full pipeline: meta-template -> parse -> emit header (+ companion
+    runtime if needed)."""
+    file = parse_file(render_meta(source, filename), filename)
     config = _apply_pragmas(config or EmitConfig(), file.pragmas)
     config = replace(
         config, extra_includes=config.extra_includes + tuple(file.extra_includes)

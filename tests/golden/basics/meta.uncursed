@@ -1,0 +1,16 @@
+# Jinja2 meta-templating: this source is expanded by Jinja2 (with
+# alternative delimiters) BEFORE uncursed-pp parses it - the loop below
+# writes one macro per register name at generation time.
+<<% set regs = ["CTRL", "STAT"] %>>
+<<% for r in regs %>>
+@macro READ_<<{ r }>>($dev)
+read_reg({{$dev}}, <<{ loop.index0 }>>)
+@endmacro
+
+<<% endfor %>>
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
+#?  READ_CTRL(d0)
+#=>     read_reg(d0, 0)
+
+#?  READ_STAT(d1)
+#=>     read_reg(d1, 1)

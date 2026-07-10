@@ -13,7 +13,8 @@ at C compile time via Boost.PP primitives.
 
 ## Architecture
 
-Pipeline: source → line-level pass (`parser.py`: pragmas, macro headers, body
+Pipeline: source → Jinja2 meta pass (`meta.py`: alt delimiters `<<% %>>`/`<<{ }>>`/`<<# #>>`,
+skipped when marker-free) → line-level pass (`parser.py`: pragmas, macro headers, body
 vs directive lines, `@endmacro` matching) → lark mini-grammars (`grammar.lark`) for
 signatures/directives/`{{expr}}` → dataclass AST (`nodes.py`) → semantic
 checks + helper IR + macro bodies (`emitter.py`) → helper dedup/factoring

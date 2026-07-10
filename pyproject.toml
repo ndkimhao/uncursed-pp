@@ -3,7 +3,7 @@ name = "uncursed-pp"
 version = "0.1.0"
 description = "A readable template DSL compiled to Boost.Preprocessor C macros"
 requires-python = ">=3.12"
-dependencies = ["lark>=1.2"]
+dependencies = ["lark>=1.2", "jinja2>=3.1"]
 
 [project.scripts]
 uncursed-pp = "uncursed_pp.cli:main"

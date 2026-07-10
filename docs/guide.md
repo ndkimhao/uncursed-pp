@@ -30,6 +30,8 @@ DECLARE_FIELDS(((int, x))((float, y)))   /* expands to: int x; float y; */
 
 Two clocks, three languages: uncursed-pp (Python) runs at *generation time*;
 the emitted `#define`s run at *C preprocessing time*; the expansion is plain C.
+(An optional Jinja2 meta-templating pass — alternative delimiters
+`<<% %>>` / `<<{ }>>` / `<<# #>>` — runs first, still at generation time; see §3.)
 
 ## 2. Getting started
 
@@ -58,6 +60,14 @@ A `.uncursed` file contains, in any order at the top level:
 - **Comments** — lines whose first non-blank character is `#`. Allowed at top
   level and inside macro bodies (the line is dropped entirely).
 - **Pragmas** — `@pragma <key> <value>` lines (see §8). By convention at the top.
+- **Meta-templating** — the whole source passes through **Jinja2** before
+  the DSL parser, with alternative delimiters that cannot clash with
+  uncursed-pp syntax: statements `<<% ... %>>`, expressions `<<{ ... }>>`,
+  comments `<<# ... #>>`. Use it when the set of macros itself is
+  data-driven (one macro per entry of a Python list, computed constants,
+  shared fragments via `<<% macro %>>`). Undefined names fail loudly
+  (StrictUndefined); a source with no meta markers skips Jinja2 entirely.
+  See `examples/features/23-meta-templating.uncursed`.
 - **Raw directives** — `@#<directive>` lines emit the rest verbatim (as
   `#<directive>`) into the generated header at the same source position:
   `@#include <stdint.h>`, `@#define CAP 16`. The text passes through
