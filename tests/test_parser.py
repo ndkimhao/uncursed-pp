@@ -204,3 +204,22 @@ def test_parse_variadic_param():
     src = "macro F(prefix, items: variadic)\n{{prefix}}: {{items[0]}}\nend\n"
     [macro] = parse_file(src, "t.cursed").macros
     assert macro.params[1].type == VariadicT()
+
+
+def test_parse_pragmas():
+    src = (
+        "@pragma pp_prefix MYLIB_PP_\n"
+        '@pragma pp_include "mylib/preprocessor.hpp"\n'
+        "macro ID(x)\n{{x}}\nend\n"
+    )
+    file = parse_file(src, "t.cursed")
+    assert file.pragmas == {
+        "pp_prefix": "MYLIB_PP_",
+        "pp_include": "mylib/preprocessor.hpp",
+    }
+
+
+def test_unknown_pragma_is_error():
+    with pytest.raises(CursedppError) as excinfo:
+        parse_file("@pragma nonsense abc\nmacro ID(x)\n{{x}}\nend\n", "t.cursed")
+    assert "t.cursed:1" in str(excinfo.value)

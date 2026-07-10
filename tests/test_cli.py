@@ -36,3 +36,21 @@ def test_cli_reports_errors_to_stderr(tmp_path, capsys):
         main([str(src)])
     assert excinfo.value.code == 1
     assert "bad.cursed" in capsys.readouterr().err
+
+
+def test_cli_pp_prefix_and_include_flags(tmp_path):
+    src = tmp_path / "d.cursed"
+    src.write_text("macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n")
+    out = tmp_path / "d.h"
+    main([str(src), "-o", str(out), "--pp-prefix", "V_PP_", "--pp-include", "v/pp.hpp"])
+    text = out.read_text()
+    assert "#include <v/pp.hpp>" in text
+    assert "V_PP_SEQ_FOR_EACH" in text
+
+
+def test_cli_helper_prefix_flag(tmp_path):
+    src = tmp_path / "d.cursed"
+    src.write_text("macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n")
+    out = tmp_path / "d.h"
+    main([str(src), "-o", str(out), "--helper-prefix", "MY_"])
+    assert "MY_D_EACH1" in out.read_text()

@@ -314,8 +314,12 @@ class _Block:
     line: int = 0
 
 
+_KNOWN_PRAGMAS = {"pp_prefix", "pp_include", "helper_prefix"}
+
+
 def parse_file(source: str, filename: str) -> File:
     macros: list[MacroDef] = []
+    pragmas: dict[str, str] = {}
     lines = source.split("\n")
     i = 0
 
@@ -324,13 +328,32 @@ def parse_file(source: str, filename: str) -> File:
         if not stripped or stripped.startswith("#"):
             i += 1
             continue
+        if stripped.startswith("@pragma "):
+            key, value = _parse_pragma(stripped, filename, i + 1)
+            pragmas[key] = value
+            i += 1
+            continue
         if stripped.startswith("macro "):
             macro, i = _parse_macro(lines, i, filename)
             macros.append(macro)
             continue
         raise CursedppError(f"unexpected line: {stripped!r}", filename, i + 1)
 
-    return File(macros=macros)
+    return File(macros=macros, pragmas=pragmas)
+
+
+def _parse_pragma(stripped: str, filename: str, lineno: int) -> tuple[str, str]:
+    parts = stripped.split(None, 2)
+    if len(parts) != 3:
+        raise CursedppError("@pragma needs a key and a value", filename, lineno)
+    _, key, value = parts
+    if key not in _KNOWN_PRAGMAS:
+        known = ", ".join(sorted(_KNOWN_PRAGMAS))
+        raise CursedppError(f"unknown pragma {key!r} (known: {known})", filename, lineno)
+    value = value.strip()
+    if value.startswith('"') and value.endswith('"'):
+        value = value[1:-1]
+    return key, value
 
 
 def _directive_word(stripped: str) -> str | None:

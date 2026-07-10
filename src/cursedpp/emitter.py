@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from .nodes import (
     BodyNode,
@@ -546,8 +546,25 @@ def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None)
 def compile_source(source: str, filename: str, *, config: EmitConfig | None = None) -> str:
     """Full pipeline: parse -> emit. Convenience for the CLI and tests."""
     file = parse_file(source, filename)
+    config = _apply_pragmas(config or EmitConfig(), file.pragmas)
+    if config.pp_prefix != "BOOST_PP_" and config.pp_include is None:
+        raise CursedppError(
+            "a custom pp_prefix needs pp_include (granular boost includes "
+            "only fit the default prefix)",
+            filename,
+            0,
+        )
     return emit_file(
         file,
         source_name=filename.rsplit("/", 1)[-1],
         config=config,
+    )
+
+
+def _apply_pragmas(config: EmitConfig, pragmas: dict[str, str]) -> EmitConfig:
+    return replace(
+        config,
+        pp_prefix=pragmas.get("pp_prefix", config.pp_prefix),
+        pp_include=pragmas.get("pp_include", config.pp_include),
+        helper_prefix=pragmas.get("helper_prefix", config.helper_prefix),
     )

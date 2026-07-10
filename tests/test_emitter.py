@@ -157,3 +157,35 @@ def test_variadic_excludes_defaults():
 
     with pytest.raises(CursedppError):
         compile_source("macro F(a = 1, items: variadic)\n{{a}}\nend\n", "f.cursed")
+
+
+def test_pragma_pp_prefix_and_include():
+    src = (
+        "@pragma pp_prefix MYLIB_PP_\n"
+        '@pragma pp_include "mylib/preprocessor.hpp"\n'
+        "macro DECL(fields: seq<tuple<type, name>>)\n"
+        "@for (type, name) in fields\n"
+        "  {{type}} {{name}};\n"
+        "@end\n"
+        "end\n"
+    )
+    out = compile_source(src, "t.cursed")
+    assert '#include <mylib/preprocessor.hpp>' in out
+    assert "MYLIB_PP_SEQ_FOR_EACH" in out
+    assert "MYLIB_PP_TUPLE_ELEM" in out
+    assert "BOOST_PP_" not in out
+
+
+def test_pragma_helper_prefix():
+    src = "@pragma helper_prefix VENDORED_\nmacro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define VENDORED_D_EACH1(r, d, e) f(e);" in out
+    assert "CURSEDPP_" not in out
+
+
+def test_custom_pp_prefix_requires_include():
+    from cursedpp.parser import CursedppError
+
+    with pytest.raises(CursedppError) as excinfo:
+        compile_source("@pragma pp_prefix MYPP_\nmacro ID(x)\n{{x}}\nend\n", "t.cursed")
+    assert "pp_include" in str(excinfo.value)

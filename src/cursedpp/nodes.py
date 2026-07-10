@@ -154,3 +154,4 @@ class MacroDef:
 @dataclass
 class File:
     macros: list[MacroDef]
+    pragmas: dict[str, str] = field(default_factory=dict)
