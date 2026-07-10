@@ -1,0 +1,40 @@
+# ── Codegen: helper collapse ─────────────────────────────────────────
+#
+# This example is about the GENERATED code — open the committed
+# 16-helper-collapse.h next to this file. The two macros below have
+# identical loop bodies, so the emitter's collapse pass merges their
+# helpers into the SAME shared, stem-namespaced identifiers: a plain
+# per-element callback UNCURSED_PP_16_HELPER_COLLAPSE_H1 (for large
+# seqs, via BOOST_PP_SEQ_FOR_EACH) and a size-dispatched chain family
+# UNCURSED_PP_16_HELPER_COLLAPSE_HC2_1 .. HC2_16 (for small seqs, via
+# token pasting). Both TRACE_CALLS and AUDIT_CALLS route through the
+# very same H1/HC2_* definitions — nothing is duplicated per macro
+# (the file stem namespaces them so two generated headers can't
+# collide inside one translation unit).
+#
+# History note: chain families are a regression trap for collapse —
+# each chain entry is picked by size via token pasting, so the
+# collapse pass must move a whole chain family as one unit, never
+# split across the two macros. These specs (deliberately SMALL seqs,
+# so they hit the chain-family path) pin that behavior through the
+# real preprocessor.
+
+macro TRACE_CALLS(fns: seq<token>)
+@for f in fns
+  trace_enter({{f}});
+@end
+end
+
+macro AUDIT_CALLS(fns: seq<token>)
+@for f in fns
+  trace_enter({{f}});
+@end
+end
+
+# Both macros expand through the SAME shared helpers:
+#?  TRACE_CALLS((open_file)(read_file))
+#=>     trace_enter(open_file);
+#=>     trace_enter(read_file);
+
+#?  AUDIT_CALLS((close_file))
+#=>     trace_enter(close_file);
