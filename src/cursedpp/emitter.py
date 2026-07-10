@@ -753,7 +753,16 @@ def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
     return walk(nodes)
 
 
-_LITERAL_RE = re.compile(r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'")
+# One source of truth for C literal tokenization (tests import this too):
+# raw strings (delimiter backreference, content verbatim), then prefixed
+# string/char literals. Prefixes bind only when the quote is adjacent.
+C_LITERAL_PATTERN = (
+    r'(?:u8|[uUL])?R"(?P<_rawd>[^"()\\\s]*)\((?s:.*?)\)(?P=_rawd)"'
+    r'|(?:u8|[uUL])?"(?:\\.|[^"\\])*"'
+    r"|(?:u8|[uUL])?'(?:\\.|[^'\\])*'"
+)
+
+_LITERAL_RE = re.compile(C_LITERAL_PATTERN)
 
 
 def _collapse_ws(text: str) -> str:

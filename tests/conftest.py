@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from cursedpp.emitter import compile_template
+from cursedpp.emitter import C_LITERAL_PATTERN, compile_template
 
 GOLDEN = Path(__file__).parent / "golden"
 
@@ -46,11 +46,10 @@ requires_boost = pytest.mark.skipif(
 
 
 _C_TOKEN = re.compile(
-    r"\"(?:\\.|[^\"\\])*\""  # string literal (escapes intact)
-    r"|'(?:\\.|[^'\\])*'"      # char literal
-    r"|[A-Za-z_]\w*"              # identifier
-    r"|\d[\w.]*"                 # number
-    r"|\S",                       # any punctuation char
+    C_LITERAL_PATTERN      # raw/prefixed string and char literals, verbatim
+    + r"|[A-Za-z_]\w*"     # identifier
+    + r"|\d[\w.]*"        # number
+    + r"|\S",              # any punctuation char
     re.S,
 )
 
@@ -58,9 +57,9 @@ _C_TOKEN = re.compile(
 def canon(text: str) -> str:
     """Token-exact canonical form: whitespace BETWEEN C tokens is
     insignificant and normalized away, but string/char literal interiors
-    are preserved verbatim - two expansions compare equal iff their token
-    streams are identical."""
-    return " ".join(_C_TOKEN.findall(text))
+    (including C++ raw strings) are preserved verbatim - two expansions
+    compare equal iff their token streams are identical."""
+    return " ".join(m.group(0) for m in _C_TOKEN.finditer(text))
 
 
 def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> str:

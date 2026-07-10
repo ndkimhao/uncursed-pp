@@ -140,3 +140,13 @@ def test_string_literal_whitespace_survives_emission():
     out = compile_source(src, "t.cursed")
     # check the #define itself, not the embedded source comment
     assert '#define P(x) printf("  a  b", x);' in out
+
+
+def test_raw_string_interior_survives_emission():
+    src = 'macro R1(x)\nconst char *s = R"(a " {{x}}  b " c)";\nend\n'
+    out = compile_source(src, "t.cursed")
+    # interior spacing of the raw string (even around embedded quotes)
+    # must reach the #define untouched
+    assert 'R"(a " x  b " c)"' in out.split("/* cursedpp source:")[0] or (
+        'R"(a " ' in out and '  b " c)"' in out.rsplit("*/", 1)[-1]
+    )
