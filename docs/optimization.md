@@ -117,11 +117,39 @@ Cumulative on the same benchmark TU (`widget.h`, 2000 invocations):
 | `UNPACK` via `KW_SPREAD` as a standalone fix | 1.17–1.24x against the then-current fold — below bar; subsumed when the fold was deleted outright |
 | Inlining `OVERLOAD`'s body or its alias chain | ~1.2x — the 65-slot scan is the cost, not the expansion hops; and inlining aliases breaks `#param` stringize in defaulted bodies |
 
+### Round 3 — chain iteration (retires most of the "inherent" loop cost)
+
+The `SEQ_ENUM` finding generalized: for loops **without free outer
+variables**, cursedpp generates SEQ_ENUM-style consumption chains with the
+body inlined — each member emits the body for one element plus the next
+member's name, which eats the following `(elem)` by juxtaposition
+(~2 expansions/element; separators baked between members, no `COMMA_IF`):
+
+| Measurement (8-elem seqs x 3000 calls) | alloc | gain |
+|---|---|---|
+| `SEQ_FOR_EACH` + AP (previous best) | 865M | — |
+| bare chain (hard cap) | 24M | 36x |
+| chain + `DEC^16` guard | 75M | 11.5x (guard cost 3x the chain!) |
+| **chain + runtime size-class table** (shipped) | **34M** | **25x** |
+| above the cap (fallback, 40 elems) | +0.5% | token-identical |
+
+Design: K=16 chain members per loop (dedupe across loops via collapse), a
+256-entry `LE16_<n>` 0/1 table in the shared runtime header making the
+small/large pick one `CAT`+`IIF`, `SEQ_FOR_EACH` fallback above K (no new
+call-site limits). `@pragma loop_chain off` opts out; `@pragma
+loop_chain_limit K` tunes (non-default K emits a local `LE<K>` table).
+Free-variable loops are excluded structurally: chain members are top-level
+defines and cannot see outer macro parameters — they keep the FOR path.
+Prototype postmortem: the first chain sketch had a real mechanism bug (a seq
+element's parens become the call parens, so members receive the tuple as one
+argument and unpack via AP) — caught by the token-identity requirement.
+
 ## Explicitly accepted costs
 
-- `SEQ_FOR_EACH` / `REPEAT` iteration machinery itself: inherent to targeting
-  Boost.PP; a trivial-body 200-element loop costs ~22M allocs per call no
-  matter the body. Out of scope by design.
+- `SEQ_FOR_EACH` / `REPEAT` iteration machinery for loops that **reference
+  outer parameters** (chain members can't see them) and for **nested** loops;
+  a trivial-body 200-element loop costs ~22M allocs per call there. For
+  free-variable-free loops this cost is retired by Round 3's chains.
 - Boost.PP magnitude limits: seqs ≤ 256 elements, comparisons/`len()`
   operands 0–256, kwarg count ≤ 64 (documented call-site rules).
 - Per-arity/per-slot generated defines trade header size for expansion count.

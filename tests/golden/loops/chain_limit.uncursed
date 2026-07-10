@@ -1,0 +1,21 @@
+# loop_chain_limit tuning: chains cover seqs up to K elements; larger
+# seqs take the SEQ_FOR_EACH fallback. K=4 here so the specs can cross
+# the boundary cheaply. A non-default K also emits a local LE4 size table.
+@pragma loop_chain_limit 4
+
+macro FIELDS4(fields: seq<tuple<t, n>>)
+@for (t, n) in fields
+  {{t}} {{n}};
+@end
+end
+
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
+#?  FIELDS4(((int, a)))
+#=>     int a;
+
+#?  FIELDS4(((int, a))((long, b))((char, c))((short, d)))
+#=>     int a; long b; char c; short d;
+
+# edge: one past the chain cap - the FOR_EACH fallback path
+#?  FIELDS4(((int, a))((long, b))((char, c))((short, d))((float, e)))
+#=>     int a; long b; char c; short d; float e;

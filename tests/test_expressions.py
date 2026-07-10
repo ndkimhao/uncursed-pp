@@ -102,8 +102,9 @@ def test_let_join_renders_one_helper_reused():
         "end\n"
     )
     out = compile_source(src, "t.uncursed")
-    assert out.count("#define UNCURSED_PP_CALL2_EACH1") == 1
-    assert out.count("BOOST_PP_SEQ_FOR_EACH_I(UNCURSED_PP_CALL2_EACH1, ~, args)") == 2
+    assert out.count("#define UNCURSED_PP_CALL2_EACH1") == 1  # one helper family
+    # the @let renders the join once; both use sites reuse the same call
+    assert out.count("UNCURSED_PP_CALL2_PICK1(BOOST_PP_SEQ_SIZE(args))(args)") == 2
 
 
 def test_let_rejects_mixed_inline_and_text():

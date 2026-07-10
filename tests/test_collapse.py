@@ -6,16 +6,19 @@ from conftest import canon, preprocess_src, requires_boost
 from uncursed_pp.emitter import compile_source
 
 TWO_IDENTICAL = (
+    "@pragma loop_chain off\n"
     "macro CALL_A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
     "macro CALL_B(ys: seq<token>)\n@for y in ys\nf({{y}});\n@end\nend\n"
 )
 
 ONE_TOKEN_DIFF = (
+    "@pragma loop_chain off\n"
     "macro DECLARE_INTS(xs: seq<token>)\n@for x in xs\nint {{x}};\n@end\nend\n"
     "macro DECLARE_FLOATS(ys: seq<token>)\n@for y in ys\nfloat {{y}};\n@end\nend\n"
 )
 
 TWO_TOKEN_DIFF = (
+    "@pragma loop_chain off\n"
     "macro A(xs: seq<token>)\n@for x in xs\nint {{x}} = 0;\n@end\nend\n"
     "macro B(ys: seq<token>)\n@for y in ys\nfloat {{y}} = 1;\n@end\nend\n"
 )

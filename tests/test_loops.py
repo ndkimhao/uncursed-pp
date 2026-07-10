@@ -330,3 +330,84 @@ def test_block_join_separator_containing_at_end():
     [macro] = parse_file(src, "t.uncursed").macros
     join = next(n for n in macro.body if isinstance(n, Join))
     assert join.sep == " @end "
+
+# ── chain iteration: SEQ_ENUM-style consumption chains for loops ────
+
+
+def test_tuple_for_loop_compiles_to_chain():
+    src = "macro DECL2(fields: seq<tuple<t, n>>)\n@for (t, n) in fields\n  {{t}} {{n}};\n@end\nend\n"
+    out = compile_source(src, "t.uncursed")
+    # chain members: body inlined, continuation eats the next element
+    assert "#define UNCURSED_PP_DECL2_CH1_1(e) UNCURSED_PP_DECL2_AP1 e\n" in out
+    assert "#define UNCURSED_PP_DECL2_CH1_2(e) UNCURSED_PP_DECL2_AP1 e UNCURSED_PP_DECL2_CH1_1\n" in out
+    assert "#define UNCURSED_PP_DECL2_CH1_16(e) UNCURSED_PP_DECL2_AP1 e UNCURSED_PP_DECL2_CH1_15\n" in out
+    # size-class pick: table lookup chooses chain vs FOR_EACH fallback
+    assert (
+        "#define UNCURSED_PP_DECL2_PICK1(n) "
+        "BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_DECL2_SMALL1, UNCURSED_PP_DECL2_BIG1)\n"
+        in out
+    )
+    assert "#define UNCURSED_PP_DECL2_SMALL1(seq) BOOST_PP_CAT(UNCURSED_PP_DECL2_CH1_, BOOST_PP_SEQ_SIZE(seq)) seq\n" in out
+    assert "BOOST_PP_SEQ_FOR_EACH" in out  # BIG fallback still present
+    assert "UNCURSED_PP_DECL2_PICK1(BOOST_PP_SEQ_SIZE(fields))(fields)" in out
+    assert '#include "uncursed_pp_runtime.h"' in out  # LE16 table lives there
+
+
+def test_join_with_separator_chains_and_bakes_sep():
+    src = 'macro CALLS(xs: seq<token>)\n@join xs as x with ", ": g({{x}})@end\nend\n'
+    out = compile_source(src, "t.uncursed")
+    assert "#define UNCURSED_PP_CALLS_CH1_1(e) g(e)\n" in out
+    assert "#define UNCURSED_PP_CALLS_CH1_2(e) g(e), UNCURSED_PP_CALLS_CH1_1\n" in out
+
+
+def test_identity_comma_join_still_prefers_seq_enum():
+    src = 'macro ARGS2(xs: seq<token>)\nf(@join xs as x with ", ": {{x}}@end)\nend\n'
+    out = compile_source(src, "t.uncursed")
+    assert "SEQ_ENUM" in out
+    assert "CH1_" not in out
+
+
+def test_free_var_loop_keeps_for_each():
+    src = "macro TBL2(s, fields: seq<tuple<t, n>>)\n@for (t, n) in fields\noffsetof({{s}}, {{n}});\n@end\nend\n"
+    out = compile_source(src, "t.uncursed")
+    assert "CH1_" not in out
+    assert "BOOST_PP_SEQ_FOR_EACH(" in out
+
+
+def test_pragma_loop_chain_off():
+    src = "@pragma loop_chain off\nmacro D(fields: seq<tuple<t, n>>)\n@for (t, n) in fields\n{{t}} {{n}};\n@end\nend\n"
+    out = compile_source(src, "t.uncursed")
+    assert "CH1_" not in out
+
+
+def test_pragma_loop_chain_limit_emits_local_table():
+    src = "@pragma loop_chain_limit 4\nmacro D(fields: seq<tuple<t, n>>)\n@for (t, n) in fields\n{{t}} {{n}};\n@end\nend\n"
+    out = compile_source(src, "t.uncursed")
+    assert "#define UNCURSED_PP_D_CH1_4(e)" in out
+    assert "UNCURSED_PP_D_CH1_5" not in out
+    # non-default K: the size-class table is emitted locally
+    assert "#define UNCURSED_PP_LE4_4 1\n" in out
+    assert "#define UNCURSED_PP_LE4_5 0\n" in out
+    assert "#define UNCURSED_PP_LE4_256 0\n" in out
+
+
+def test_nested_loop_bodies_keep_existing_machinery():
+    src = (
+        "macro N2(xss: seq<token>, ys: seq<token>)\n"
+        "@for x in xss\n@for y in ys\np({{x}}, {{y}});\n@end\n@end\nend\n"
+    )
+    out = compile_source(src, "t.uncursed")
+    assert "CH1_" not in out
+
+
+@requires_boost
+def test_chain_loop_expands_at_boundary_sizes(tmp_path):
+    src = "macro DECL2(fields: seq<tuple<t, n>>)\n@for (t, n) in fields\n  {{t}} {{n}};\n@end\nend\n"
+    seq16 = "".join(f"((t{i}, f{i}))" for i in range(16))
+    seq17 = "".join(f"((u{i}, g{i}))" for i in range(17))
+    out = preprocess_src(
+        tmp_path, src, "chainb", f"DECL2(((int, x)))\nDECL2({seq16})\nDECL2({seq17})"
+    )
+    assert canon("int x;") in out
+    assert canon("t0 f0;") in out and canon("t15 f15;") in out
+    assert canon("u0 g0;") in out and canon("u16 g16;") in out  # fallback path
