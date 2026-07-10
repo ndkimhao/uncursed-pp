@@ -33,9 +33,13 @@ make typecheck      # mypy --strict
 uv run cursedpp input.cursed -o output.h
 ```
 
-Golden templates in `tests/golden/` are self-testing: `#? INVOCATION => expected`
-comments (one `#?` plus `#=>` lines for multi-part assertions) are discovered by
-the test suite and verified through the real preprocessor.
+Golden templates in `tests/golden/` are self-testing — each carries spec
+comments that the suite discovers and verifies through the real preprocessor:
+
+```text
+#?  MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))
+#=>     struct widget w3 = { 20, 50, BOLD };
+```
 
 Flags (each also settable per file via `@pragma <name> <value>`):
 

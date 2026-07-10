@@ -4,6 +4,16 @@ S{ {{remove_parens(p.a)}} | {{p.b}} }
 end
 
 # ── invocation specs (verified through cc -E by test_integration) ──
-#? PAIR((a, b)) => S{ a | b }
-#? PAIR(((pair<int,int>), b)) => S{ pair<int,int> | b }
-#? PAIR(((a, b), (c, d))) => S{ a, b | (c, d) }
+#?  PAIR((a, b))
+#=>     S{ a | b }
+
+#?  PAIR(((pair<int,int>), b))
+#=>     S{ pair<int,int> | b }
+
+# edge: both elements contain commas; only the wrapped one is unwrapped
+#?  PAIR(((a, b), (c, d)))
+#=>     S{ a, b | (c, d) }
+
+# edge: empty first element
+#?  PAIR((, b))
+#=>     S{ | b }

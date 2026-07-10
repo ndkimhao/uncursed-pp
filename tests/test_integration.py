@@ -1,11 +1,12 @@
 """End-to-end tests: generated headers run through the real C preprocessor.
 
-Golden .cursed files carry their own invocation specs as comments:
+Golden .cursed files carry their own invocation specs as comments — the
+invocation and its expectations always sit on separate, visually distinct
+lines:
 
-    #? MACRO(args) => expected expansion
-    #? MACRO(args)          # multi-assert form
-    #=> expected fragment
-    #=> another expected fragment
+    #?  MACRO(args)
+    #=>     expected fragment
+    #=>     another expected fragment
 
 Every spec compiles the template, invokes the macro from a C snippet,
 runs `cc -E -P`, and asserts each expected fragment appears (whitespace-
@@ -74,12 +75,12 @@ def parse_specs(text: str) -> list[tuple[str, list[str]]]:
     for line in text.splitlines():
         stripped = line.strip()
         if stripped.startswith("#?"):
-            body = stripped[2:].strip()
-            if "=>" in body:
-                invocation, expected = body.split("=>", 1)
-                cases.append((invocation.strip(), [expected.strip()]))
-            else:
-                cases.append((body, []))
+            invocation = stripped[2:].strip()
+            if "=>" in invocation:
+                raise ValueError(
+                    f"put the expectation on its own '#=>' line: {stripped!r}"
+                )
+            cases.append((invocation, []))
         elif stripped.startswith("#=>"):
             if not cases:
                 raise ValueError("#=> before any #? line")

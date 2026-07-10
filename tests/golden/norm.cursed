@@ -4,5 +4,12 @@ macro NORM(x)
 end
 
 # ── invocation specs (verified through cc -E by test_integration) ──
-#? NORM(q) => q
-#? NORM((a, b)) => a, b
+#?  NORM(q)
+#=>     q
+
+#?  NORM((a, b))
+#=>     a, b
+
+# edge: single-element parens still count as parenthesized
+#?  NORM((a))
+#=>     a

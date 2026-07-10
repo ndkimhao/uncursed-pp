@@ -7,5 +7,12 @@ macro GETTER(field: tuple<type, name>)
 end
 
 # ── invocation specs (verified through cc -E by test_integration) ──
-#? GETTER((int, age)) => int get_age(const struct self *s) { return s->age; }
-#? GETTER((char *, name)) => char * get_name(const struct self *s) { return s->name; }
+#?  GETTER((int, age))
+#=>     int get_age(const struct self *s) { return s->age; }
+
+#?  GETTER((char *, name))
+#=>     char * get_name(const struct self *s) { return s->name; }
+
+# edge: identifier with digits/underscores pastes cleanly
+#?  GETTER((unsigned long, x2_raw))
+#=>     unsigned long get_x2_raw(const struct self *s) { return s->x2_raw; }

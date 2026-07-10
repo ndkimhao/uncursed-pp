@@ -6,6 +6,16 @@ macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
 end
 
 # ── invocation specs (verified through cc -E by test_integration) ──
-#? DECLARE_FIELDS(((int, x))) => int x;
-#? DECLARE_FIELDS(((int, x))((float, y))((char *, name))) => int x; float y; char * name;
-#? DECLARE_FIELDS(((struct foo *, p))) => struct foo * p;
+#?  DECLARE_FIELDS(((int, x)))
+#=>     int x;
+
+#?  DECLARE_FIELDS(((int, x))((float, y))((char *, name)))
+#=>     int x; float y; char * name;
+
+# edge: multi-token type
+#?  DECLARE_FIELDS(((struct foo *, p)))
+#=>     struct foo * p;
+
+# edge: commas inside nested parens stay inside their tuple element
+#?  DECLARE_FIELDS(((void (*)(int, int), cb)))
+#=>     void (*)(int, int) cb;

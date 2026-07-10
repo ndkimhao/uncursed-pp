@@ -8,6 +8,11 @@ macro CTOR(name, args: seq<tuple<type, argname>>)
 end
 
 # ── invocation specs (verified through cc -E by test_integration) ──
-#? CTOR(w, ((int, x))) => explicit_single_arg_init(w)
-#? CTOR(w, ((int, x))((int, y))) => w_init(x, y)
-#? CTOR(w, ((int, x))((int, y))((int, z))) => w_init(x, y, z)
+#?  CTOR(w, ((int, x)))
+#=>     explicit_single_arg_init(w)
+
+#?  CTOR(w, ((int, x))((int, y)))
+#=>     w_init(x, y)
+
+#?  CTOR(w, ((int, x))((int, y))((int, z)))
+#=>     w_init(x, y, z)

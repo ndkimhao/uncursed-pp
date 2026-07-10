@@ -5,6 +5,19 @@ fprintf({{out}}, "[" #{{level}} "] %s\n", {{msg}});
 end
 
 # ── invocation specs (verified through cc -E by test_integration) ──
-#? LOG(m) => fprintf(stderr, "[" "INFO" "] %s\n", m);
-#? LOG(m, WARN) => fprintf(stderr, "[" "WARN" "] %s\n", m);
-#? LOG(m, WARN, stdout) => fprintf(stdout, "[" "WARN" "] %s\n", m);
+#?  LOG(m)
+#=>     fprintf(stderr, "[" "INFO" "] %s\n", m);
+
+#?  LOG(m, WARN)
+#=>     fprintf(stderr, "[" "WARN" "] %s\n", m);
+
+#?  LOG(m, WARN, stdout)
+#=>     fprintf(stdout, "[" "WARN" "] %s\n", m);
+
+# edge: parenthesized comma-containing message counts as ONE argument
+#?  LOG((a, b))
+#=>     fprintf(stderr, "[" "INFO" "] %s\n", (a, b));
+
+# edge: string-literal argument passes through
+#?  LOG("hi there", ERROR)
+#=>     fprintf(stderr, "[" "ERROR" "] %s\n", "hi there");

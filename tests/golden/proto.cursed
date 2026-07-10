@@ -4,5 +4,12 @@ void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
 end
 
 # ── invocation specs (verified through cc -E by test_integration) ──
-#? PROTO(init, ((int, only))) => void init(int only);
-#? PROTO(draw, ((struct ctx *, ctx))((int, flags))((char *, label))) => void draw(struct ctx * ctx, int flags, char * label);
+#?  PROTO(init, ((int, only)))
+#=>     void init(int only);
+
+#?  PROTO(draw, ((struct ctx *, ctx))((int, flags))((char *, label)))
+#=>     void draw(struct ctx * ctx, int flags, char * label);
+
+# edge: function-pointer parameter type (nested parens + comma)
+#?  PROTO(on_event, ((void (*)(int, void *), handler)))
+#=>     void on_event(void (*)(int, void *) handler);
