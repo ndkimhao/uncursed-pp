@@ -62,6 +62,18 @@ def canon(text: str) -> str:
     return " ".join(m.group(0) for m in _C_TOKEN.finditer(text))
 
 
+def run_cpp(c_file: Path, *extra_flags: str) -> str:
+    """Preprocess a C file; failures surface the compiler's stderr instead
+    of an opaque CalledProcessError."""
+    cmd = [CC, "-E", "-P", *BOOST_FLAGS, *extra_flags, str(c_file)]
+    run = subprocess.run(cmd, capture_output=True, text=True)
+    if run.returncode != 0:
+        raise AssertionError(
+            f"preprocessing failed: {' '.join(cmd)}\n--- compiler stderr ---\n{run.stderr}"
+        )
+    return run.stdout
+
+
 def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> str:
     """Compile a template, include it from a snippet, run cc -E -P."""
     header = tmp_path / f"{stem}.h"
@@ -71,13 +83,7 @@ def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> s
         (tmp_path / result.runtime_name).write_text(result.runtime)
     snippet = tmp_path / "main.c"
     snippet.write_text(f'#include "{header.name}"\n{invocation}\n')
-    run = subprocess.run(
-        [CC, "-E", "-P", *BOOST_FLAGS, str(snippet)],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return canon(run.stdout)
+    return canon(run_cpp(snippet))
 
 
 def golden_templates() -> list[Path]:

@@ -145,9 +145,7 @@ def test_runtime_name_pragma():
 def test_pp_include_dir_e2e_through_gcc(tmp_path):
     """A rebased include root actually resolves and expands: symlink
     tmp/acme_pp -> the real boost/preprocessor and preprocess."""
-    import subprocess
-
-    from conftest import BOOST_FLAGS, CC, canon, requires_boost
+    from conftest import BOOST_FLAGS, CC, canon, run_cpp
 
     if not (CC and BOOST_FLAGS):
         pytest.skip("needs cc and the vendored boost")
@@ -162,10 +160,7 @@ def test_pp_include_dir_e2e_through_gcc(tmp_path):
     assert "#include <acme_pp/seq/for_each.hpp>" in header
     (tmp_path / "d.h").write_text(header)
     (tmp_path / "main.c").write_text('#include "d.h"\nD((a)(b))\n')
-    run = subprocess.run(
-        [CC, "-E", "-P", "-I", str(tmp_path), str(tmp_path / "main.c")],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    assert canon("f(a); f(b);") in canon(run.stdout)
+    # the boost root stays on the include path: the rebased headers still
+    # resolve their own nested <boost/preprocessor/...> includes through it
+    out = run_cpp(tmp_path / "main.c", "-I", str(tmp_path))
+    assert canon("f(a); f(b);") in canon(out)
