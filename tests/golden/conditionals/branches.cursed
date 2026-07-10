@@ -1,0 +1,30 @@
+# Branch helpers receive the union of both branches' free variables;
+# branch bodies may contain commas safely (each lives in its own helper).
+macro REPORT(a, b, xs: seq<token>)
+@if len(xs) == 1
+one({{a}})
+@else
+many({{b}}, {{len(xs)}})
+@end
+end
+
+# Line-form @if nested in a @for: branch per element.
+macro EMIT(xs: seq<tuple<kind, val>>)
+@for (kind, val) in xs
+@if kind == 1
+one({{val}});
+@else
+other({{kind}}, {{val}});
+@end
+@end
+end
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  REPORT(p, q, (x))
+#=>     one(p)
+
+#?  REPORT(p, q, (x)(y))
+#=>     many(q, 2)
+
+#?  EMIT(((1, a))((2, b))((1, c)))
+#=>     one(a); other(2, b); one(c);

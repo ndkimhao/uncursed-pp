@@ -1,0 +1,24 @@
+# Explicit pasting and stringizing of computed tokens; @let chains.
+macro NAME_OF(x)
+{{stringize(concat(pre_, x))}}
+end
+
+macro TRIPLE(a)
+{{concat(pre_, a, _post)}}
+end
+
+macro CHAIN(base)
+@let a := concat(base, _mid)
+@let b := concat(a, _end)
+{{b}}
+end
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  NAME_OF(foo)
+#=>     "pre_foo"
+
+#?  TRIPLE(x)
+#=>     pre_x_post
+
+#?  CHAIN(v)
+#=>     v_mid_end

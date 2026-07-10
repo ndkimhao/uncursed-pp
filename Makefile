@@ -1,22 +1,30 @@
 MISE := mise exec --
+BOOST_PP_DIR := .boost-pp
 
-.PHONY: setup check test test-unit test-integration typecheck example clean
+.PHONY: setup check test test-unit test-integration typecheck example clean boost-pp
 
 check: typecheck test
 
-setup:
+setup: boost-pp
 	mise trust --quiet || true
 	mise install
 	$(MISE) uv sync
 
-test:
+# Vendored Boost.Preprocessor (header-only) so tests never depend on a
+# system boost. Shallow clone; gitignored.
+boost-pp: $(BOOST_PP_DIR)
+
+$(BOOST_PP_DIR):
+	git clone --depth 1 https://github.com/boostorg/preprocessor.git $(BOOST_PP_DIR)
+
+test: boost-pp
 	$(MISE) uv run pytest
 
 test-unit:
-	$(MISE) uv run pytest --ignore=tests/test_integration.py
+	$(MISE) uv run pytest --ignore=tests/test_e2e_specs.py
 
-test-integration:
-	$(MISE) uv run pytest tests/test_integration.py
+test-integration: boost-pp
+	$(MISE) uv run pytest tests/test_e2e_specs.py
 
 typecheck:
 	$(MISE) uv run mypy

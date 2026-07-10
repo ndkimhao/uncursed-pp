@@ -1,0 +1,31 @@
+# @let may capture an inline @join or @if; the rendered helper is reused
+# at every use site. @let inside a loop body binds per element.
+macro CALL2(fn, args: seq<tuple<type, argname>>)
+@let joined := @join args with ", ": {{argname}}@end
+{{fn}}({{joined}}, {{joined}})
+end
+
+macro PICK(x)
+@let norm := @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end
+g({{norm}})
+end
+
+macro PAIRS(xs: seq<token>)
+@for x in xs
+@let id := concat(x, _id)
+int {{id}} = sizeof({{id}});
+@end
+end
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  CALL2(f, ((int, a))((int, b)))
+#=>     f(a, b, a, b)
+
+#?  PICK((a, b))
+#=>     g(a, b)
+
+#?  PICK(q)
+#=>     g(q)
+
+#?  PAIRS((a)(b))
+#=>     int a_id = sizeof(a_id); int b_id = sizeof(b_id);

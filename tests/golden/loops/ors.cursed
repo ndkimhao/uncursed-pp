@@ -1,0 +1,13 @@
+# Non-comma separator: the separator text lives in its own SEP helper.
+macro ORS(xs: seq<token>)
+@join xs as x with " || "
+({{x}})
+@end
+end
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  ORS((a)(b)(c))
+#=>     (a) || (b) || (c)
+
+#?  ORS((only))
+#=>     (only)

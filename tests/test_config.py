@@ -1,0 +1,141 @@
+"""Configuration: pragmas, prefixes, includes, and the runtime header."""
+
+from pathlib import Path
+
+import pytest
+
+from conftest import GOLDEN
+from cursedpp.emitter import EmitConfig, compile_source, compile_template, runtime_header
+from cursedpp.parser import CursedppError, parse_file
+
+
+def test_parse_pragmas():
+    src = (
+        "@pragma pp_prefix MYLIB_PP_\n"
+        '@pragma pp_include "mylib/preprocessor.hpp"\n'
+        "macro ID(x)\n{{x}}\nend\n"
+    )
+    file = parse_file(src, "t.cursed")
+    assert file.pragmas == {
+        "pp_prefix": "MYLIB_PP_",
+        "pp_include": "mylib/preprocessor.hpp",
+    }
+
+
+def test_unknown_pragma_is_error():
+    with pytest.raises(CursedppError) as excinfo:
+        parse_file("@pragma nonsense abc\nmacro ID(x)\n{{x}}\nend\n", "t.cursed")
+    assert "t.cursed:1" in str(excinfo.value)
+
+
+def test_pragma_pp_prefix_and_include():
+    src = (
+        "@pragma pp_prefix MYLIB_PP_\n"
+        '@pragma pp_include "mylib/preprocessor.hpp"\n'
+        "macro DECL(fields: seq<tuple<type, name>>)\n"
+        "@for (type, name) in fields\n"
+        "  {{type}} {{name}};\n"
+        "@end\n"
+        "end\n"
+    )
+    out = compile_source(src, "t.cursed")
+    assert "#include <mylib/preprocessor.hpp>" in out
+    assert "MYLIB_PP_SEQ_FOR_EACH" in out
+    assert "MYLIB_PP_TUPLE_ELEM" in out
+    assert "BOOST_PP_" not in out
+
+
+def test_pragma_helper_prefix():
+    src = "@pragma helper_prefix VENDORED_\nmacro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define VENDORED_D_EACH1(r, d, e) f(e);" in out
+    assert "CURSEDPP_" not in out
+
+
+def test_custom_pp_prefix_requires_include():
+    with pytest.raises(CursedppError) as excinfo:
+        compile_source("@pragma pp_prefix MYPP_\nmacro ID(x)\n{{x}}\nend\n", "t.cursed")
+    assert "pp_include" in str(excinfo.value)
+
+
+def test_custom_pp_prefix_ok_with_custom_include_dir():
+    src = "@pragma pp_prefix MYPP_\n@pragma pp_include_dir vendored/pp\nmacro ID(x)\n{{x}}\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "MYPP_" not in out  # plain macro uses no primitives; compiles fine
+
+
+def test_extra_includes_via_config():
+    out = compile_source(
+        "macro ID(x)\n{{x}}\nend\n",
+        "t.cursed",
+        config=EmitConfig(extra_includes=("myproj/types.h", "<stdio.h>")),
+    )
+    assert '#include "myproj/types.h"\n' in out
+    assert "#include <stdio.h>\n" in out
+
+
+def test_extra_includes_via_pragma_repeatable_ordered():
+    src = (
+        '@pragma include "first.h"\n'
+        "@pragma include <second.h>\n"
+        "macro ID(x)\n{{x}}\nend\n"
+    )
+    out = compile_source(src, "t.cursed")
+    assert out.index('#include "first.h"') < out.index("#include <second.h>")
+
+
+def test_pp_include_dir_rewrites_granular_includes():
+    src = "macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+    out = compile_source(src, "t.cursed", config=EmitConfig(pp_include_dir="boost_foo/preprocessor"))
+    assert "#include <boost_foo/preprocessor/seq/for_each.hpp>" in out
+    assert "boost/preprocessor/" not in out
+
+
+def test_pp_include_dir_applies_to_runtime():
+    rt = runtime_header(EmitConfig(pp_include_dir="boost_foo/preprocessor"))
+    assert "#include <boost_foo/preprocessor/tuple/replace.hpp>" in rt
+
+
+WIDGET_SRC = (
+    "macro W(name, named WIDTH = 100)\n"
+    "struct widget {{name}} = { {{WIDTH}} };\n"
+    "end\n"
+)
+
+
+def test_runtime_header_matches_golden():
+    golden = GOLDEN / "cursedpp_runtime.h"
+    assert runtime_header(EmitConfig()) == golden.read_text()
+
+
+def test_runtime_header_contents():
+    rt = runtime_header(EmitConfig())
+    assert "#pragma once" in rt
+    assert "#include <boost/preprocessor/tuple/replace.hpp>" in rt
+    assert "#define CURSEDPP_KW_PUT(state, ...) CURSEDPP_KW_PUT_I(state, __VA_ARGS__)" in rt
+    assert "#define CURSEDPP_KW_PUT_I(state, i, v) BOOST_PP_TUPLE_REPLACE(state, i, v)" in rt
+    assert "shared by all cursedpp-generated headers" in rt
+
+
+def test_compile_template_reports_runtime_dependency():
+    result = compile_template(WIDGET_SRC, "w.cursed")
+    assert result.runtime is not None
+    assert result.runtime_name == "cursedpp_runtime.h"
+
+    plain = compile_template("macro ID(x)\n{{x}}\nend\n", "id.cursed")
+    assert plain.runtime is None
+
+
+def test_runtime_name_customizable():
+    result = compile_template(
+        WIDGET_SRC, "w.cursed", config=EmitConfig(runtime_name="acme_common.h")
+    )
+    assert result.runtime_name == "acme_common.h"
+    assert '#include "acme_common.h"' in result.header
+
+
+def test_runtime_name_pragma():
+    src = '@pragma runtime_name "acme_common.h"\n' + WIDGET_SRC
+    result = compile_template(src, "w.cursed")
+    assert result.runtime_name == "acme_common.h"
+    assert '#include "acme_common.h"' in result.header

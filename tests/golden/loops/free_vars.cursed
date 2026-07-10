@@ -1,0 +1,30 @@
+# Outer params referenced inside a loop ride FOR_EACH's spare d slot:
+# one free var travels as d itself, several as a tuple in d, and the
+# iterable itself may be referenced too (e.g. via len()).
+macro TAG(prefix, xs: seq<token>)
+@for x in xs
+{{prefix}}({{x}});
+@end
+end
+
+macro BOTH(a, b, xs: seq<token>)
+@for x in xs
+g({{a}}, {{b}}, {{x}});
+@end
+end
+
+macro COUNTED(xs: seq<token>)
+@for x in xs
+h({{x}}, {{len(xs)}});
+@end
+end
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  TAG(dbg, (a)(b))
+#=>     dbg(a); dbg(b);
+
+#?  BOTH(p, q, (x)(y))
+#=>     g(p, q, x); g(p, q, y);
+
+#?  COUNTED((a)(b)(c))
+#=>     h(a, 3); h(b, 3); h(c, 3);

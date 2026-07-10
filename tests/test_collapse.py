@@ -2,6 +2,7 @@
 parameterize through FOR_EACH's spare `d` argument; anything fancier stays
 unmerged (generated-code simplicity wins)."""
 
+from conftest import canon, preprocess_src, requires_boost
 from cursedpp.emitter import compile_source
 
 TWO_IDENTICAL = (
@@ -48,3 +49,12 @@ def test_single_user_keeps_macro_specific_name():
     out = compile_source(src, "t.cursed")
     assert "CURSEDPP_ONLY_EACH1" in out
     assert "CURSEDPP_H1" not in out
+
+
+@requires_boost
+def test_collapsed_shared_helper_expands_correctly(tmp_path):
+    out = preprocess_src(
+        tmp_path, ONE_TOKEN_DIFF, "coll", "DECLARE_INTS((a)(b))\nDECLARE_FLOATS((u)(v))"
+    )
+    assert canon("int a; int b;") in out
+    assert canon("float u; float v;") in out

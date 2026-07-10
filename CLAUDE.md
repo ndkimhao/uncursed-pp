@@ -6,9 +6,9 @@ at C compile time via Boost.PP primitives.
 
 ## Commands
 
-- `mise install && uv sync` — set up toolchain and env
-- `uv run pytest` — run all tests (integration tests need `boost/preprocessor.hpp`; they auto-skip without it)
-- `uv run pytest tests/test_emitter.py -k golden` — golden-file emitter tests
+- `make setup` — toolchain (mise), env (uv), vendored Boost.PP (git clone into `.boost-pp/`)
+- `make check` — mypy --strict + full pytest (e2e specs run against the vendored boost)
+- `uv run pytest tests/test_golden.py` — exact golden-header comparison
 - `uv run cursedpp input.cursed -o output.h` — compile a template
 
 ## Architecture
@@ -26,9 +26,15 @@ consult it before changing DSL syntax or codegen.
 
 - TDD: every feature lands with a failing test first; golden files in `tests/golden/`
   are updated deliberately, never regenerated blindly.
-- Golden templates carry their own e2e specs as comments — one `#? INVOCATION`
-  line followed by `#=> expected` line(s), always on separate lines;
-  `test_integration.py` discovers them and verifies each through `cc -E`.
+- Tests are organized one file per feature (`tests/test_loops.py`,
+  `test_conditionals.py`, `test_expressions.py`, `test_defaults.py`,
+  `test_named_args.py`, `test_variadic.py`, `test_config.py`, ...); they hold
+  AST and error-path checks only. Codegen shape belongs in golden headers,
+  runtime behavior in specs — avoid string-matching generated code in Python.
+- Goldens live in category dirs (`tests/golden/{basics,loops,conditionals,
+  expressions,args,variadic,compose}/`), discovered recursively. Each
+  template carries e2e specs as comments — one `#? INVOCATION` line followed
+  by `#=> expected` line(s); `test_e2e_specs.py` runs each through `cc -E`.
   New goldens must include specs — `test_every_golden_template_has_specs`
   enforces it.
 - Generated helpers are namespaced `CURSEDPP_<MACRO>_*` (shared collapsed helpers:

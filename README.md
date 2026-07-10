@@ -26,8 +26,8 @@ DECLARE_FIELDS(((int, x))((float, y)))   /* → int x; float y; */
 ## Install & use
 
 ```sh
-make setup          # mise install + uv sync
-make test           # pytest incl. real `gcc -E` integration tests
+make setup          # mise install + uv sync + vendored Boost.PP clone
+make test           # pytest incl. real `gcc -E` e2e specs (vendored boost)
 make typecheck      # mypy --strict
 
 uv run cursedpp input.cursed -o output.h
