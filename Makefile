@@ -32,8 +32,9 @@ typecheck:
 
 # Run the standalone spec checker over every template - exercises the
 # real CLI end to end (pytest covers the same specs through the API).
+# CHECK_CC overrides the compiler, e.g. `make speccheck CHECK_CC=clang-19`
 speccheck: boost-pp
-	$(MISE) uv run uncursed-pp-check tests/golden examples -- -I $(BOOST_PP_DIR)/include
+	$(MISE) uv run uncursed-pp-check tests/golden examples $(if $(CHECK_CC),--cc $(CHECK_CC)) -- -I $(BOOST_PP_DIR)/include
 
 # Smoke the uncursed-pp-eval CLI: invoke + --update-specs, each with
 # and without --format (needs clang-format for the format legs).
