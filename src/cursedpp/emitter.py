@@ -52,6 +52,7 @@ _PP_HEADERS = {
     "SEQ_FOR_EACH_I": "seq/for_each_i.hpp",
     "SEQ_ELEM": "seq/elem.hpp",
     "SEQ_SIZE": "seq/size.hpp",
+    "SEQ_ENUM": "seq/enum.hpp",
     "SEQ_FOLD_LEFT": "seq/fold_left.hpp",
     "TUPLE_ELEM": "tuple/elem.hpp",
     "STRINGIZE": "stringize.hpp",
@@ -699,6 +700,10 @@ class _MacroEmitter:
             return self._render_inner_loop(join, env, seq_expr, elem_type, sep=join.sep.strip())
         body, data = self._loop_body(join, env, elem_type)
         sep = join.sep.strip()
+        if sep == "," and body == "e" and data == "~":
+            # identity comma join: SEQ_ENUM is table-driven, ~50-140x cheaper
+            # than the FOR-based SEQ_FOR_EACH_I + COMMA_IF machinery
+            return f"{self.pp('SEQ_ENUM')}({seq_expr})"
         if sep == ",":
             each_body = f"{self.pp('COMMA_IF')}(i) {body}"
         else:

@@ -273,3 +273,39 @@ def test_ap_loop_with_conditional_expands(tmp_path):
     )
     out = preprocess_src(tmp_path, src, "p", "P((((a, b), x))((int, y)))")
     assert canon("a, b x; int y;") in out
+
+
+# ── identity comma joins compile to table-driven SEQ_ENUM ───────────
+
+
+def test_identity_comma_join_uses_seq_enum():
+    src = 'macro ARGS(xs: seq<token>)\nf(@join xs as x with ", ": {{x}}@end)\nend\n'
+    out = compile_source(src, "t.cursed")
+    assert "#define ARGS(xs) f(BOOST_PP_SEQ_ENUM(xs))\n" in out
+    assert "SEQ_FOR_EACH_I" not in out
+    assert "#include <boost/preprocessor/seq/enum.hpp>" in out
+
+
+def test_non_identity_comma_join_keeps_for_each_i():
+    src = 'macro W(xs: seq<token>)\nf(@join xs as x with ", ": g({{x}})@end)\nend\n'
+    out = compile_source(src, "t.cursed")
+    assert "SEQ_FOR_EACH_I" in out
+    assert "SEQ_ENUM" not in out
+
+
+def test_join_with_free_var_keeps_for_each_i():
+    src = 'macro W2(p, xs: seq<token>)\nf(@join xs as x with ", ": {{x}}@end, {{p}})\nend\n'
+    out = compile_source(src, "t.cursed")
+    # body is identity but ensure the gate checks data==~ too (p unused in
+    # body, so this one may still ENUM - the REAL free-var case:)
+    src2 = 'macro W3(p, xs: seq<token>)\nf(@join xs as x with ", ": {{x}}{{p}}@end)\nend\n'
+    out2 = compile_source(src2, "t.cursed")
+    assert "SEQ_ENUM" not in out2
+
+
+@requires_boost
+def test_seq_enum_join_expands(tmp_path):
+    src = 'macro ARGS(xs: seq<token>)\nf(@join xs as x with ", ": {{x}}@end)\nend\n'
+    out = preprocess_src(tmp_path, src, "enumj", "ARGS((a)(b)(c))\nARGS((only))")
+    assert canon("f(a, b, c)") in out
+    assert canon("f(only)") in out

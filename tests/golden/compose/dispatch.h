@@ -4,9 +4,8 @@
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/comparison/equal.hpp>
 #include <boost/preprocessor/control/iif.hpp>
-#include <boost/preprocessor/punctuation/comma_if.hpp>
 #include <boost/preprocessor/seq/elem.hpp>
-#include <boost/preprocessor/seq/for_each_i.hpp>
+#include <boost/preprocessor/seq/enum.hpp>
 #include <boost/preprocessor/seq/size.hpp>
 
 /* cursedpp source:
@@ -21,6 +20,5 @@
  * end
  */
 #define CURSEDPP_DISPATCH_THEN1(fn, args) BOOST_PP_CAT(fn, _1)(BOOST_PP_SEQ_ELEM(0, args))
-#define CURSEDPP_DISPATCH_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) e
-#define CURSEDPP_DISPATCH_ELSE1(fn, args) BOOST_PP_CAT(fn, _n)(BOOST_PP_SEQ_SIZE(args), BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_DISPATCH_EACH1, ~, args))
+#define CURSEDPP_DISPATCH_ELSE1(fn, args) BOOST_PP_CAT(fn, _n)(BOOST_PP_SEQ_SIZE(args), BOOST_PP_SEQ_ENUM(args))
 #define DISPATCH(fn, args) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(args), 1), CURSEDPP_DISPATCH_THEN1, CURSEDPP_DISPATCH_ELSE1)(fn, args)
