@@ -159,9 +159,11 @@ def test_pp_include_dir_e2e_through_gcc(tmp_path):
         "@pragma pp_include_dir acme_pp\n"
         "macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
     )
-    header = compile_source(src, "d.uncursed")
-    assert "#include <acme_pp/seq/for_each.hpp>" in header
-    (tmp_path / "d.h").write_text(header)
+    result = compile_template(src, "d.uncursed")
+    assert "#include <acme_pp/seq/for_each.hpp>" in result.header
+    (tmp_path / "d.h").write_text(result.header)
+    if result.runtime is not None:  # chains pull the shared runtime
+        (tmp_path / result.runtime_name).write_text(result.runtime)
     (tmp_path / "main.c").write_text('#include "d.h"\nD((a)(b))\n')
     # the boost root stays on the include path: the rebased headers still
     # resolve their own nested <boost/preprocessor/...> includes through it
