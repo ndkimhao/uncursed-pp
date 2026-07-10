@@ -232,3 +232,13 @@ def test_runtime_include_path_resolves_e2e(tmp_path):
     snippet = tmp_path / "main.c"
     snippet.write_text('#include "w.h"\nSP((int, x))\n')
     assert canon(run_cpp(snippet)) == canon("int x")
+
+
+def test_readme_documents_every_pragma():
+    """The README's pragma table must cover everything the parser accepts."""
+    from uncursed_pp.parser import _KNOWN_PRAGMAS
+
+    readme = (Path(__file__).parent.parent / "README.md").read_text()
+    table = readme.split("| Pragma |", 1)[1].split("```", 1)[0]
+    missing = [p for p in sorted(_KNOWN_PRAGMAS) if f"`{p}`" not in table]
+    assert not missing, f"pragmas absent from README table: {missing}"

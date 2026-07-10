@@ -66,6 +66,8 @@ takes only the input path and `-o`:
 | `runtime_name` | `<helper_prefix>_runtime.h` | filename the shared runtime header is written to |
 | `runtime_include` | `"<runtime_name>"` | the `#include` text generated headers use for it — any path, `"..."` or `<...>` |
 | `include` | — | extra `#include` for the generated header (repeatable) |
+| `loop_chain` | `on` | fast chain codegen for loops (`off` = plain `SEQ_FOR_EACH`, shorter headers) |
+| `loop_chain_limit` | `16` | max seq length served by the chain (longer falls back); `256` covers everything and drops the fallback |
 
 ```text
 @pragma pp_prefix  MYLIB_PP_
