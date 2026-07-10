@@ -9,7 +9,10 @@ You describe a macro like a web render template; uncursed-pp emits the cursed
 **C compile time** — call sites pass real variable-length data.
 
 ```text
-@macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
+# demo only: skip the (faster, but longer) loop-chain codegen
+@pragma loop_chain off
+
+@macro DECLARE_FIELDS(fields: variadic<tuple<type, name>>)
 @for (type, name) in fields
   {{type}} {{name}};
 @end
@@ -17,18 +20,18 @@ You describe a macro like a web render template; uncursed-pp emits the cursed
 ```
 
 ```c
-/* generated — each macro's block carries its .uncursed source as a comment */
-/* uncursed-pp source:
- * macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
- * ...
- */
+/* generated - each macro's block carries its .uncursed source as a comment */
 #define UNCURSED_PP_DECLARE_FIELDS_AP1(type, name) type name;
 #define UNCURSED_PP_DECLARE_FIELDS_EACH1(r, d, e) UNCURSED_PP_DECLARE_FIELDS_AP1 e
-#define DECLARE_FIELDS(fields) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_DECLARE_FIELDS_EACH1, ~, fields)
+#define DECLARE_FIELDS(...) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_DECLARE_FIELDS_EACH1, ~, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
-/* usage — expands at C compile time */
-DECLARE_FIELDS(((int, x))((float, y)))   /* → int x; float y; */
+/* usage - expands at C compile time */
+DECLARE_FIELDS((int, x), (float, y))   /* -> int x; float y; */
 ```
+
+(Without the pragma, loops additionally compile to consumption chains -
+~25x cheaper to preprocess, at ~17 more lines per loop; see
+docs/optimization.md.)
 
 ## Install & use
 
