@@ -146,7 +146,7 @@ def test_update_specs_never_fills_from_a_stale_invocation(tmp_path):
 def test_update_specs_reports_empty_expansions_instead_of_corrupting(tmp_path):
     src = tmp_path / "t.uncursed"
     src.write_text(
-        "@macro NOTHING($x)\n@if is_paren($x) a @end\n@endmacro\n"
+        "@macro NOTHING($x)\n@if is_paren($x) @then a @end\n@endmacro\n"
         "\n#?  NOTHING(y)\n#=> <???>\n"
     )
     assert _run([str(src), "--update-specs"]) == 1

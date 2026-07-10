@@ -103,7 +103,7 @@
  * # @-tokens inside C string literals are literal text, never directives:
  * # the scanner treats string/char literals as opaque
  * @macro SAYS($x)
- * @if is_paren($x) const char *s = "took the @else branch"; @else plain({{$x}}); @end
+ * @if is_paren($x) @then const char *s = "took the @else branch"; @else plain({{$x}}); @end
  * @endmacro
  */
 #define UNCURSED_PP_SAYS_THEN1(x) const char *s = "took the @else branch";

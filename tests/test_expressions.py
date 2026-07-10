@@ -150,7 +150,7 @@ def test_field_collision_with_param_falls_back():
 
 
 def test_whole_use_in_condition_falls_back():
-    src = '@macro W2($p: tuple<$a, $b>)\n@if is_paren($p) yes @else no @end\n@endmacro\n'
+    src = '@macro W2($p: tuple<$a, $b>)\n@if is_paren($p) @then yes @else no @end\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
     assert "BODY1" not in out
     assert "BOOST_PP_IS_BEGIN_PARENS(p)" in out

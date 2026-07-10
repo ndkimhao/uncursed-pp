@@ -45,7 +45,7 @@
 
 /* uncursed-pp source:
  * @macro PICK($x)
- * @let $norm := @if is_paren($x) {{remove_parens($x)}} @else {{$x}} @end
+ * @let $norm := @if is_paren($x) @then {{remove_parens($x)}} @else {{$x}} @end
  * g({{$norm}})
  * @endmacro
  */

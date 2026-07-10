@@ -14,7 +14,7 @@
  * # Variadic + inline @if + is_paren(): pad bare tokens to (token, omit).
  * #   NORMALIZE(a, (b,c), d)  →  S{ (a, omit), (b,c), (d, omit) }
  * @macro NORMALIZE($items: variadic)
- * S{ @join $items as $it with ", ": @if is_paren($it) {{$it}} @else ({{$it}}, omit) @end@end }
+ * S{ @join $items as $it with ", ": @if is_paren($it) @then {{$it}} @else ({{$it}}, omit) @end@end }
  * @endmacro
  */
 #define UNCURSED_PP_NORMALIZE_THEN1(it) it

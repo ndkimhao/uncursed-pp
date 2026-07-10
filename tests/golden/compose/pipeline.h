@@ -60,7 +60,7 @@
 
 /* uncursed-pp source:
  * @macro OBJ($name, named variadic $FIELDS = )
- * struct {{$name}} { @if is_paren($FIELDS) EACH_FIELD({{$FIELDS}}) @end };
+ * struct {{$name}} { @if is_paren($FIELDS) @then EACH_FIELD({{$FIELDS}}) @end };
  * @endmacro
  */
 #define UNCURSED_PP_OBJ_THEN1(FIELDS) EACH_FIELD(FIELDS)

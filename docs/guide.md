@@ -281,7 +281,10 @@ void {{$name}}(@join $args with ", ": {{$type}} {{$argname}}@end);
 @end
 ```
 
-Inline form: `@if is_paren($x) {{remove_parens($x)}} @else {{$x}} @end`.
+Inline form: `@if is_paren($x) @then {{remove_parens($x)}} @else {{$x}} @end` —
+`@then` is required in the inline form (it marks where the condition ends
+and the then-text begins); on a full-line `@if` a trailing `@then` is
+optional. `@then` inside a C string literal is ordinary text.
 
 Conditions are either `is_paren(expr)`, `is_empty(expr)`, or a comparison `lhs OP integer` with
 `OP` ∈ `== != < > <= >=` and `lhs` any expression (typically `len($xs)` or a
@@ -308,13 +311,18 @@ is then reused at every use site (the loop helper is generated once):
 {{$fn}}({{$joined}}, {{$joined}})
 ```
 
+One restriction on the inline-`@join`/`@if` form: its rendered value can
+contain bare commas, so it cannot travel into a generated helper — using
+such a binding **inside a loop body or an `@if` branch** is a
+compile-time error (use it at the level where it was bound).
+
 ### Directive cheat-sheet
 
 | Directive | Forms |
 |---|---|
 | `@for <target> in <seq>` ... `@end` | line form only; target = `(a, b)` or `x` |
 | `@join <seq> [as x] with "<sep>"` ... `@end` | line form, or inline `@join ...: body@end` |
-| `@if <cond>` ... [`@else` ...] `@end` | line form, or inline `@if c <then-text> @else <else-text> @end` (no `then` keyword) |
+| `@if <cond>` ... [`@else` ...] `@end` | line form (trailing `@then` optional), or inline `@if <cond> @then <then-text> [@else <else-text>] @end` (`@then` required: it marks where the condition ends) |
 | `@let <name> := <expr or inline @join/@if>` | line form only |
 | `@pragma <key> <value>` | top level only |
 

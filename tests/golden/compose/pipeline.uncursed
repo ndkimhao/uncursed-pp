@@ -16,7 +16,7 @@ first = GET_A({{$q}});
 @endmacro
 
 @macro OBJ($name, named variadic $FIELDS = )
-struct {{$name}} { @if is_paren($FIELDS) EACH_FIELD({{$FIELDS}}) @end };
+struct {{$name}} { @if is_paren($FIELDS) @then EACH_FIELD({{$FIELDS}}) @end };
 @endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──

@@ -23,7 +23,7 @@ def test_parse_line_form_if_else():
 
 
 def test_parse_inline_if_with_is_paren():
-    src = '@macro NORM($x)\n@if is_paren($x) {{remove_parens($x)}} @else {{$x}} @end\n@endmacro\n'
+    src = '@macro NORM($x)\n@if is_paren($x) @then {{remove_parens($x)}} @else {{$x}} @end\n@endmacro\n'
     [macro] = parse_file(src, "t.uncursed").macros
     cond = next(n for n in macro.body if isinstance(n, If))
     assert cond.cond == IsParen(VarRef("x"))
@@ -32,7 +32,7 @@ def test_parse_inline_if_with_is_paren():
 
 def test_parse_nested_inline_if_inside_inline_join():
     src = (
-        '@macro FOO($items: seq<token>)\nS{ @join $items as $it with ", ": @if is_paren($it) {{$it}} @else ({{$it}}, omit) @end@end }\n@endmacro\n'
+        '@macro FOO($items: seq<token>)\nS{ @join $items as $it with ", ": @if is_paren($it) @then {{$it}} @else ({{$it}}, omit) @end@end }\n@endmacro\n'
     )
     [macro] = parse_file(src, "t.uncursed").macros
     join = next(n for n in macro.body if isinstance(n, Join))
@@ -98,7 +98,7 @@ def test_empty_else_branch_emits_zero_param_helpers():
 
 
 def test_less_than_compiles_to_dec_chain_with_swapped_branches():
-    src = '@macro F($x)\n@if $x < 3 small @else big @end\n@endmacro\n'
+    src = '@macro F($x)\n@if $x < 3 @then small @else big @end\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
     # x < 3  <=>  DEC^2(x) saturates to 0; branch order swaps so BOOL=0 -> THEN
     assert (
@@ -111,27 +111,27 @@ def test_less_than_compiles_to_dec_chain_with_swapped_branches():
 
 
 def test_greater_equal_one_is_plain_bool():
-    src = '@macro F($x)\n@if $x >= 1 some @else none @end\n@endmacro\n'
+    src = '@macro F($x)\n@if $x >= 1 @then some @else none @end\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
     assert "BOOST_PP_IIF(BOOST_PP_BOOL(x), UNCURSED_PP_F_THEN1, UNCURSED_PP_F_ELSE1)()" in out
 
 
 def test_len_greater_zero_is_bool_of_seq_size():
-    src = '@macro F($xs: seq<token>)\n@if len($xs) > 0 has @end\n@endmacro\n'
+    src = '@macro F($xs: seq<token>)\n@if len($xs) > 0 @then has @end\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
     assert "BOOST_PP_IIF(BOOST_PP_BOOL(BOOST_PP_SEQ_SIZE(xs)), UNCURSED_PP_F_THEN1, UNCURSED_PP_F_ELSE1)()" in out
     assert "BOOST_PP_GREATER" not in out
 
 
 def test_less_than_zero_constant_folds():
-    src = '@macro F($x)\n@if $x < 0 never @else always @end\n@endmacro\n'
+    src = '@macro F($x)\n@if $x < 0 @then never @else always @end\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
     assert "UNCURSED_PP_F_ELSE1()" in out
     assert "IIF" not in out
 
 
 def test_equality_keeps_boost_pp_equal():
-    src = '@macro F($x)\n@if $x == 3 eq @end\n@endmacro\n'
+    src = '@macro F($x)\n@if $x == 3 @then eq @end\n@endmacro\n'
     out = compile_source(src, "t.uncursed")
     assert "BOOST_PP_EQUAL(x, 3)" in out
 
@@ -139,7 +139,7 @@ def test_equality_keeps_boost_pp_equal():
 @requires_boost
 def test_dec_chain_relationals_expand(tmp_path):
     src = (
-        '@macro CMP($x)\n@if $x < 3 lt3 @else ge3 @end / @if $x >= 2 ge2 @else lt2 @end / @if $x <= 1 le1 @else gt1 @end / @if $x > 4 gt4 @else le4 @end\n@endmacro\n'
+        '@macro CMP($x)\n@if $x < 3 @then lt3 @else ge3 @end / @if $x >= 2 @then ge2 @else lt2 @end / @if $x <= 1 @then le1 @else gt1 @end / @if $x > 4 @then gt4 @else le4 @end\n@endmacro\n'
     )
     out = preprocess_src(tmp_path, src, "cmp", "s(CMP(0))\ns(CMP(2))\ns(CMP(5))")
     assert canon("s(lt3 / lt2 / le1 / le4)") in out
@@ -172,7 +172,7 @@ def test_else_inside_string_literal_stays_in_the_string():
     # inside a C string literal
     src = (
         '@macro PICK($x)\n'
-        '@if is_paren($x) const char *s = "took the @else branch"; @else other; @end\n'
+        '@if is_paren($x) @then const char *s = "took the @else branch"; @else other; @end\n'
         '@endmacro\n'
     )
     out = compile_source(src, "t.uncursed")
@@ -182,7 +182,7 @@ def test_else_inside_string_literal_stays_in_the_string():
 def test_end_inside_string_literal_stays_in_the_string():
     src = (
         '@macro P2($x)\n'
-        '@if is_paren($x) puts("not the @end yet"); @end\n'
+        '@if is_paren($x) @then puts("not the @end yet"); @end\n'
         '@endmacro\n'
     )
     out = compile_source(src, "t.uncursed")
@@ -212,3 +212,53 @@ def test_block_if_condition_is_full_grammar():
     [macro] = parse_file(src, "t.uncursed").macros
     node = next(n for n in macro.body if isinstance(n, If))
     assert isinstance(node.cond, Cmp) and isinstance(node.cond.lhs, Len)
+
+
+# ── @then: the inline condition boundary ─────────────────────────────
+
+
+def test_inline_if_requires_then():
+    src = '@macro N($x)\n@if is_paren($x) @then {{remove_parens($x)}} @else {{$x}} @end\n@endmacro\n'
+    [macro] = parse_file(src, "t.uncursed").macros
+    node = next(n for n in macro.body if isinstance(n, If))
+    assert isinstance(node.cond, IsParen)
+    assert node.then and node.else_
+    # @then is syntax, never emitted text
+    assert not any("@then" in getattr(n, "value", "") for n in node.then)
+
+
+def test_inline_if_without_then_is_an_error():
+    src = '@macro N($x)\n@if is_paren($x) {{$x}} @end\n@endmacro\n'
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file(src, "t.uncursed")
+    assert "@then" in str(excinfo.value)
+
+
+def test_inline_if_condition_is_full_grammar():
+    # with the boundary explicit, the inline condition parses through
+    # the real grammar - no prefilter, any expression lhs
+    src = '@macro F($t: tuple)\npre @if len(to_seq($t)) > 2 @then big @else small @end post\n@endmacro\n'
+    [macro] = parse_file(src, "t.uncursed").macros
+    node = next(n for n in macro.body if isinstance(n, If))
+    assert isinstance(node.cond, Cmp) and isinstance(node.cond.lhs, Len)
+
+
+def test_block_if_trailing_then_is_optional():
+    with_then = '@macro F($xs: seq<token>)\n@if len($xs) == 1 @then\none\n@end\n@endmacro\n'
+    without = '@macro F($xs: seq<token>)\n@if len($xs) == 1\none\n@end\n@endmacro\n'
+    a = parse_file(with_then, "t.uncursed").macros[0]
+    b = parse_file(without, "t.uncursed").macros[0]
+    assert a.body == b.body
+
+
+def test_nested_inline_if_then_binds_innermost():
+    src = (
+        '@macro G($x, $y)\n'
+        '@if is_paren($x) @then a @if is_paren($y) @then b @else c @end d @else e @end\n'
+        '@endmacro\n'
+    )
+    [macro] = parse_file(src, "t.uncursed").macros
+    outer = next(n for n in macro.body if isinstance(n, If))
+    inner = next(n for n in outer.then if isinstance(n, If))
+    assert inner.then and inner.else_
+    assert outer.else_

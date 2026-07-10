@@ -71,7 +71,7 @@ S{ {{remove_parens($p.$a)}} | {{$p.$b}} }
 
 # ── 7. Variadic parameter + is_paren() ──────────────────────────────
 @macro FOO($items: variadic)
-S{ @join $items as $it with ", ": @if is_paren($it) {{$it}} @else ({{$it}}, omit) @end@end }
+S{ @join $items as $it with ", ": @if is_paren($it) @then {{$it}} @else ({{$it}}, omit) @end@end }
 @endmacro
 #   FOO(a, (b,c), d)  →  S{ (a, omit), (b, c), (d, omit) }
 
@@ -91,6 +91,10 @@ S{ @join $items as $it with ", ": @if is_paren($it) {{$it}} @else ({{$it}}, omit
 
 ### Language rules
 - Body is raw C text; `@`-directives for control flow; `{{expr}}` interpolation.
+- Inline `@if` requires `@then` between the condition and the then-text
+  (`@if <cond> @then <text> [@else <text>] @end`); a full-line `@if` may
+  optionally end with `@then`. The explicit boundary lets conditions be any
+  grammar expression - there is no regex prefilter.
 - Loops: `@for ($a, $b) in $xs` (tuple unpack) or `@for $x in $xs` / `@join $xs as $x with "sep"`.
 - Loops nest up to 4 deep. Verified empirically: SEQ_FOR_EACH cannot
   re-enter itself (the _R forms do not help), so the outer level uses

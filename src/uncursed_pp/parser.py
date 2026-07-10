@@ -77,7 +77,10 @@ C_LITERAL_PATTERN = (
 
 _INLINE_OPEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?P<kw>join|if)\s")
 _INLINE_TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?:join|if)\s|@else\b|@end\b")
-_STRAY_TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?P<tok>else|end|for|let)\b")
+_THEN_BOUNDARY_RE = re.compile(
+    C_LITERAL_PATTERN + r"|@then\b|@(?:join|if)\s|@else\b|@end\b"
+)
+_STRAY_TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?P<tok>else|end|for|let|then)\b")
 
 
 def _search_directive(pattern: re.Pattern[str], text: str) -> re.Match[str] | None:
@@ -86,16 +89,6 @@ def _search_directive(pattern: re.Pattern[str], text: str) -> re.Match[str] | No
         if m.group(0).startswith("@"):
             return m
     return None
-
-_CMP = r"(?:==|!=|<=|>=|<|>)"
-# one nesting level inside the call parens covers computed arguments
-# like len(to_seq($t)) or len($xs[0])
-_COND_PATTERNS = [
-    re.compile(rf"len\((?:[^()]|\([^()]*\))*\)\s*{_CMP}\s*\d+"),
-    re.compile(rf"(?:is_paren|is_empty)\((?:[^()]|\([^()]*\))*\)(?:\s*{_CMP}\s*\d+)?"),
-    re.compile(rf"\$?[A-Za-z_][\w.$\[\]]*\s*{_CMP}\s*\d+"),
-]
-
 
 class _Ast(Transformer[Any, Any]):
     def signature(self, items: list[Any]) -> tuple[str, list[Param]]:
@@ -357,15 +350,6 @@ def _scan_to_end(
     raise UncursedPpError("inline directive missing @end", filename, lineno)
 
 
-def _match_cond(text: str, filename: str, lineno: int) -> tuple[Cond, str]:
-    for pattern in _COND_PATTERNS:
-        m = pattern.match(text)
-        if m:
-            cond = _parse_fragment("cond", m.group(0), filename, lineno)
-            return cond, text[m.end() :]
-    raise UncursedPpError("cannot parse @if condition", filename, lineno)
-
-
 def _parse_segments(text: str, lineno: int, filename: str) -> list[BodyNode]:
     nodes: list[BodyNode] = []
     m = _search_directive(_INLINE_OPEN_RE, text)
@@ -417,8 +401,20 @@ def _parse_inline_join(text: str, lineno: int, filename: str) -> tuple[Join, str
 
 
 def _parse_inline_if(text: str, lineno: int, filename: str) -> tuple[If, str]:
-    cond, after_cond = _match_cond(text, filename, lineno)
-    then_text, else_text, rest = _scan_to_end(after_cond, filename, lineno, capture_else=True)
+    # '@then' marks where the condition ends and the then-text begins;
+    # with the boundary explicit, the condition parses through the real
+    # grammar (a condition contains no @-tokens, so the first one found
+    # must be the @then)
+    m = _search_directive(_THEN_BOUNDARY_RE, text)
+    if m is None or m.group(0) != "@then":
+        raise UncursedPpError(
+            "inline @if needs '@then' between the condition and the "
+            "then-text: @if <cond> @then <text> [@else <text>] @end",
+            filename,
+            lineno,
+        )
+    cond = _parse_fragment("cond", text[: m.start()].strip(), filename, lineno)
+    then_text, else_text, rest = _scan_to_end(text[m.end() :], filename, lineno, capture_else=True)
     node = If(cond=cond, line=lineno)
     node.then = _parse_segments(then_text, lineno, filename)
     node.else_ = _parse_segments(else_text, lineno, filename) if else_text is not None else []
@@ -676,10 +672,13 @@ def _handle_directive(directive: str, stack: list[_Block], filename: str, lineno
         stack[-1].target.append(join)
         stack.append(_Block(join.body, join, "join", lineno))
     elif word == "if":
-        # a block @if owns the whole rest of the line: parse it with the
-        # real grammar (the _COND_PATTERNS prefilter exists only for the
-        # INLINE form, where the condition's end must be found mid-line)
-        cond = _parse_fragment("cond", directive[len("if ") :].strip(), filename, lineno)
+        # a block @if owns the whole rest of the line, parsed with the
+        # real grammar; a trailing '@then' is optional (mandatory only in
+        # the inline form, where it marks the condition's end)
+        cond_text = directive[len("if ") :].strip()
+        if cond_text.endswith("@then"):
+            cond_text = cond_text[: -len("@then")].strip()
+        cond = _parse_fragment("cond", cond_text, filename, lineno)
         node = If(cond=cond, line=lineno)
         stack[-1].target.append(node)
         stack.append(_Block(node.then, node, "if", lineno))

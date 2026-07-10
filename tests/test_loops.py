@@ -216,7 +216,7 @@ def test_field_name_colliding_with_free_var_falls_back_to_tuple_elem():
 
 def test_conditional_inside_ap_loop_body():
     src = (
-        '@macro P($fields: seq<tuple<$t, $n>>)\n@for ($t, $n) in $fields\n  @if is_paren($t) {{remove_parens($t)}} {{$n}}; @else {{$t}} {{$n}}; @end\n@end\n@endmacro\n'
+        '@macro P($fields: seq<tuple<$t, $n>>)\n@for ($t, $n) in $fields\n  @if is_paren($t) @then {{remove_parens($t)}} {{$n}}; @else {{$t}} {{$n}}; @end\n@end\n@endmacro\n'
     )
     out = compile_source(src, "t.uncursed")
     # branch helpers receive the AP params by name
@@ -227,7 +227,7 @@ def test_conditional_inside_ap_loop_body():
 @requires_boost
 def test_ap_loop_with_conditional_expands(tmp_path):
     src = (
-        '@macro P($fields: seq<tuple<$t, $n>>)\n@for ($t, $n) in $fields\n  @if is_paren($t) {{remove_parens($t)}} {{$n}}; @else {{$t}} {{$n}}; @end\n@end\n@endmacro\n'
+        '@macro P($fields: seq<tuple<$t, $n>>)\n@for ($t, $n) in $fields\n  @if is_paren($t) @then {{remove_parens($t)}} {{$n}}; @else {{$t}} {{$n}}; @end\n@end\n@endmacro\n'
     )
     out = preprocess_src(tmp_path, src, "p", "P((((a, b), x))((int, y)))")
     assert canon("a, b x; int y;") in out
