@@ -32,6 +32,14 @@ gcc -E -P -fmem-report file.c -o /dev/null 2>&1 | grep -E '^Total +[0-9]' | head
 Rules that made results trustworthy (several were learned the hard way — see
 the refuted section):
 
+0. **Cap memory, always.** Benchmark TUs at audit scale allocate gigabytes,
+   and parallel measurement fan-out multiplies that: an unguarded 15-way
+   audit nearly OOMed a 15G host. Every benchmark gcc runs under
+   `ulimit -v 4194304` (4 GiB), at most 2-3 measurements in parallel, and
+   the test harness itself hard-caps every `cc` invocation (1 GiB address
+   space + 60s timeout in `conftest.run_cpp`) so pathological codegen fails
+   a test instead of the machine.
+
 1. **Token identity is a precondition.** `diff` of `gcc -E -P` outputs
    (whitespace-canonicalized) between current and proposed codegen must be
    empty over an edge-case corpus: comma-containing values, empty

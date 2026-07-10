@@ -63,12 +63,36 @@ def canon(text: str) -> str:
     return " ".join(m.group(0) for m in _C_TOKEN.finditer(text))
 
 
+# Pathological macro expansions can eat the whole host (an unguarded
+# preprocessor bomb nearly OOMed a 15G machine): cap every cc invocation.
+CPP_MEM_LIMIT_BYTES = 1 << 30  # 1 GiB address space
+CPP_TIMEOUT_S = 60
+
+
+def _limit_cpp_resources() -> None:
+    import resource
+
+    resource.setrlimit(resource.RLIMIT_AS, (CPP_MEM_LIMIT_BYTES, CPP_MEM_LIMIT_BYTES))
+
+
 def run_cpp(c_file: Path, *extra_flags: str) -> str:
     """Preprocess a C file; failures surface the compiler's stderr instead
-    of an opaque CalledProcessError."""
+    of an opaque CalledProcessError. Memory- and time-capped so runaway
+    expansions fail the test instead of the machine."""
     assert CC is not None, "requires_boost should have skipped this test"
     cmd = [CC, "-E", "-P", *BOOST_FLAGS, *extra_flags, str(c_file)]
-    run = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        run = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=CPP_TIMEOUT_S,
+            preexec_fn=_limit_cpp_resources,
+        )
+    except subprocess.TimeoutExpired:
+        raise AssertionError(
+            f"preprocessing timed out after {CPP_TIMEOUT_S}s: {' '.join(cmd)}"
+        ) from None
     if run.returncode != 0:
         raise AssertionError(
             f"preprocessing failed: {' '.join(cmd)}\n--- compiler stderr ---\n{run.stderr}"

@@ -69,3 +69,22 @@ def test_expected_failure_cases_may_not_have_expectations():
 
     with pytest.raises(ValueError):
         _specs("#?! F(bad)\n#=> nothing\n")
+
+
+def test_run_cpp_kills_runaway_preprocessing_cleanly(tmp_path):
+    """A pathological TU must fail with a clean error, not OOM the host:
+    run_cpp caps cpp's address space and wall time."""
+    import pytest
+
+    from conftest import CC, run_cpp
+
+    if CC is None:
+        pytest.skip("needs cc")
+    bomb = "#define X0 x x\n"
+    bomb += "".join(f"#define X{i} X{i-1} X{i-1} X{i-1} X{i-1}\n" for i in range(1, 24))
+    bomb += "X23\n"
+    (tmp_path / "bomb.c").write_text(bomb)
+    with pytest.raises(AssertionError) as excinfo:
+        run_cpp(tmp_path / "bomb.c")
+    assert "preprocessing failed" in str(excinfo.value) or "timed out" in str(excinfo.value)
+
