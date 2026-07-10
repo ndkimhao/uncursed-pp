@@ -1,17 +1,17 @@
-# cursedpp — DSL reference & user guide
+# uncursed-pp — DSL reference & user guide
 
-cursedpp compiles a readable template DSL (`.cursed` files) into C preprocessor
+uncursed-pp compiles a readable template DSL (`.uncursed` files) into C preprocessor
 macros built on [Boost.Preprocessor](https://www.boost.org/doc/libs/latest/libs/preprocessor/doc/index.html).
 This is the complete language reference. For the design rationale see
-[design.md](design.md); for a quick tour see [`examples/example.cursed`](../examples/example.cursed).
+[design.md](design.md); for a quick tour see [`examples/example.uncursed`](../examples/example.uncursed).
 
 ## 1. Mental model
 
-A `.cursed` macro looks like a web render template: the body **is** the C output
+A `.uncursed` macro looks like a web render template: the body **is** the C output
 text, `{{expr}}` interpolates values, and `@`-directives add control flow.
 
 The crucial difference from an ordinary template engine: loops and conditionals
-are **not** expanded when cursedpp runs. They compile into Boost.PP machinery
+are **not** expanded when uncursed-pp runs. They compile into Boost.PP machinery
 (`BOOST_PP_SEQ_FOR_EACH`, `BOOST_PP_IIF`, ...) that executes **when the C
 compiler preprocesses your code**. Call sites pass real, variable-length data:
 
@@ -28,26 +28,26 @@ end
 DECLARE_FIELDS(((int, x))((float, y)))   /* expands to: int x; float y; */
 ```
 
-Two clocks, three languages: cursedpp (Python) runs at *generation time*;
+Two clocks, three languages: uncursed-pp (Python) runs at *generation time*;
 the emitted `#define`s run at *C preprocessing time*; the expansion is plain C.
 
 ## 2. Getting started
 
 ```sh
 make setup                                # mise install + uv sync
-uv run cursedpp fields.cursed -o fields.h # compile one template
+uv run uncursed-pp fields.uncursed -o fields.h # compile one template
 make test                                 # pytest incl. real `cc -E` e2e tests
 ```
 
-`cursedpp INPUT [-o OUTPUT]` writes `OUTPUT` (default: input stem + `.h`).
+`uncursed-pp INPUT [-o OUTPUT]` writes `OUTPUT` (default: input stem + `.h`).
 If the template uses features that need shared utilities (currently: named
-arguments), a small companion header (default `cursedpp_runtime.h`) is written
+arguments), a small companion header (default `uncursed_pp_runtime.h`) is written
 next to the output; generated headers `#include` it by name. Multiple generated
 headers in one directory share the single runtime file.
 
 ## 3. File structure
 
-A `.cursed` file contains, in any order at the top level:
+A `.uncursed` file contains, in any order at the top level:
 
 - **Comments** — lines whose first non-blank character is `#`. Allowed at top
   level and inside macro bodies (the line is dropped entirely).
@@ -133,7 +133,7 @@ Each named argument is written `KEYWORD(value)` at the call site. Semantics:
 - Values containing commas must be parenthesized: `WIDTH((a, b))`.
 - Keyword names must not be `#define`d macros at the call site.
 
-Rules for combining parameter kinds, enforced by cursedpp with clear errors:
+Rules for combining parameter kinds, enforced by uncursed-pp with clear errors:
 one macro may use **at most one** of {tail defaults, named section, variadic};
 required parameters come first; defaults/named need at least one required
 parameter (C cannot overload on a zero-argument call).
@@ -156,7 +156,7 @@ parameter (C cannot overload on a zero-argument call).
 
 Three rules that surprise newcomers:
 
-- **cursedpp never token-pastes implicitly.** `get_{{name}}` produces two
+- **uncursed-pp never token-pastes implicitly.** `get_{{name}}` produces two
   separate tokens `get_` and `<name>`; to build one identifier write
   `{{concat(get_, name)}}`.
 - In `concat(...)` arguments, a name resolves to a variable if one is in
@@ -257,7 +257,7 @@ inline directive closes with its own `@end` on the same line.
 `SEQ_FOR_EACH`; inner loops ride `BOOST_PP_REPEAT`'s three auto-detected
 dimensions with `SEQ_ELEM` indexing. Five-deep is a compile error. A
 generated macro must still not be invoked from inside another generated
-macro's loop body (cursedpp cannot see call sites to route reentrancy).
+macro's loop body (uncursed-pp cannot see call sites to route reentrancy).
 Sequential calls — one generated macro invoking others *outside* any
 loop — are fine.
 
@@ -273,7 +273,7 @@ macro TABLE(sname, fields: seq<tuple<type, name, fmt>>)
 end
 ```
 
-cursedpp threads free outer variables (here `sname`) through `FOR_EACH`'s data
+uncursed-pp threads free outer variables (here `sname`) through `FOR_EACH`'s data
 slot automatically: one free variable travels as `d` itself, several as a tuple
 in `d`. You never manage this; it is mentioned because it is visible in the
 generated code.
@@ -289,7 +289,7 @@ identically from the source file alone:
 | `pp_prefix P` | `BOOST_PP_` | prefix of the preprocessor library's macros |
 | `pp_include "H"` | *(granular)* | single header to include instead of granular ones |
 | `pp_include_dir D` | `boost/preprocessor` | root of granular usage-derived includes |
-| `helper_prefix P` | `CURSEDPP_` | prefix of generated helper macros |
+| `helper_prefix P` | `UNCURSED_PP_` | prefix of generated helper macros |
 | `runtime_name "F"` | `<helper_prefix>_runtime.h` | filename of the shared runtime header |
 | `include "H"` or `include <H>` | — | extra `#include`s appended in order (repeatable) |
 
@@ -309,21 +309,21 @@ A custom `pp_prefix` requires `pp_include` **or** a custom `pp_include_dir`
 
 ## 9. Anatomy of the generated code
 
-For each macro, cursedpp emits the public `#define` plus namespaced helpers:
+For each macro, uncursed-pp emits the public `#define` plus namespaced helpers:
 
-- `CURSEDPP_<MACRO>_EACHn` — loop bodies (`@for`/`@join`)
-- `CURSEDPP_<MACRO>_APn` — tuple-element unpackers applied by juxtaposition
+- `UNCURSED_PP_<MACRO>_EACHn` — loop bodies (`@for`/`@join`)
+- `UNCURSED_PP_<MACRO>_APn` — tuple-element unpackers applied by juxtaposition
   (`AP e`): fields are direct parameters, avoiding a `TUPLE_ELEM` dispatch
   per use
-- `CURSEDPP_<MACRO>_BODY1` — macros with tuple params spread the fields in
-- `CURSEDPP_<MACRO>_SEPn` — non-comma join separators
-- `CURSEDPP_<MACRO>_THENn` / `_ELSEn` — `@if` branches
-- `CURSEDPP_<MACRO>_SET_<KW>`, `_STEP`, `_PUT_<slot>`, `_BODY`, `_UNPACK`, `_KW`, `_<n>` — named args (slot updates are direct generated replacers; no `TUPLE_REPLACE`/`WHILE`)
-- `CURSEDPP_<MACRO>_<n>` — tail-default arity chain
+- `UNCURSED_PP_<MACRO>_BODY1` — macros with tuple params spread the fields in
+- `UNCURSED_PP_<MACRO>_SEPn` — non-comma join separators
+- `UNCURSED_PP_<MACRO>_THENn` / `_ELSEn` — `@if` branches
+- `UNCURSED_PP_<MACRO>_SET_<KW>`, `_STEP`, `_PUT_<slot>`, `_BODY`, `_UNPACK`, `_KW`, `_<n>` — named args (slot updates are direct generated replacers; no `TUPLE_REPLACE`/`WHILE`)
+- `UNCURSED_PP_<MACRO>_<n>` — tail-default arity chain
 
 Two whole-file passes keep output small and deterministic:
 
-- **Helper collapse**: identical helpers merge into shared `CURSEDPP_H<n>`
+- **Helper collapse**: identical helpers merge into shared `UNCURSED_PP_H<n>`
   macros (numbered in first-use order); loop helpers differing by exactly one
   constant token merge with the constant passed through the `d` slot. Anything
   needing more machinery stays unmerged on purpose.
@@ -349,7 +349,7 @@ never edit by hand — recompile the template.
 
 ## 11. Errors
 
-cursedpp reports all errors as `file:line[:col]: message` — parse errors
+uncursed-pp reports all errors as `file:line[:col]: message` — parse errors
 (unknown directive, missing `end`, bad signature), semantic errors (undefined
 variable, iterating a non-seq, unpack arity mismatch, unknown tuple element,
 index out of range, parameter-kind mixing), and configuration errors (unknown
@@ -380,7 +380,7 @@ specs, and every macro it defines must be exercised (meta-tests enforce both).
 
 ## 13. Worked example: a reflection system
 
-`tests/golden/reflect.cursed` shows the pieces composing. One field list is
+`tests/golden/reflect.uncursed` shows the pieces composing. One field list is
 the single source of truth:
 
 ```text
@@ -393,7 +393,7 @@ typedef struct {
 end
 
 macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
-static const cursed_field {{concat(sname, _fields)}}[] = {
+static const uncursed_field {{concat(sname, _fields)}}[] = {
 @for (type, name, fmt) in fields
   { {{stringize(name)}}, {{stringize(type)}}, offsetof({{sname}}, {{name}}) },
 @end
@@ -419,7 +419,7 @@ end
 ```c
 REFLECT(Point, (int, x, "%d"), (float, y, "%f"))
 /* -> typedef struct { int x; float y; } Point;
-      static const cursed_field Point_fields[] = {
+      static const uncursed_field Point_fields[] = {
         { "x", "int", offsetof(Point, x) }, { "y", "float", offsetof(Point, y) },
       };
       enum { Point_field_count = 2 };

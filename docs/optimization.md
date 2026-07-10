@@ -1,6 +1,6 @@
 # Codegen optimization: methodology & history
 
-How cursedpp's generated Boost.PP code got ~140x cheaper to preprocess, how we
+How uncursed-pp's generated Boost.PP code got ~140x cheaper to preprocess, how we
 measured it, which ideas were rejected and why. Read this before touching the
 emitter's codegen — the refuted section is as binding as the applied one.
 
@@ -9,7 +9,7 @@ emitter's codegen — the refuted section is as binding as the applied one.
 Boost.PP's primitives pay a genericity tax at C-preprocessing time:
 `BOOST_PP_OVERLOAD` scans 65 argument slots, `SEQ_FOLD_LEFT` runs an 8-probe
 `AUTO_REC` recursion-depth search per call, `TUPLE_REPLACE`/`SUB`/`LESS` hide
-full `BOOST_PP_WHILE` loops, `TUPLE_ELEM` re-dispatches per read. **cursedpp
+full `BOOST_PP_WHILE` loops, `TUPLE_ELEM` re-dispatches per read. **uncursed-pp
 is a generator: everything it knows at generation time — arity, slot indices,
 literal comparison operands, parenthesization invariants, element counts —
 can replace a generic runtime search with a direct generated form.** Nearly
@@ -67,7 +67,7 @@ the refuted section):
 | 2-arg `BOOST_PP_TUPLE_ELEM` | modern variadic form; the 3-arg size operand is ignored anyway |
 | `IIF` over `IF` | skips a `BOOL` when the condition is already 0/1 |
 | Branch bodies as selected-then-invoked helpers | commas in branches stay legal; no `EXPAND`/defer tricks |
-| Helper collapse pass | identical helpers dedup into `CURSEDPP_H<n>`; loop helpers differing by ONE constant merge via the free `d` slot (never more — indirection budget) |
+| Helper collapse pass | identical helpers dedup into `UNCURSED_PP_H<n>`; loop helpers differing by ONE constant merge via the free `d` slot (never more — indirection budget) |
 
 ### Round 1 — first measured audit (2026-07-10, commits `6837f27`, `8ad8ae0`)
 

@@ -1,4 +1,4 @@
-"""Emit Boost.PP C header text from the cursedpp AST."""
+"""Emit Boost.PP C header text from the uncursed-pp AST."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ from .nodes import (
     VariadicT,
     VarRef,
 )
-from .parser import CursedppError, parse_file
+from .parser import UncursedPpError, parse_file
 
 
 @dataclass
@@ -39,7 +39,7 @@ class EmitConfig:
     pp_prefix: str = "BOOST_PP_"
     pp_include: str | None = None  # None = granular includes from usage
     pp_include_dir: str = "boost/preprocessor"  # root of granular includes
-    helper_prefix: str = "CURSEDPP_"
+    helper_prefix: str = "UNCURSED_PP_"
     runtime_name: str | None = None  # None = derived from helper_prefix
     extra_includes: tuple[str, ...] = ()  # user includes appended verbatim
 
@@ -236,19 +236,19 @@ class _MacroEmitter:
         line = self.macro.line
         if variadic:
             if len(variadic) > 1:
-                raise CursedppError("at most one variadic parameter", self.filename, line)
+                raise UncursedPpError("at most one variadic parameter", self.filename, line)
             if not isinstance(self.macro.params[-1].type, VariadicT):
-                raise CursedppError(
+                raise UncursedPpError(
                     "the variadic parameter must be last", self.filename, line
                 )
             if defaulted or named:
-                raise CursedppError(
+                raise UncursedPpError(
                     "a variadic parameter excludes tail defaults and named params",
                     self.filename,
                     line,
                 )
         if defaulted and named:
-            raise CursedppError(
+            raise UncursedPpError(
                 "a macro may use tail defaults OR named params, not both",
                 self.filename,
                 line,
@@ -257,14 +257,14 @@ class _MacroEmitter:
         for p in self.macro.params:
             special = p.named or p.default is not None
             if seen_special and not special:
-                raise CursedppError(
+                raise UncursedPpError(
                     f"required parameter {p.name!r} cannot follow a defaulted/named one",
                     self.filename,
                     line,
                 )
             seen_special = seen_special or special
         if (defaulted or named) and not pos:
-            raise CursedppError(
+            raise UncursedPpError(
                 "defaults/named params need at least one required parameter "
                 "(arity dispatch cannot see a zero-argument call)",
                 self.filename,
@@ -398,7 +398,7 @@ class _MacroEmitter:
                 return env[expr.name]
             if allow_literal:
                 return _Binding(expr.name, TokenT())
-            raise CursedppError(f"undefined variable: {expr.name}", self.filename, line)
+            raise UncursedPpError(f"undefined variable: {expr.name}", self.filename, line)
         if isinstance(expr, ElemAccess):
             return self._resolve_access(expr, env, line)
         if isinstance(expr, Concat):
@@ -421,7 +421,7 @@ class _MacroEmitter:
         if isinstance(expr, Len):
             inner = self._resolve(expr.arg, env, line)
             if not isinstance(inner.type, SeqT):
-                raise CursedppError("len() needs a seq-typed value", self.filename, line)
+                raise UncursedPpError("len() needs a seq-typed value", self.filename, line)
             return _Binding(f"{self.pp('SEQ_SIZE')}({inner.c_expr})", TokenT())
         if isinstance(expr, IsParen):
             inner = self._resolve(expr.arg, env, line)
@@ -432,13 +432,13 @@ class _MacroEmitter:
         base = self._resolve(expr.base, env, line)
         if isinstance(expr.accessor, str):
             if not isinstance(base.type, TupleT):
-                raise CursedppError(
+                raise UncursedPpError(
                     f"named element access '.{expr.accessor}' needs a tuple-typed value",
                     self.filename,
                     line,
                 )
             if expr.accessor not in base.type.names:
-                raise CursedppError(
+                raise UncursedPpError(
                     f"tuple has no element {expr.accessor!r} (has: {', '.join(base.type.names)})",
                     self.filename,
                     line,
@@ -448,7 +448,7 @@ class _MacroEmitter:
             idx = base.type.names.index(expr.accessor)
             return _Binding(f"{self.pp('TUPLE_ELEM')}({idx}, {base.c_expr})", TokenT())
         if not isinstance(base.type, SeqT):
-            raise CursedppError(
+            raise UncursedPpError(
                 f"indexed access '[{expr.accessor}]' needs a seq-typed value",
                 self.filename,
                 line,
@@ -460,7 +460,7 @@ class _MacroEmitter:
     def _guard_fragile(self, names: list[str], env: _Env, line: int) -> None:
         for n in names:
             if env[n].fragile:
-                raise CursedppError(
+                raise UncursedPpError(
                     f"{n!r} holds a @let-bound inline @join/@if; its "
                     "expansion cannot travel into a loop or branch helper — "
                     "write the @join/@if inline at the use site instead",
@@ -504,7 +504,7 @@ class _MacroEmitter:
         if isinstance(cond, IsParen):
             return self._resolve(cond, env, line).c_expr, False
         if not 0 <= cond.value <= 256:
-            raise CursedppError(
+            raise UncursedPpError(
                 f"comparison literal {cond.value} is outside Boost.PP's "
                 "0-256 magnitude range",
                 self.filename,
@@ -594,9 +594,9 @@ class _MacroEmitter:
         loop_env = dict(env)
         if unpack is not None:
             if not isinstance(elem_type, TupleT):
-                raise CursedppError("tuple unpacking needs a seq of tuples", self.filename, node.line)
+                raise UncursedPpError("tuple unpacking needs a seq of tuples", self.filename, node.line)
             if len(unpack) != len(elem_type.names):
-                raise CursedppError(
+                raise UncursedPpError(
                     f"unpack arity {len(unpack)} != tuple arity {len(elem_type.names)}",
                     self.filename,
                     node.line,
@@ -615,9 +615,9 @@ class _MacroEmitter:
         """Resolve an iterated name to (c_expr, element type)."""
         binding = env.get(name)
         if binding is None:
-            raise CursedppError(f"undefined variable: {name}", self.filename, node.line)
+            raise UncursedPpError(f"undefined variable: {name}", self.filename, node.line)
         if not isinstance(binding.type, SeqT):
-            raise CursedppError(f"cannot iterate non-seq {name!r}", self.filename, node.line)
+            raise UncursedPpError(f"cannot iterate non-seq {name!r}", self.filename, node.line)
         return binding.c_expr, binding.type.elem
 
     def _loop_data(
@@ -666,7 +666,7 @@ class _MacroEmitter:
         SEQ_ELEM-computed element.
         """
         if self._loop_depth > 3:
-            raise CursedppError(
+            raise UncursedPpError(
                 "loops nest at most 4 deep: the outer level uses "
                 "SEQ_FOR_EACH and BOOST_PP_REPEAT provides 3 reentrant "
                 "dimensions for inner loops",
@@ -869,7 +869,7 @@ def _word_char(ch: str) -> bool:
 
 def _join_segments(parts: list[str]) -> str:
     """Join rendered segments, inserting a space where two word characters
-    would otherwise fuse across a segment boundary: cursedpp never
+    would otherwise fuse across a segment boundary: uncursed-pp never
     token-pastes implicitly - concat() is the explicit paste."""
     acc = ""
     for part in parts:
@@ -903,10 +903,10 @@ def _format_define(head: str, body: str) -> str:
 
 
 def _source_comment(source: str) -> str:
-    """The original .cursed text, embedded above the macro's #defines."""
+    """The original .uncursed text, embedded above the macro's #defines."""
     lines = [line.rstrip().replace("*/", "* /") for line in source.splitlines()]
     body = "".join(f" * {line}\n" if line else " *\n" for line in lines)
-    return f"/* cursedpp source:\n{body} */\n"
+    return f"/* uncursed-pp source:\n{body} */\n"
 
 
 def _format_helper(helper: _Helper) -> str:
@@ -918,7 +918,7 @@ def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None)
     from .collapse import collapse
 
     config = config or EmitConfig()
-    stem = re.sub(r"[^A-Za-z0-9]", "_", source_name.removesuffix(".cursed")).upper()
+    stem = re.sub(r"[^A-Za-z0-9]", "_", source_name.removesuffix(".uncursed")).upper()
     used: set[str] = set()
     file_state = {"kw_utils": False}
     outs = [
@@ -941,7 +941,7 @@ def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None)
         includes = sorted(f"{config.pp_include_dir}/{_PP_HEADERS[name]}" for name in used)
 
     chunks = [
-        f"/* Generated by cursedpp from {source_name} — do not edit. */\n",
+        f"/* Generated by uncursed-pp from {source_name} — do not edit. */\n",
         "#pragma once\n",
     ]
     if includes:
@@ -973,8 +973,8 @@ def runtime_header(config: EmitConfig) -> str:
     """
     hp = config.helper_prefix
     return (
-        "/* Common runtime macros, shared by all cursedpp-generated headers.\n"
-        "   Generated by cursedpp — do not edit. */\n"
+        "/* Common runtime macros, shared by all uncursed-pp-generated headers.\n"
+        "   Generated by uncursed-pp — do not edit. */\n"
         "#pragma once\n"
         "\n"
         f"#define {hp}KW_SPREAD(...) __VA_ARGS__\n"
@@ -1002,7 +1002,7 @@ def compile_template(
         and config.pp_include is None
         and config.pp_include_dir == "boost/preprocessor"
     ):
-        raise CursedppError(
+        raise UncursedPpError(
             "a custom pp_prefix needs pp_include or pp_include_dir (default "
             "granular boost includes only fit the default prefix)",
             filename,

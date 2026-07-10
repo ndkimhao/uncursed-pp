@@ -3,21 +3,21 @@ import sys
 from pathlib import Path
 
 from .emitter import compile_template
-from .parser import CursedppError
+from .parser import UncursedPpError
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="cursedpp",
+        prog="uncursed-pp",
         description=(
-            "Compile a .cursed template into a Boost.Preprocessor C header. "
+            "Compile a .uncursed template into a Boost.Preprocessor C header. "
             "Configuration (pp_prefix, pp_include, pp_include_dir, "
             "helper_prefix, runtime_name, include) lives in the template "
             "itself via @pragma lines, so output is reproducible from the "
             "source file alone."
         ),
     )
-    parser.add_argument("input", help="input .cursed template file")
+    parser.add_argument("input", help="input .uncursed template file")
     parser.add_argument("-o", "--output", help="output header path (default: <input stem>.h)")
     return parser
 
@@ -28,7 +28,7 @@ def main(argv: list[str] | None = None) -> None:
     output_path = Path(args.output) if args.output else input_path.with_suffix(".h")
     if output_path.resolve() == input_path.resolve():
         print(
-            f"cursedpp: refusing to overwrite the input file {input_path} "
+            f"uncursed-pp: refusing to overwrite the input file {input_path} "
             "(pass -o with a different output path)",
             file=sys.stderr,
         )
@@ -36,11 +36,11 @@ def main(argv: list[str] | None = None) -> None:
     try:
         source = input_path.read_text()
     except OSError as exc:
-        print(f"cursedpp: cannot read {input_path}: {exc.strerror}", file=sys.stderr)
+        print(f"uncursed-pp: cannot read {input_path}: {exc.strerror}", file=sys.stderr)
         raise SystemExit(1) from exc
     try:
         result = compile_template(source, str(input_path))
-    except CursedppError as exc:
+    except UncursedPpError as exc:
         print(exc, file=sys.stderr)
         raise SystemExit(1) from exc
     try:
@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> None:
         if result.runtime is not None:
             (output_path.parent / result.runtime_name).write_text(result.runtime)
     except OSError as exc:
-        print(f"cursedpp: cannot write {output_path}: {exc.strerror}", file=sys.stderr)
+        print(f"uncursed-pp: cannot write {output_path}: {exc.strerror}", file=sys.stderr)
         raise SystemExit(1) from exc
 
 

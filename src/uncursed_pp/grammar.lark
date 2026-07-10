@@ -1,4 +1,4 @@
-// Mini-grammars for the structured fragments of a .cursed file.
+// Mini-grammars for the structured fragments of a .uncursed file.
 // The line-level pass in parser.py decides which start rule applies.
 
 signature: CNAME "(" [param_list] ")"

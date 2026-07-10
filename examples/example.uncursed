@@ -1,5 +1,5 @@
-# cursedpp feature tour. Compile with:
-#   cursedpp examples/example.cursed -o example.h
+# uncursed-pp feature tour. Compile with:
+#   uncursed-pp examples/example.uncursed -o example.h
 
 # ── @for over a seq of tuples ────────────────────────────────────────
 # DECLARE_FIELDS(((int, x))((float, y)))  →  int x; float y;

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from cursedpp.emitter import C_LITERAL_PATTERN, compile_template
+from uncursed_pp.emitter import C_LITERAL_PATTERN, compile_template
 
 GOLDEN = Path(__file__).parent / "golden"
 
@@ -78,7 +78,7 @@ def run_cpp(c_file: Path, *extra_flags: str) -> str:
 def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> str:
     """Compile a template, include it from a snippet, run cc -E -P."""
     header = tmp_path / f"{stem}.h"
-    result = compile_template(source, f"{stem}.cursed")
+    result = compile_template(source, f"{stem}.uncursed")
     header.write_text(result.header)
     if result.runtime is not None:
         (tmp_path / result.runtime_name).write_text(result.runtime)
@@ -89,7 +89,7 @@ def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> s
 
 def golden_templates() -> list[Path]:
     """All golden templates, recursively (goldens are organized by category)."""
-    return sorted(GOLDEN.rglob("*.cursed"))
+    return sorted(GOLDEN.rglob("*.uncursed"))
 
 
 def golden_id(path: Path) -> str:

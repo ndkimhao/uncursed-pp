@@ -1,4 +1,4 @@
-"""AST dataclasses for the cursedpp DSL."""
+"""AST dataclasses for the uncursed-pp DSL."""
 
 from __future__ import annotations
 
@@ -157,7 +157,7 @@ class MacroDef:
     params: list[Param]
     body: list[BodyNode]
     line: int = 0
-    source: str = ""  # original .cursed text incl. attached comments
+    source: str = ""  # original .uncursed text incl. attached comments
 
 
 @dataclass

@@ -6,7 +6,7 @@
 #
 # expands (at C compile time) to:
 #   typedef struct { int x; float y; } Point;
-#   static const cursed_field Point_fields[] = { {"x","int",offsetof(...)}, ... };
+#   static const uncursed_field Point_fields[] = { {"x","int",offsetof(...)}, ... };
 #   enum { Point_field_count = 2 };
 #   static void print_Point(const Point *v) { printf(... "%d" ..., v->x); ... }
 
@@ -19,7 +19,7 @@ typedef struct {
 end
 
 macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
-static const cursed_field {{concat(sname, _fields)}}[] = {
+static const uncursed_field {{concat(sname, _fields)}}[] = {
 @for (type, name, fmt) in fields
   { {{stringize(name)}}, {{stringize(type)}}, offsetof({{sname}}, {{name}}) },
 @end
@@ -47,7 +47,7 @@ end
 # ── invocation specs (verified through cc -E by test_integration) ──
 #?  REFLECT(Point, (int, x, "%d"), (float, y, "%f"))
 #=>     typedef struct { int x; float y; } Point;
-#=>     static const cursed_field Point_fields[] = {
+#=>     static const uncursed_field Point_fields[] = {
 #=>         { "x", "int", offsetof(Point, x) },
 #=>         { "y", "float", offsetof(Point, y) },
 #=>     };
@@ -60,7 +60,7 @@ end
 # edge: single-field struct
 #?  REFLECT(Id, (unsigned long, value, "%lu"))
 #=>     typedef struct { unsigned long value; } Id;
-#=>     static const cursed_field Id_fields[] = {
+#=>     static const uncursed_field Id_fields[] = {
 #=>         { "value", "unsigned long", offsetof(Id, value) },
 #=>     };
 #=>     enum { Id_field_count = 1 };

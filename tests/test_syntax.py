@@ -2,9 +2,9 @@
 
 import pytest
 
-from cursedpp.emitter import compile_source
-from cursedpp.nodes import SeqT, Text, TupleT, VarRef
-from cursedpp.parser import CursedppError, parse_file
+from uncursed_pp.emitter import compile_source
+from uncursed_pp.nodes import SeqT, Text, TupleT, VarRef
+from uncursed_pp.parser import UncursedPpError, parse_file
 
 DECLARE_FIELDS = """\
 # a comment
@@ -17,7 +17,7 @@ end
 
 
 def test_parse_macro_signature():
-    file = parse_file(DECLARE_FIELDS, "test.cursed")
+    file = parse_file(DECLARE_FIELDS, "test.uncursed")
     [macro] = file.macros
     assert macro.name == "DECLARE_FIELDS"
     [param] = macro.params
@@ -26,9 +26,9 @@ def test_parse_macro_signature():
 
 
 def test_parse_plain_macro_text_and_interp():
-    from cursedpp.nodes import Interp
+    from uncursed_pp.nodes import Interp
 
-    file = parse_file("macro ID(x)\nvalue: {{x}}!\nend\n", "t.cursed")
+    file = parse_file("macro ID(x)\nvalue: {{x}}!\nend\n", "t.uncursed")
     [macro] = file.macros
     assert macro.params[0].type is None  # bare token param
     lead, interp, tail = macro.body
@@ -39,60 +39,60 @@ def test_parse_plain_macro_text_and_interp():
 
 
 def test_missing_end_is_error():
-    with pytest.raises(CursedppError) as excinfo:
-        parse_file("macro FOO(x)\n{{x}}\n", "t.cursed")
-    assert "t.cursed" in str(excinfo.value)
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file("macro FOO(x)\n{{x}}\n", "t.uncursed")
+    assert "t.uncursed" in str(excinfo.value)
 
 
 def test_unbalanced_at_end_is_error():
     src = "macro FOO(xs: seq<token>)\n@end\nend\n"
-    with pytest.raises(CursedppError) as excinfo:
-        parse_file(src, "t.cursed")
-    assert "t.cursed:2" in str(excinfo.value)
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file(src, "t.uncursed")
+    assert "t.uncursed:2" in str(excinfo.value)
 
 
 def test_bad_signature_reports_position():
-    with pytest.raises(CursedppError) as excinfo:
-        parse_file("macro FOO(x::)\nbody\nend\n", "t.cursed")
-    assert "t.cursed:1" in str(excinfo.value)
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file("macro FOO(x::)\nbody\nend\n", "t.uncursed")
+    assert "t.uncursed:1" in str(excinfo.value)
 
 
 def test_unexpected_toplevel_line_is_error():
-    with pytest.raises(CursedppError) as excinfo:
-        parse_file("int stray;\n", "t.cursed")
-    assert "t.cursed:1" in str(excinfo.value)
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file("int stray;\n", "t.uncursed")
+    assert "t.uncursed:1" in str(excinfo.value)
 
 
 def test_plain_macro_single_line():
-    out = compile_source("macro ID(x)\n{{x}}\nend\n", "id.cursed")
+    out = compile_source("macro ID(x)\n{{x}}\nend\n", "id.uncursed")
     assert "#define ID(x) x\n" in out
     assert "#pragma once" in out
 
 
 def test_multiline_body_uses_continuations():
     src = "macro TWO(a, b)\nfirst {{a}}\nsecond {{b}}\nend\n"
-    out = compile_source(src, "two.cursed")
+    out = compile_source(src, "two.uncursed")
     assert "#define TWO(a, b) \\\n    first a \\\n    second b\n" in out
 
 
 def test_multiple_macros_share_one_header():
     src = "macro A(x)\n{{x}}\nend\nmacro B(y)\n{{y}}\nend\n"
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     assert "#define A(x) x\n" in out
     assert "#define B(y) y\n" in out
     assert out.count("#pragma once") == 1
 
 
 def test_duplicate_interp_on_one_line():
-    out = compile_source("macro D(x)\n{{x}} + {{x}} + {{x}}\nend\n", "t.cursed")
+    out = compile_source("macro D(x)\n{{x}} + {{x}} + {{x}}\nend\n", "t.uncursed")
     assert "#define D(x) x + x + x\n" in out
 
 
-def test_generated_header_embeds_cursed_source():
+def test_generated_header_embeds_uncursed_source():
     src = "# doubles x\nmacro TWICE(x)\n({{x}} + {{x}})\nend\n"
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     comment = (
-        "/* cursedpp source:\n"
+        "/* uncursed-pp source:\n"
         " * # doubles x\n"
         " * macro TWICE(x)\n"
         " * ({{x}} + {{x}})\n"
@@ -109,7 +109,7 @@ def test_source_comment_per_macro_with_own_comments():
         "\n"
         "# second\nmacro B(y)\n{{y}}\nend\n"
     )
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     assert " * # first\n * macro A(x)\n" in out
     assert " * # second\n * macro B(y)\n" in out
     # each macro's comment sits with its own block
@@ -118,7 +118,7 @@ def test_source_comment_per_macro_with_own_comments():
 
 def test_spec_comments_are_not_attached():
     src = "#? A(q)\n#=> q\n# real comment\nmacro A(x)\n{{x}}\nend\n"
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     assert " * # real comment\n" in out
     assert "#?" not in out
     assert "#=>" not in out
@@ -126,30 +126,30 @@ def test_spec_comments_are_not_attached():
 
 def test_blank_line_detaches_comments():
     src = "# stale note\n\nmacro A(x)\n{{x}}\nend\n"
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     assert "stale note" not in out
 
 
 def test_comment_terminator_in_body_is_sanitized():
     src = "macro C(x)\n{{x}} /* inline */\nend\n"
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     # the embedded source must not close the enclosing C comment early
     assert " * {{x}} /* inline * /\n" in out
 
 
 def test_string_literal_whitespace_survives_emission():
     src = 'macro P(x)\nprintf("  a  b", {{x}});\nend\n'
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     # check the #define itself, not the embedded source comment
     assert '#define P(x) printf("  a  b", x);' in out
 
 
 def test_raw_string_interior_survives_emission():
     src = 'macro R1(x)\nconst char *s = R"(a " {{x}}  b " c)";\nend\n'
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     # interior spacing of the raw string (even around embedded quotes)
     # must reach the #define untouched
-    assert 'R"(a " x  b " c)"' in out.split("/* cursedpp source:")[0] or (
+    assert 'R"(a " x  b " c)"' in out.split("/* uncursed-pp source:")[0] or (
         'R"(a " ' in out and '  b " c)"' in out.rsplit("*/", 1)[-1]
     )
 
@@ -158,23 +158,23 @@ def test_raw_string_interior_survives_emission():
 
 
 def test_text_adjacent_to_interp_stays_separate_tokens():
-    out = compile_source("macro P(x)\npre{{x}}post {{x}}5;\nend\n", "t.cursed")
+    out = compile_source("macro P(x)\npre{{x}}post {{x}}5;\nend\n", "t.uncursed")
     assert "#define P(x) pre x post x 5;\n" in out
 
 
 def test_interp_adjacent_to_interp_stays_separate():
-    out = compile_source("macro Q(a, b)\n{{a}}{{b}};\nend\n", "t.cursed")
+    out = compile_source("macro Q(a, b)\n{{a}}{{b}};\nend\n", "t.uncursed")
     assert "#define Q(a, b) a b;\n" in out
 
 
 def test_spread_tuple_field_adjacency_does_not_paste():
     src = "macro G(f: tuple<t, n>)\nget_{{f.n}} = {{f.t}}{{f.n}};\nend\n"
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     assert "get_ n = t n;" in out
 
 
 def test_punctuation_adjacency_stays_tight():
-    out = compile_source("macro R(x)\n[{{x}}]({{x}});\nend\n", "t.cursed")
+    out = compile_source("macro R(x)\n[{{x}}]({{x}});\nend\n", "t.uncursed")
     assert "#define R(x) [x](x);\n" in out
 
 
@@ -182,20 +182,20 @@ def test_punctuation_adjacency_stays_tight():
 
 
 def test_unknown_at_directive_line_is_error():
-    with pytest.raises(CursedppError) as excinfo:
-        parse_file("macro M(xs: seq<token>)\n@fro x in xs\nx\n@end\nend\n", "t.cursed")
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file("macro M(xs: seq<token>)\n@fro x in xs\nx\n@end\nend\n", "t.uncursed")
     assert "unknown directive" in str(excinfo.value)
-    assert "t.cursed:2" in str(excinfo.value)
+    assert "t.uncursed:2" in str(excinfo.value)
 
 
 def test_pragma_inside_macro_body_is_error():
-    with pytest.raises(CursedppError) as excinfo:
-        parse_file("macro M(x)\n@pragma pp_prefix F_\n{{x}}\nend\n", "t.cursed")
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file("macro M(x)\n@pragma pp_prefix F_\n{{x}}\nend\n", "t.uncursed")
     assert "top level" in str(excinfo.value)
 
 
 def test_unclosed_interpolation_is_error():
-    with pytest.raises(CursedppError) as excinfo:
-        parse_file("macro M(x)\nvalue = {{x} + 1;\nend\n", "t.cursed")
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file("macro M(x)\nvalue = {{x} + 1;\nend\n", "t.uncursed")
     assert "{{" in str(excinfo.value)
-    assert "t.cursed:2" in str(excinfo.value)
+    assert "t.uncursed:2" in str(excinfo.value)

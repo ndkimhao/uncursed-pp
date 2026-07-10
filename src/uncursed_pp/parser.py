@@ -1,4 +1,4 @@
-"""Parse .cursed source into the AST.
+"""Parse .uncursed source into the AST.
 
 Two-level strategy: a line-level pass recognizes macro headers, directive
 lines, `end` terminators and raw body text; lark mini-grammars (grammar.lark)
@@ -44,7 +44,7 @@ from .nodes import (
 )
 
 
-class CursedppError(Exception):
+class UncursedPpError(Exception):
     def __init__(self, message: str, filename: str, line: int, col: int | None = None):
         pos = f"{filename}:{line}" + (f":{col}" if col is not None else "")
         super().__init__(f"{pos}: {message}")
@@ -53,7 +53,7 @@ class CursedppError(Exception):
         self.col = col
 
 
-_GRAMMAR = resources.files("cursedpp").joinpath("grammar.lark").read_text()
+_GRAMMAR = resources.files("uncursed_pp").joinpath("grammar.lark").read_text()
 _LARK = Lark(
     _GRAMMAR,
     start=["signature", "for_line", "join_header", "let_line", "cond", "expr"],
@@ -223,11 +223,11 @@ def _parse_fragment(start: str, text: str, filename: str, line: int) -> Any:
         return _TRANSFORM.transform(tree)
     except lark_exceptions.VisitError as exc:
         if isinstance(exc.orig_exc, ValueError):
-            raise CursedppError(str(exc.orig_exc), filename, line) from exc
+            raise UncursedPpError(str(exc.orig_exc), filename, line) from exc
         raise
     except lark_exceptions.UnexpectedInput as exc:
         col = getattr(exc, "column", None)
-        raise CursedppError(f"syntax error: {exc.__class__.__name__}", filename, line, col) from exc
+        raise UncursedPpError(f"syntax error: {exc.__class__.__name__}", filename, line, col) from exc
 
 
 # ── inline scanning ──────────────────────────────────────────────────
@@ -255,7 +255,7 @@ def _scan_to_end(
                     return text[: else_at[0]], text[else_at[1] : m.start()], text[m.end() :]
                 return text[: m.start()], None, text[m.end() :]
             depth -= 1
-    raise CursedppError("inline directive missing @end", filename, lineno)
+    raise UncursedPpError("inline directive missing @end", filename, lineno)
 
 
 def _match_cond(text: str, filename: str, lineno: int) -> tuple[Cond, str]:
@@ -264,7 +264,7 @@ def _match_cond(text: str, filename: str, lineno: int) -> tuple[Cond, str]:
         if m:
             cond = _parse_fragment("cond", m.group(0), filename, lineno)
             return cond, text[m.end() :]
-    raise CursedppError("cannot parse @if condition", filename, lineno)
+    raise UncursedPpError("cannot parse @if condition", filename, lineno)
 
 
 def _parse_segments(text: str, lineno: int, filename: str) -> list[BodyNode]:
@@ -284,13 +284,13 @@ def _parse_segments(text: str, lineno: int, filename: str) -> list[BodyNode]:
 
     stray = _STRAY_TOKEN_RE.search(text)
     if stray:
-        raise CursedppError(f"stray {stray.group(0)} outside a directive", filename, lineno)
+        raise UncursedPpError(f"stray {stray.group(0)} outside a directive", filename, lineno)
 
     pieces = _INTERP_RE.split(text)
     for i, piece in enumerate(pieces):
         if i % 2 == 0:
             if "{{" in piece:
-                raise CursedppError(
+                raise UncursedPpError(
                     "unclosed '{{' interpolation", filename, lineno
                 )
             if piece:
@@ -304,7 +304,7 @@ def _parse_segments(text: str, lineno: int, filename: str) -> list[BodyNode]:
 def _parse_inline_join(text: str, lineno: int, filename: str) -> tuple[Join, str]:
     colon = _find_colon_outside_quotes(text)
     if colon == -1:
-        raise CursedppError("inline @join needs ': <body>@end'", filename, lineno)
+        raise UncursedPpError("inline @join needs ': <body>@end'", filename, lineno)
     join = _parse_fragment("join_header", "join " + text[:colon], filename, lineno)
     join.line = lineno
     body_text = text[colon + 1 :].removeprefix(" ")
@@ -389,7 +389,7 @@ def parse_file(source: str, filename: str) -> File:
             attached = []
             macros.append(macro)
             continue
-        raise CursedppError(f"unexpected line: {stripped!r}", filename, i + 1)
+        raise UncursedPpError(f"unexpected line: {stripped!r}", filename, i + 1)
 
     return File(macros=macros, pragmas=pragmas, extra_includes=extra_includes)
 
@@ -397,11 +397,11 @@ def parse_file(source: str, filename: str) -> File:
 def _parse_pragma(stripped: str, filename: str, lineno: int) -> tuple[str, str]:
     parts = stripped.split(None, 2)
     if len(parts) != 3:
-        raise CursedppError("@pragma needs a key and a value", filename, lineno)
+        raise UncursedPpError("@pragma needs a key and a value", filename, lineno)
     _, key, value = parts
     if key not in _KNOWN_PRAGMAS:
         known = ", ".join(sorted(_KNOWN_PRAGMAS))
-        raise CursedppError(f"unknown pragma {key!r} (known: {known})", filename, lineno)
+        raise UncursedPpError(f"unknown pragma {key!r} (known: {known})", filename, lineno)
     value = value.strip()
     if value.startswith('"') and value.endswith('"'):
         value = value[1:-1]
@@ -454,13 +454,13 @@ def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef,
 
         word = _directive_word(stripped)
         if word == "pragma":
-            raise CursedppError(
+            raise UncursedPpError(
                 "@pragma is only allowed at the top level, before any macro",
                 filename,
                 lineno,
             )
         if word is not None and word not in {"join", "if"} and not _INLINE_OPEN_RE.search(raw):
-            raise CursedppError(
+            raise UncursedPpError(
                 f"unknown directive: @{word} (known: for, join, if, else, "
                 "end, let, pragma)",
                 filename,
@@ -476,8 +476,8 @@ def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef,
         i += 1
 
     if len(stack) > 1:
-        raise CursedppError(f"unclosed @{stack[-1].kind}", filename, stack[-1].line)
-    raise CursedppError(f"missing 'end' for macro {name}", filename, header_line)
+        raise UncursedPpError(f"unclosed @{stack[-1].kind}", filename, stack[-1].line)
+    raise UncursedPpError(f"missing 'end' for macro {name}", filename, header_line)
 
 
 _LET_RE = re.compile(r"let\s+([A-Za-z_]\w*)\s*:=\s*(.*)$")
@@ -486,13 +486,13 @@ _LET_RE = re.compile(r"let\s+([A-Za-z_]\w*)\s*:=\s*(.*)$")
 def _parse_let(directive: str, filename: str, lineno: int) -> Let:
     m = _LET_RE.match(directive)
     if not m:
-        raise CursedppError("@let needs 'name := value'", filename, lineno)
+        raise UncursedPpError("@let needs 'name := value'", filename, lineno)
     name, rhs = m.group(1), m.group(2).strip()
     if _INLINE_OPEN_RE.match(rhs):
         nodes = _parse_segments(rhs, lineno, filename)
         nodes = [n for n in nodes if not (isinstance(n, Text) and not n.value.strip())]
         if len(nodes) != 1 or not isinstance(nodes[0], (Join, If)):
-            raise CursedppError(
+            raise UncursedPpError(
                 "@let value must be a single expression or one inline @join/@if",
                 filename,
                 lineno,
@@ -517,13 +517,13 @@ def _handle_directive(directive: str, stack: list[_Block], filename: str, lineno
     elif word == "if":
         cond, leftover = _match_cond(directive[len("if ") :].strip(), filename, lineno)
         if leftover.strip():
-            raise CursedppError("unexpected text after @if condition", filename, lineno)
+            raise UncursedPpError("unexpected text after @if condition", filename, lineno)
         node = If(cond=cond, line=lineno)
         stack[-1].target.append(node)
         stack.append(_Block(node.then, node, "if", lineno))
     elif word == "else":
         if directive.strip() != "else":
-            raise CursedppError(
+            raise UncursedPpError(
                 "unexpected text after @else (for else-if, nest an @if "
                 "inside the @else branch)",
                 filename,
@@ -531,16 +531,16 @@ def _handle_directive(directive: str, stack: list[_Block], filename: str, lineno
             )
         block = stack[-1]
         if block.kind != "if" or not isinstance(block.node, If):
-            raise CursedppError("@else without matching @if", filename, lineno)
+            raise UncursedPpError("@else without matching @if", filename, lineno)
         if block.target is block.node.else_:
-            raise CursedppError("duplicate @else", filename, lineno)
+            raise UncursedPpError("duplicate @else", filename, lineno)
         block.target = block.node.else_
     elif word == "let":
         let = _parse_let(directive, filename, lineno)
         stack[-1].target.append(let)
     elif directive == "end":
         if len(stack) == 1:
-            raise CursedppError("@end without matching @for/@join/@if", filename, lineno)
+            raise UncursedPpError("@end without matching @for/@join/@if", filename, lineno)
         stack.pop()
     else:  # pragma: no cover - guarded by _is_block_directive
-        raise CursedppError(f"unknown directive: @{directive}", filename, lineno)
+        raise UncursedPpError(f"unknown directive: @{directive}", filename, lineno)

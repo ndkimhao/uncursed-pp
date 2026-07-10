@@ -1,17 +1,17 @@
 import pytest
 
-from cursedpp.cli import main
+from uncursed_pp.cli import main
 
 
 def test_cli_help_runs(capsys):
     with pytest.raises(SystemExit) as excinfo:
         main(["--help"])
     assert excinfo.value.code == 0
-    assert "cursedpp" in capsys.readouterr().out
+    assert "uncursed-pp" in capsys.readouterr().out
 
 
 def test_cli_compiles_to_default_output(tmp_path, monkeypatch):
-    src = tmp_path / "fields.cursed"
+    src = tmp_path / "fields.uncursed"
     src.write_text("macro ID(x)\n{{x}}\nend\n")
     main([str(src)])
     out = tmp_path / "fields.h"
@@ -21,7 +21,7 @@ def test_cli_compiles_to_default_output(tmp_path, monkeypatch):
 
 
 def test_cli_explicit_output(tmp_path):
-    src = tmp_path / "a.cursed"
+    src = tmp_path / "a.uncursed"
     src.write_text("macro ID(x)\n{{x}}\nend\n")
     dest = tmp_path / "sub" / "b.h"
     dest.parent.mkdir()
@@ -30,25 +30,25 @@ def test_cli_explicit_output(tmp_path):
 
 
 def test_cli_reports_errors_to_stderr(tmp_path, capsys):
-    src = tmp_path / "bad.cursed"
+    src = tmp_path / "bad.uncursed"
     src.write_text("macro FOO(x)\nno end here\n")
     with pytest.raises(SystemExit) as excinfo:
         main([str(src)])
     assert excinfo.value.code == 1
-    assert "bad.cursed" in capsys.readouterr().err
+    assert "bad.uncursed" in capsys.readouterr().err
 
 
 def test_cli_has_no_config_flags():
-    # configuration lives in the .cursed file (@pragma), not on the CLI
+    # configuration lives in the .uncursed file (@pragma), not on the CLI
     for flag in ["--pp-prefix", "--pp-include", "--pp-include-dir",
                  "--helper-prefix", "--runtime-name", "--include"]:
         with pytest.raises(SystemExit) as excinfo:
-            main(["in.cursed", flag, "X"])
+            main(["in.uncursed", flag, "X"])
         assert excinfo.value.code == 2
 
 
 def test_cli_config_via_pragmas(tmp_path):
-    src = tmp_path / "d.cursed"
+    src = tmp_path / "d.uncursed"
     src.write_text(
         "@pragma pp_prefix V_PP_\n"
         '@pragma pp_include "v/pp.hpp"\n'
@@ -64,25 +64,25 @@ def test_cli_config_via_pragmas(tmp_path):
 
 
 def test_cli_writes_runtime_header_when_needed(tmp_path):
-    src = tmp_path / "w.cursed"
+    src = tmp_path / "w.uncursed"
     src.write_text("macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n")
     out = tmp_path / "sub" / "w.h"
     out.parent.mkdir()
     main([str(src), "-o", str(out)])
-    runtime = out.parent / "cursedpp_runtime.h"
+    runtime = out.parent / "uncursed_pp_runtime.h"
     assert runtime.exists()
-    assert "CURSEDPP_KW_SPREAD" in runtime.read_text()
+    assert "UNCURSED_PP_KW_SPREAD" in runtime.read_text()
 
 
 def test_cli_no_runtime_for_plain_macros(tmp_path):
-    src = tmp_path / "p.cursed"
+    src = tmp_path / "p.uncursed"
     src.write_text("macro ID(x)\n{{x}}\nend\n")
     main([str(src)])
-    assert not (tmp_path / "cursedpp_runtime.h").exists()
+    assert not (tmp_path / "uncursed_pp_runtime.h").exists()
 
 
 def test_cli_runtime_name_pragma(tmp_path):
-    src = tmp_path / "w.cursed"
+    src = tmp_path / "w.uncursed"
     src.write_text(
         '@pragma runtime_name "acme_common.h"\n'
         "macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\nend\n"
@@ -93,7 +93,7 @@ def test_cli_runtime_name_pragma(tmp_path):
 
 
 def test_cli_extra_include_and_pp_include_dir_pragmas(tmp_path):
-    src = tmp_path / "d.cursed"
+    src = tmp_path / "d.uncursed"
     src.write_text(
         '@pragma include "myproj/types.h"\n'
         "@pragma include <stdio.h>\n"
@@ -119,14 +119,14 @@ def test_cli_refuses_to_overwrite_input(tmp_path, capsys):
 
 def test_cli_missing_input_is_clean_error(tmp_path, capsys):
     with pytest.raises(SystemExit) as excinfo:
-        main([str(tmp_path / "nope.cursed")])
+        main([str(tmp_path / "nope.uncursed")])
     assert excinfo.value.code == 1
     err = capsys.readouterr().err
     assert "cannot read" in err and "Traceback" not in err
 
 
 def test_cli_unwritable_output_is_clean_error(tmp_path, capsys):
-    src = tmp_path / "a.cursed"
+    src = tmp_path / "a.uncursed"
     src.write_text("macro ID(x)\n{{x}}\nend\n")
     with pytest.raises(SystemExit) as excinfo:
         main([str(src), "-o", str(tmp_path / "no_dir" / "a.h")])

@@ -58,17 +58,17 @@ def parse_specs(text: str) -> list[tuple[str, list[str], bool]]:
 
 def spec_params() -> list[Any]:
     params = []
-    for cursed in golden_templates():
+    for template in golden_templates():
         for i, (invocation, expecteds, expect_failure) in enumerate(
-            parse_specs(cursed.read_text())
+            parse_specs(template.read_text())
         ):
             params.append(
                 pytest.param(
-                    cursed,
+                    template,
                     invocation,
                     expecteds,
                     expect_failure,
-                    id=f"{golden_id(cursed)}-{i}",
+                    id=f"{golden_id(template)}-{i}",
                 )
             )
     return params
@@ -86,11 +86,11 @@ def test_every_golden_macro_is_exercised():
     the check."""
     import re
 
-    from cursedpp.emitter import C_LITERAL_PATTERN
+    from uncursed_pp.emitter import C_LITERAL_PATTERN
 
     unexercised = []
-    for cursed in golden_templates():
-        text = cursed.read_text()
+    for template in golden_templates():
+        text = template.read_text()
         macros = re.findall(r"^macro\s+(\w+)\s*\(", text, flags=re.MULTILINE)
         invocations = " ".join(inv for inv, _, _ in parse_specs(text))
         bodies = re.sub(r"^macro\s+\w+\s*\(.*$", "", text, flags=re.MULTILINE)
@@ -100,20 +100,20 @@ def test_every_golden_macro_is_exercised():
         bodies = re.sub(C_LITERAL_PATTERN, " ", bodies)
         for name in macros:
             if not re.search(rf"\b{name}\s*\(", invocations + " " + bodies):
-                unexercised.append(f"{golden_id(cursed)}:{name}")
+                unexercised.append(f"{golden_id(template)}:{name}")
     assert not unexercised, f"macros never invoked by any spec: {unexercised}"
 
 
 @requires_boost
 @pytest.mark.parametrize(
-    ("cursed", "invocation", "expecteds", "expect_failure"), spec_params()
+    ("template", "invocation", "expecteds", "expect_failure"), spec_params()
 )
-def test_spec(tmp_path, cursed, invocation, expecteds, expect_failure):
+def test_spec(tmp_path, template, invocation, expecteds, expect_failure):
     if expect_failure:
         with pytest.raises(AssertionError, match="preprocessing failed"):
-            preprocess_src(tmp_path, cursed.read_text(), cursed.stem, invocation)
+            preprocess_src(tmp_path, template.read_text(), template.stem, invocation)
         return
-    out = preprocess_src(tmp_path, cursed.read_text(), cursed.stem, invocation)
+    out = preprocess_src(tmp_path, template.read_text(), template.stem, invocation)
     expected = canon(" ".join(expecteds))
     assert expected == out, (
         f"{invocation}\n  expected: {expected}\n  actual:   {out}"
@@ -123,7 +123,7 @@ def test_spec(tmp_path, cursed, invocation, expecteds, expect_failure):
 @requires_boost
 def test_example_file_compiles_and_all_macros_expand(tmp_path):
     """The shipped feature-tour example works end-to-end."""
-    source = (Path(__file__).parent.parent / "examples" / "example.cursed").read_text()
+    source = (Path(__file__).parent.parent / "examples" / "example.uncursed").read_text()
     invocations = "\n".join(
         [
             "DECLARE_FIELDS(((int, x))((float, y)))",

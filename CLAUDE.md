@@ -1,6 +1,6 @@
-# cursedpp
+# uncursed-pp
 
-A Python compiler from a readable template DSL (`.cursed` files) to C preprocessor
+A Python compiler from a readable template DSL (`.uncursed` files) to C preprocessor
 macros built on Boost.Preprocessor. Loops/conditionals in generated macros execute
 at C compile time via Boost.PP primitives.
 
@@ -9,7 +9,7 @@ at C compile time via Boost.PP primitives.
 - `make setup` — toolchain (mise), env (uv), vendored Boost.PP (git clone into `.boost-pp/`)
 - `make check` — mypy --strict + full pytest (e2e specs run against the vendored boost)
 - `uv run pytest tests/test_golden.py` — exact golden-header comparison
-- `uv run cursedpp input.cursed -o output.h` — compile a template
+- `uv run uncursed-pp input.uncursed -o output.h` — compile a template
 
 ## Architecture
 
@@ -41,8 +41,8 @@ and refuted ideas — the refuted list is binding).
   whole-output equality (canonicalized), so a missing or extra emitted token
   fails. New goldens must include specs —
   `test_every_golden_template_has_specs` enforces it.
-- Generated helpers are namespaced `CURSEDPP_<MACRO>_*` (shared collapsed helpers:
-  `CURSEDPP_<FILESTEM>_H<n>` in first-use order — deterministic, and
+- Generated helpers are namespaced `UNCURSED_PP_<MACRO>_*` (shared collapsed helpers:
+  `UNCURSED_PP_<FILESTEM>_H<n>` in first-use order — deterministic, and
   namespaced per file so independently generated headers cannot collide).
 - The `BOOST_PP_` prefix is never hardcoded in emitter output paths; always go
   through the configured prefix (`@pragma pp_prefix`; EmitConfig for API use).

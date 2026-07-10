@@ -1,8 +1,8 @@
-# cursedpp
+# uncursed-pp
 
 A compiler from a readable template DSL to C preprocessor macros built on
 [Boost.Preprocessor](https://www.boost.org/doc/libs/latest/libs/preprocessor/doc/index.html).
-You describe a macro like a web render template; cursedpp emits the cursed
+You describe a macro like a web render template; uncursed-pp emits the cursed
 `BOOST_PP_` machinery. Loops and conditionals in the *generated* macros run at
 **C compile time** — call sites pass real variable-length data.
 
@@ -15,14 +15,14 @@ end
 ```
 
 ```c
-/* generated — each macro's block carries its .cursed source as a comment */
-/* cursedpp source:
+/* generated — each macro's block carries its .uncursed source as a comment */
+/* uncursed-pp source:
  * macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
  * ...
  */
-#define CURSEDPP_DECLARE_FIELDS_AP1(type, name) type name;
-#define CURSEDPP_DECLARE_FIELDS_EACH1(r, d, e) CURSEDPP_DECLARE_FIELDS_AP1 e
-#define DECLARE_FIELDS(fields) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_DECLARE_FIELDS_EACH1, ~, fields)
+#define UNCURSED_PP_DECLARE_FIELDS_AP1(type, name) type name;
+#define UNCURSED_PP_DECLARE_FIELDS_EACH1(r, d, e) UNCURSED_PP_DECLARE_FIELDS_AP1 e
+#define DECLARE_FIELDS(fields) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_DECLARE_FIELDS_EACH1, ~, fields)
 
 /* usage — expands at C compile time */
 DECLARE_FIELDS(((int, x))((float, y)))   /* → int x; float y; */
@@ -35,7 +35,7 @@ make setup          # mise install + uv sync + vendored Boost.PP clone
 make test           # pytest incl. real `gcc -E` e2e specs (vendored boost)
 make typecheck      # mypy --strict
 
-uv run cursedpp input.cursed -o output.h
+uv run uncursed-pp input.uncursed -o output.h
 ```
 
 Golden templates in `tests/golden/` are self-testing — each carries spec
@@ -55,7 +55,7 @@ takes only the input path and `-o`:
 | `pp_prefix` | `BOOST_PP_` | prefix of the preprocessor library's macros |
 | `pp_include` | *(granular)* | single header to include instead of granular ones |
 | `pp_include_dir` | `boost/preprocessor` | root of the granular usage-derived includes |
-| `helper_prefix` | `CURSEDPP_` | prefix of generated helper macros |
+| `helper_prefix` | `UNCURSED_PP_` | prefix of generated helper macros |
 | `runtime_name` | `<helper_prefix>_runtime.h` | filename of the shared runtime header |
 | `include` | — | extra `#include` for the generated header (repeatable) |
 
@@ -68,9 +68,9 @@ takes only the input path and `-o`:
 
 ## The language
 
-A `.cursed` file holds `#` comments, optional `@pragma` lines, and macro
+A `.uncursed` file holds `#` comments, optional `@pragma` lines, and macro
 definitions. The body is raw C text; control flow uses `@`-directives;
-`{{expr}}` interpolates. See `examples/example.cursed` for a feature tour.
+`{{expr}}` interpolates. See `examples/example.uncursed` for a feature tour.
 
 | Feature | Syntax |
 |---|---|
@@ -90,17 +90,17 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 Within a loop over `seq<tuple<...>>`, the tuple's element names are bound
 automatically (`@join args with ", ": {{type}} {{argname}}@end`). Loop bodies
 may reference outer parameters freely — they travel through `FOR_EACH`'s data
-slot. See `tests/golden/reflect.cursed` for a worked example: a reflection
+slot. See `tests/golden/reflect.uncursed` for a worked example: a reflection
 system where one field list generates a struct, a name/type/offset metadata
 table, and a debug printer.
 
 Identical generated helpers are deduplicated across the file into shared
-`CURSEDPP_H<n>` macros; loop bodies differing by one constant token share a
+`UNCURSED_PP_H<n>` macros; loop bodies differing by one constant token share a
 helper with the constant passed through `FOR_EACH`'s data slot.
 
 Common utilities (currently the `KW_SPREAD` tuple-unpacking helper) are not
-inlined: headers that need them `#include "cursedpp_runtime.h"`, a small
-companion file cursedpp writes next to the output. Multiple generated headers
+inlined: headers that need them `#include "uncursed_pp_runtime.h"`, a small
+companion file uncursed-pp writes next to the output. Multiple generated headers
 share the one runtime file. Its name defaults to `<helper_prefix>_runtime.h`
 and is customizable via `@pragma runtime_name "acme_common.h"`.
 
@@ -126,7 +126,7 @@ and is customizable via `@pragma runtime_name "acme_common.h"`.
   and inner levels to `BOOST_PP_REPEAT` (3 auto-detected dimensions) with
   `SEQ_ELEM` indexing — deeper nesting is a compile error. `@if` nests
   freely at any depth. Don't call another looping generated macro from a
-  loop body (cursedpp can't see call sites to guard it).
+  loop body (uncursed-pp can't see call sites to guard it).
 
 ## Architecture
 

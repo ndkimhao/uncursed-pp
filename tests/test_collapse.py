@@ -3,7 +3,7 @@ parameterize through FOR_EACH's spare `d` argument; anything fancier stays
 unmerged (generated-code simplicity wins)."""
 
 from conftest import canon, preprocess_src, requires_boost
-from cursedpp.emitter import compile_source
+from uncursed_pp.emitter import compile_source
 
 TWO_IDENTICAL = (
     "macro CALL_A(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
@@ -22,32 +22,32 @@ TWO_TOKEN_DIFF = (
 
 
 def test_exact_duplicate_helpers_collapse():
-    out = compile_source(TWO_IDENTICAL, "t.cursed")
-    assert out.count("#define CURSEDPP_T_H1(r, d, e) f(e);") == 1
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T_H1, ~, xs)" in out
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T_H1, ~, ys)" in out
-    assert "CURSEDPP_CALL_A_EACH1" not in out
-    assert "CURSEDPP_CALL_B_EACH1" not in out
+    out = compile_source(TWO_IDENTICAL, "t.uncursed")
+    assert out.count("#define UNCURSED_PP_T_H1(r, d, e) f(e);") == 1
+    assert "BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_T_H1, ~, xs)" in out
+    assert "BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_T_H1, ~, ys)" in out
+    assert "UNCURSED_PP_CALL_A_EACH1" not in out
+    assert "UNCURSED_PP_CALL_B_EACH1" not in out
 
 
 def test_single_token_diff_parameterizes_via_d():
-    out = compile_source(ONE_TOKEN_DIFF, "t.cursed")
-    assert "#define CURSEDPP_T_H1(r, d, e) d e;" in out
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T_H1, int, xs)" in out
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T_H1, float, ys)" in out
+    out = compile_source(ONE_TOKEN_DIFF, "t.uncursed")
+    assert "#define UNCURSED_PP_T_H1(r, d, e) d e;" in out
+    assert "BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_T_H1, int, xs)" in out
+    assert "BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_T_H1, float, ys)" in out
 
 
 def test_multi_token_diff_stays_unmerged():
-    out = compile_source(TWO_TOKEN_DIFF, "t.cursed")
+    out = compile_source(TWO_TOKEN_DIFF, "t.uncursed")
     assert "_H1" not in out
-    assert "#define CURSEDPP_A_EACH1(r, d, e) int e = 0;" in out
-    assert "#define CURSEDPP_B_EACH1(r, d, e) float e = 1;" in out
+    assert "#define UNCURSED_PP_A_EACH1(r, d, e) int e = 0;" in out
+    assert "#define UNCURSED_PP_B_EACH1(r, d, e) float e = 1;" in out
 
 
 def test_single_user_keeps_macro_specific_name():
     src = "macro ONLY(xs: seq<token>)\n@for x in xs\ng({{x}});\n@end\nend\n"
-    out = compile_source(src, "t.cursed")
-    assert "CURSEDPP_ONLY_EACH1" in out
+    out = compile_source(src, "t.uncursed")
+    assert "UNCURSED_PP_ONLY_EACH1" in out
     assert "_H1" not in out
 
 
@@ -72,14 +72,14 @@ LITERAL_DIFF = (
 
 
 def test_punctuation_hole_does_not_paste_into_neighbor():
-    out = compile_source(PUNCT_DIFF, "t.cursed")
+    out = compile_source(PUNCT_DIFF, "t.uncursed")
     import re
 
     assert not re.search(r"\bed\b", out)
 
 
 def test_string_literal_hole_keeps_literal_whole():
-    out = compile_source(LITERAL_DIFF, "t.cursed")
+    out = compile_source(LITERAL_DIFF, "t.uncursed")
     # a merge is fine only if the WHOLE literal travels through d;
     # a "d" spliced inside quotes can never substitute
     assert '"d"' not in out
@@ -97,14 +97,14 @@ def test_collapse_merges_expand_correctly(tmp_path):
 def test_shared_helpers_are_namespaced_per_file():
     # two independently generated headers in one translation unit must not
     # collide on shared helper names
-    out_a = compile_source(TWO_IDENTICAL, "widgets.cursed")
+    out_a = compile_source(TWO_IDENTICAL, "widgets.uncursed")
     out_b = compile_source(
         "macro OTHER(xs: seq<token>)\n@for x in xs\ng({{x}})\n@end\nend\n"
         "macro OTHER2(ys: seq<token>)\n@for y in ys\ng({{y}})\n@end\nend\n",
-        "gadgets.cursed",
+        "gadgets.uncursed",
     )
-    assert "CURSEDPP_WIDGETS_H1" in out_a
-    assert "CURSEDPP_GADGETS_H1" in out_b
+    assert "UNCURSED_PP_WIDGETS_H1" in out_a
+    assert "UNCURSED_PP_GADGETS_H1" in out_b
     import re
 
-    assert not re.search(r"\bCURSEDPP_H1\b", out_a + out_b)
+    assert not re.search(r"\bUNCURSED_PP_H1\b", out_a + out_b)

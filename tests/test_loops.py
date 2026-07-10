@@ -7,9 +7,9 @@ header comparison + #? invocation specs) - not as string assertions here.
 import pytest
 
 from conftest import canon, preprocess_src, requires_boost
-from cursedpp.emitter import compile_source
-from cursedpp.nodes import ForEach, Interp, Join, VarRef
-from cursedpp.parser import CursedppError, parse_file
+from uncursed_pp.emitter import compile_source
+from uncursed_pp.nodes import ForEach, Interp, Join, VarRef
+from uncursed_pp.parser import UncursedPpError, parse_file
 
 
 def test_parse_for_loop_body():
@@ -20,7 +20,7 @@ def test_parse_for_loop_body():
         "@end\n"
         "end\n"
     )
-    [macro] = parse_file(src, "test.cursed").macros
+    [macro] = parse_file(src, "test.uncursed").macros
     [loop] = [n for n in macro.body if isinstance(n, ForEach)]
     assert loop.unpack == ("type", "name")
     assert loop.var is None
@@ -35,7 +35,7 @@ def test_parse_inline_join():
         'void {{name}}(@join args with ", ": {{type}} {{argname}}@end);\n'
         "end\n"
     )
-    [macro] = parse_file(src, "t.cursed").macros
+    [macro] = parse_file(src, "t.uncursed").macros
     join = next(n for n in macro.body if isinstance(n, Join))
     assert join.iterable == "args"
     assert join.sep == ", "
@@ -46,7 +46,7 @@ def test_parse_inline_join():
 
 def test_parse_line_form_join_with_as_binding():
     src = 'macro ORS(xs: seq<token>)\n@join xs as x with " || "\n({{x}})\n@end\nend\n'
-    [macro] = parse_file(src, "t.cursed").macros
+    [macro] = parse_file(src, "t.uncursed").macros
     join = next(n for n in macro.body if isinstance(n, Join))
     assert join.var == "x"
     assert join.sep == " || "
@@ -55,40 +55,40 @@ def test_parse_line_form_join_with_as_binding():
 
 def test_inline_join_missing_end_is_error():
     src = 'macro P(xs: seq<token>)\nf(@join xs with ", ": {{xs}});\nend\n'
-    with pytest.raises(CursedppError) as excinfo:
-        parse_file(src, "t.cursed")
-    assert "t.cursed:2" in str(excinfo.value)
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file(src, "t.uncursed")
+    assert "t.uncursed:2" in str(excinfo.value)
 
 
 def test_unclosed_line_form_loop_is_error():
     src = "macro F(xs: seq<token>)\n@for x in xs\n{{x}}\nend\n"
-    with pytest.raises(CursedppError):
-        parse_file(src, "t.cursed")
+    with pytest.raises(UncursedPpError):
+        parse_file(src, "t.uncursed")
 
 
 def test_iterating_non_seq_is_error():
-    with pytest.raises(CursedppError) as excinfo:
-        compile_source("macro F(x)\n@for a in x\n{{a}}\n@end\nend\n", "t.cursed")
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source("macro F(x)\n@for a in x\n{{a}}\n@end\nend\n", "t.uncursed")
     assert "non-seq" in str(excinfo.value)
 
 
 def test_iterating_undefined_name_is_error():
-    with pytest.raises(CursedppError) as excinfo:
-        compile_source("macro F(x)\n@for a in nope\n{{a}}\n@end\nend\n", "t.cursed")
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source("macro F(x)\n@for a in nope\n{{a}}\n@end\nend\n", "t.uncursed")
     assert "undefined" in str(excinfo.value)
 
 
 def test_unpack_arity_mismatch_is_error():
     src = "macro F(xs: seq<tuple<a, b>>)\n@for (a, b, c) in xs\n{{a}}\n@end\nend\n"
-    with pytest.raises(CursedppError) as excinfo:
-        compile_source(src, "t.cursed")
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source(src, "t.uncursed")
     assert "arity" in str(excinfo.value)
 
 
 def test_unpacking_non_tuple_seq_is_error():
     src = "macro F(xs: seq<token>)\n@for (a, b) in xs\n{{a}}\n@end\nend\n"
-    with pytest.raises(CursedppError) as excinfo:
-        compile_source(src, "t.cursed")
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source(src, "t.uncursed")
     assert "tuple" in str(excinfo.value)
 
 
@@ -115,7 +115,7 @@ JOIN_IN_FOR = (
 
 
 def test_nested_for_uses_repeat():
-    out = compile_source(NESTED_FOR, "t.cursed")
+    out = compile_source(NESTED_FOR, "t.uncursed")
     # outer level keeps SEQ_FOR_EACH; the inner level iterates via the
     # auto-reentrant BOOST_PP_REPEAT with SEQ_ELEM element access
     assert "BOOST_PP_SEQ_FOR_EACH(" in out
@@ -124,12 +124,12 @@ def test_nested_for_uses_repeat():
 
 
 def test_loop_if_loop_compiles():
-    out = compile_source(LOOP_IF_LOOP, "t.cursed")
+    out = compile_source(LOOP_IF_LOOP, "t.uncursed")
     assert "BOOST_PP_REPEAT(" in out
 
 
 def test_inline_join_inside_for_compiles():
-    out = compile_source(JOIN_IN_FOR, "t.cursed")
+    out = compile_source(JOIN_IN_FOR, "t.uncursed")
     assert "BOOST_PP_REPEAT(" in out
     assert "BOOST_PP_COMMA_IF(n)" in out
 
@@ -142,7 +142,7 @@ def test_let_join_inside_loop_compiles():
         "g({{j}});\n"
         "@end\nend\n"
     )
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     assert "BOOST_PP_REPEAT(" in out
 
 
@@ -152,8 +152,8 @@ def test_loops_nest_at_most_four_deep():
     for var, seq in [("a", "s1"), ("b", "s2"), ("c", "s3"), ("d2", "s4"), ("e2", "s5")]:
         src += f"@for {var} in {seq}\n"
     src += inner + "@end\n" * 5 + "end\n"
-    with pytest.raises(CursedppError) as excinfo:
-        compile_source(src, "t.cursed")
+    with pytest.raises(UncursedPpError) as excinfo:
+        compile_source(src, "t.uncursed")
     assert "4 deep" in str(excinfo.value)
 
 
@@ -164,7 +164,7 @@ def test_sibling_loops_are_fine():
         "@for x in xs\nb({{x}});\n@end\n"
         "end\n"
     )
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     # (the near-identical bodies collapse into one shared d-parameterized
     # helper - the point is both call sites exist and nothing was rejected)
     assert out.count("BOOST_PP_SEQ_FOR_EACH(") == 2
@@ -177,17 +177,17 @@ def test_loop_inside_if_branch_is_fine():
         "@for x in xs\nmany({{x}});\n@end\n"
         "@end\nend\n"
     )
-    out = compile_source(src, "t.cursed")  # no loop encloses the @if
-    assert "CURSEDPP_OPT_EACH1" in out
+    out = compile_source(src, "t.uncursed")  # no loop encloses the @if
+    assert "UNCURSED_PP_OPT_EACH1" in out
 
 # ── AP unpacking: tuple elements become direct macro params ─────────
 
 
 def test_tuple_loop_unpacks_via_ap_juxtaposition():
     src = "macro DECL(fields: seq<tuple<type, name>>)\n@for (type, name) in fields\n  {{type}} {{name}};\n@end\nend\n"
-    out = compile_source(src, "t.cursed")
-    assert "#define CURSEDPP_DECL_AP1(type, name) type name;\n" in out
-    assert "#define CURSEDPP_DECL_EACH1(r, d, e) CURSEDPP_DECL_AP1 e\n" in out
+    out = compile_source(src, "t.uncursed")
+    assert "#define UNCURSED_PP_DECL_AP1(type, name) type name;\n" in out
+    assert "#define UNCURSED_PP_DECL_EACH1(r, d, e) UNCURSED_PP_DECL_AP1 e\n" in out
     assert "TUPLE_ELEM" not in out
 
 
@@ -199,25 +199,25 @@ def test_tuple_loop_with_free_var_spreads_through_d():
         "@end\n"
         "end\n"
     )
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     assert (
-        "#define CURSEDPP_TBL_AP1(sname, type, name) "
+        "#define UNCURSED_PP_TBL_AP1(sname, type, name) "
         "{ BOOST_PP_STRINGIZE(name), offsetof(sname, name) },\n" in out
     )
-    assert "#define CURSEDPP_TBL_AP1_D(...) CURSEDPP_TBL_AP1(__VA_ARGS__)\n" in out
+    assert "#define UNCURSED_PP_TBL_AP1_D(...) UNCURSED_PP_TBL_AP1(__VA_ARGS__)\n" in out
     assert (
-        "#define CURSEDPP_TBL_EACH1(r, d, e) CURSEDPP_TBL_AP1_D(d, CURSEDPP_KW_SPREAD e)\n"
+        "#define UNCURSED_PP_TBL_EACH1(r, d, e) UNCURSED_PP_TBL_AP1_D(d, UNCURSED_PP_KW_SPREAD e)\n"
         in out
     )
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_TBL_EACH1, sname, fields)" in out
-    assert '#include "cursedpp_runtime.h"' in out
+    assert "BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_TBL_EACH1, sname, fields)" in out
+    assert '#include "uncursed_pp_runtime.h"' in out
     assert "TUPLE_ELEM" not in out
 
 
 def test_as_binding_keeps_element_form():
     src = "macro F(xs: seq<tuple<a, b>>)\n@for x in xs\ng({{x}});\n@end\nend\n"
-    out = compile_source(src, "t.cursed")
-    assert "#define CURSEDPP_F_EACH1(r, d, e) g(e);\n" in out
+    out = compile_source(src, "t.uncursed")
+    assert "#define UNCURSED_PP_F_EACH1(r, d, e) g(e);\n" in out
 
 
 def test_tuple_loop_with_two_free_vars_spreads_d_tuple():
@@ -228,13 +228,13 @@ def test_tuple_loop_with_two_free_vars_spreads_d_tuple():
         "@end\n"
         "end\n"
     )
-    out = compile_source(src, "t.cursed")
-    assert "#define CURSEDPP_T2_AP1(a, b, t, n) f(a, b, t, n);\n" in out
+    out = compile_source(src, "t.uncursed")
+    assert "#define UNCURSED_PP_T2_AP1(a, b, t, n) f(a, b, t, n);\n" in out
     assert (
-        "#define CURSEDPP_T2_EACH1(r, d, e) "
-        "CURSEDPP_T2_AP1_D(CURSEDPP_KW_SPREAD d, CURSEDPP_KW_SPREAD e)\n" in out
+        "#define UNCURSED_PP_T2_EACH1(r, d, e) "
+        "UNCURSED_PP_T2_AP1_D(UNCURSED_PP_KW_SPREAD d, UNCURSED_PP_KW_SPREAD e)\n" in out
     )
-    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_T2_EACH1, (a, b), fields)" in out
+    assert "BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_T2_EACH1, (a, b), fields)" in out
 
 
 def test_field_name_colliding_with_free_var_falls_back_to_tuple_elem():
@@ -246,8 +246,8 @@ def test_field_name_colliding_with_free_var_falls_back_to_tuple_elem():
     )
     # unpack name shadows the outer param; if the body ALSO used the outer
     # value it couldn't - here the shadowing unpack wins and AP still applies
-    out = compile_source(src, "t.cursed")
-    assert "CURSEDPP_C_AP1(type, name)" in out
+    out = compile_source(src, "t.uncursed")
+    assert "UNCURSED_PP_C_AP1(type, name)" in out
 
 
 def test_conditional_inside_ap_loop_body():
@@ -257,10 +257,10 @@ def test_conditional_inside_ap_loop_body():
         "  @if is_paren(t) {{remove_parens(t)}} {{n}}; @else {{t}} {{n}}; @end\n"
         "@end\nend\n"
     )
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     # branch helpers receive the AP params by name
-    assert "#define CURSEDPP_P_THEN1(t, n) BOOST_PP_REMOVE_PARENS(t) n;\n" in out
-    assert "CURSEDPP_P_THEN1, CURSEDPP_P_ELSE1)(t, n)" in out
+    assert "#define UNCURSED_PP_P_THEN1(t, n) BOOST_PP_REMOVE_PARENS(t) n;\n" in out
+    assert "UNCURSED_PP_P_THEN1, UNCURSED_PP_P_ELSE1)(t, n)" in out
 
 
 @requires_boost
@@ -280,7 +280,7 @@ def test_ap_loop_with_conditional_expands(tmp_path):
 
 def test_identity_comma_join_uses_seq_enum():
     src = 'macro ARGS(xs: seq<token>)\nf(@join xs as x with ", ": {{x}}@end)\nend\n'
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     assert "#define ARGS(xs) f(BOOST_PP_SEQ_ENUM(xs))\n" in out
     assert "SEQ_FOR_EACH_I" not in out
     assert "#include <boost/preprocessor/seq/enum.hpp>" in out
@@ -288,18 +288,18 @@ def test_identity_comma_join_uses_seq_enum():
 
 def test_non_identity_comma_join_keeps_for_each_i():
     src = 'macro W(xs: seq<token>)\nf(@join xs as x with ", ": g({{x}})@end)\nend\n'
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     assert "SEQ_FOR_EACH_I" in out
     assert "SEQ_ENUM" not in out
 
 
 def test_join_with_free_var_keeps_for_each_i():
     src = 'macro W2(p, xs: seq<token>)\nf(@join xs as x with ", ": {{x}}@end, {{p}})\nend\n'
-    out = compile_source(src, "t.cursed")
+    out = compile_source(src, "t.uncursed")
     # body is identity but ensure the gate checks data==~ too (p unused in
     # body, so this one may still ENUM - the REAL free-var case:)
     src2 = 'macro W3(p, xs: seq<token>)\nf(@join xs as x with ", ": {{x}}{{p}}@end)\nend\n'
-    out2 = compile_source(src2, "t.cursed")
+    out2 = compile_source(src2, "t.uncursed")
     assert "SEQ_ENUM" not in out2
 
 
@@ -313,20 +313,20 @@ def test_seq_enum_join_expands(tmp_path):
 
 def test_join_separator_preserves_utf8():
     src = 'macro A(xs: seq<token>)\n@join xs as x with " → "\n({{x}})\n@end\nend\n'
-    [macro] = parse_file(src, "t.cursed").macros
+    [macro] = parse_file(src, "t.uncursed").macros
     join = next(n for n in macro.body if isinstance(n, Join))
     assert join.sep == " → "
 
 
 def test_join_separator_escapes_still_work():
     src = 'macro A(xs: seq<token>)\n@join xs as x with "\\t"\n({{x}})\n@end\nend\n'
-    [macro] = parse_file(src, "t.cursed").macros
+    [macro] = parse_file(src, "t.uncursed").macros
     join = next(n for n in macro.body if isinstance(n, Join))
     assert join.sep == "\t"
 
 
 def test_block_join_separator_containing_at_end():
     src = 'macro A(xs: seq<token>)\n@join xs as x with " @end "\nb({{x}})\n@end\nend\n'
-    [macro] = parse_file(src, "t.cursed").macros
+    [macro] = parse_file(src, "t.uncursed").macros
     join = next(n for n in macro.body if isinstance(n, Join))
     assert join.sep == " @end "

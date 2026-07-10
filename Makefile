@@ -31,7 +31,7 @@ typecheck:
 	$(MISE) uv run mypy
 
 example:
-	$(MISE) uv run cursedpp examples/example.cursed -o /tmp/example.h
+	$(MISE) uv run uncursed-pp examples/example.uncursed -o /tmp/example.h
 	@echo "--- /tmp/example.h ---"
 	@cat /tmp/example.h
 

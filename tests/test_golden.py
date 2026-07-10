@@ -1,4 +1,4 @@
-"""Golden-file tests: every tests/golden/**/*.cursed must compile to
+"""Golden-file tests: every tests/golden/**/*.uncursed must compile to
 exactly its committed .h neighbor. Goldens are organized by category
 (basics/, loops/, conditionals/, expressions/, args/, variadic/, compose/).
 """
@@ -6,13 +6,13 @@ exactly its committed .h neighbor. Goldens are organized by category
 import pytest
 
 from conftest import golden_id, golden_templates
-from cursedpp.emitter import compile_source
+from uncursed_pp.emitter import compile_source
 
 
-@pytest.mark.parametrize("cursed", golden_templates(), ids=golden_id)
-def test_golden(cursed):
-    expected = cursed.with_suffix(".h").read_text()
-    assert compile_source(cursed.read_text(), cursed.name) == expected
+@pytest.mark.parametrize("template", golden_templates(), ids=golden_id)
+def test_golden(template):
+    expected = template.with_suffix(".h").read_text()
+    assert compile_source(template.read_text(), template.name) == expected
 
 
 def test_every_golden_template_has_a_header():
@@ -26,6 +26,6 @@ def test_no_orphaned_golden_headers():
     stray = [
         str(h.relative_to(GOLDEN))
         for h in GOLDEN.rglob("*.h")
-        if h.name != "cursedpp_runtime.h" and not h.with_suffix(".cursed").exists()
+        if h.name != "uncursed_pp_runtime.h" and not h.with_suffix(".uncursed").exists()
     ]
-    assert not stray, f"golden headers without a .cursed source: {stray}"
+    assert not stray, f"golden headers without a .uncursed source: {stray}"
