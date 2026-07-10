@@ -147,3 +147,87 @@ def test_merged_chain_families_expand_correctly(tmp_path):
     assert canon("f(a); f(b);") in out
     assert canon("f(u); f(v);") in out
     assert "CH1_" not in out  # nothing undefined leaks into the C output
+
+
+# ── merge machinery must not hijack lookalikes ───────────────────────
+
+CHAIN_NAME_TRAP = (
+    '@macro A($xs: seq<token>)\n@for $x in $xs\nf({{$x}});\n@end\n@endmacro\n'
+    '@macro B($ys: seq<token>)\n@for $y in $ys\nf({{$y}});\n@end\n@endmacro\n'
+    '@macro A_CH1($zs: seq<token>)\n@for $z in $zs\ng({{$z}});\n@end\n@endmacro\n'
+)
+
+
+def test_family_rename_spares_macros_named_like_members():
+    # merging A's chain family (prefix UNCURSED_PP_A_CH1_) must not
+    # rewrite the FRONT of macro A_CH1's own machinery
+    # (UNCURSED_PP_A_CH1_EACH1, UNCURSED_PP_A_CH1_CH1_<n>, ...)
+    out = compile_source(CHAIN_NAME_TRAP, "t.uncursed")
+    assert _cat_prefixes_are_defined(out) == []
+    import re
+
+    for name in set(re.findall(r"\bUNCURSED_PP_A_CH1_EACH\d\b", out)):
+        assert f"#define {name}(" in out
+
+
+@requires_boost
+def test_macro_named_like_chain_member_expands(tmp_path):
+    out = preprocess_src(tmp_path, CHAIN_NAME_TRAP, "trap", "A((a))\nA_CH1((z)(w))")
+    assert canon("f(a);") in out
+    assert canon("g(z); g(w);") in out
+
+
+# @if branch helpers can carry params spelling exactly "r, d, e" when the
+# user names their macro params that way; they own no spare d slot and
+# must never be selected for the parameterized merge
+BRANCH_RDE = (
+    '@pragma loop_chain off\n'
+    '@macro IA($r: token, $d: token, $e: token, $fs: seq<token>)\n@for $f in $fs\n@if $f == 1\nuse({{$r}});\n@else\nalt({{$d}}, {{$e}});\n@end\n@end\n@endmacro\n'
+    '@macro IB($r: token, $d: token, $e: token, $fs: seq<token>)\n@for $f in $fs\n@if $f == 1\nuse2({{$r}});\n@else\nalt({{$d}}, {{$e}});\n@end\n@end\n@endmacro\n'
+)
+
+
+def test_branch_helpers_survive_parameterized_merge():
+    out = compile_source(BRANCH_RDE, "t.uncursed")
+    import re
+
+    for name in set(re.findall(r"\bUNCURSED_PP_I[AB]_(?:THEN|ELSE)\d\b", out)):
+        assert f"#define {name}(" in out, f"{name} referenced but not defined"
+
+
+@requires_boost
+def test_branch_rde_expands_correctly(tmp_path):
+    out = preprocess_src(
+        tmp_path, BRANCH_RDE, "rde", "IA(R, D, E, (1)(2))\nIB(R, D, E, (1))"
+    )
+    assert canon("use(R); alt(D, E);") in out
+    assert canon("use2(R);") in out
+
+
+# a single-token difference that is a lone paren cannot ride the d slot:
+# splicing '(' into the FOR_EACH argument list unbalances it
+LONE_PAREN_DIFF = (
+    '@pragma loop_chain off\n'
+    '@macro OA($xs: seq<token>)\n@for $x in $xs\ncall {{$x}} (\n@end\n@endmacro\n'
+    '@macro OB($ys: seq<token>)\n@for $y in $ys\ncall {{$y}} )\n@end\n@endmacro\n'
+)
+
+
+def test_lone_paren_diff_stays_unmerged():
+    out = compile_source(LONE_PAREN_DIFF, "t.uncursed")
+    assert "#define UNCURSED_PP_OA_EACH1" in out
+    assert "#define UNCURSED_PP_OB_EACH1" in out
+
+
+@requires_boost
+def test_lone_paren_bodies_expand_correctly(tmp_path):
+    out = preprocess_src(tmp_path, LONE_PAREN_DIFF, "par", "OA((a))\nOB((b))")
+    assert canon("call a (") in out
+    assert canon("call b )") in out
+
+
+def test_parameterized_merge_survives_arg_prefix():
+    # arg_prefix renames the r/d/e slots; the merge must key on the
+    # actual data-slot name, not the literal string "r, d, e"
+    out = compile_source("@pragma arg_prefix u_\n" + ONE_TOKEN_DIFF, "t.uncursed")
+    assert "#define UNCURSED_PP_T_H1(u_r, u_d, u_e) u_d u_e;" in out

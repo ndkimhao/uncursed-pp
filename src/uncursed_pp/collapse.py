@@ -28,8 +28,9 @@ from .emitter import C_LITERAL_PATTERN, _Helper, _MacroOut
 # literal may ride the d slot.
 _TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|\w+|[^\w\s]")
 
-# Loop helpers own the spare `d` data argument; other kinds do not.
-_LOOP_PARAMS = {"r, d, e", "r, d, i, e"}
+# Tokens that can never ride the d slot: splicing them into the
+# FOR_EACH call's argument list would unbalance or re-split it.
+_UNSPLICEABLE = {"(", ")", ","}
 
 # Chain members are referenced by CAT-assembled *prefix* (SMALL does
 # BOOST_PP_CAT(<family>, size)), a name the \b<whole-name>\b rename can
@@ -124,8 +125,12 @@ def _is_shared(name: str, shared_prefix: str) -> bool:
 
 def _rename_family_prefix(outs: list[_MacroOut], old: str, new: str) -> None:
     """Rewrite a chain-family prefix everywhere it appears - as the stem of
-    member names AND as the bare CAT-assembled reference in the dispatch."""
-    pattern = re.compile(rf"\b{re.escape(old)}")
+    member names (digits follow) AND as the bare CAT-assembled reference in
+    the dispatch (a non-word character follows). The lookahead keeps the
+    match away from LONGER identifiers that merely start with the prefix:
+    a user macro named A_CH1 owns machinery like UNCURSED_PP_A_CH1_EACH1,
+    which merging macro A's UNCURSED_PP_A_CH1_ family must not touch."""
+    pattern = re.compile(rf"\b{re.escape(old)}(?=\d+\b|\W|$)")
     for out in outs:
         for helper in out.helpers:
             helper.body = pattern.sub(new, helper.body)
@@ -162,10 +167,15 @@ def _merge_chain_families(outs: list[_MacroOut], counter: _SharedCounter) -> Non
 
 
 def _merge_parameterized(outs: list[_MacroOut], counter: _SharedCounter) -> None:
+    # only helpers that OWN a spare d slot (loop EACH helpers, marked at
+    # creation) qualify: an @if branch helper whose user-named params
+    # happen to spell "r, d, e" has no slot to parameterize through, and
+    # its call sites don't have the FOR_EACH shape _rewrite_data_arg edits
     candidates = [
         site
         for site in _sites(outs)
-        if site.helper.params in _LOOP_PARAMS and not _is_shared(site.helper.name, counter.shared_prefix)
+        if site.helper.data_param is not None
+        and not _is_shared(site.helper.name, counter.shared_prefix)
     ]
     used: set[int] = set()
     clusters: list[list[_Site]] = []
@@ -195,14 +205,16 @@ def _merge_parameterized(outs: list[_MacroOut], counter: _SharedCounter) -> None
 
     for cluster in clusters:
         canonical = cluster[0].helper
+        d_param = canonical.data_param
+        assert d_param is not None
         hole = _single_diff(canonical.body, cluster[1].helper.body)
         assert hole is not None
         spans = _token_spans(canonical.body)
         param_tokens = set(_TOKEN_RE.findall(canonical.params))
         consts = [_token_spans(s.helper.body)[hole][0] for s in cluster]
-        if any(c in param_tokens or c == "d" for c in consts):
-            continue  # differing token is loop machinery, not a constant
-        if any("d" in _tokens(s.helper.body) for s in cluster):
+        if any(c in param_tokens or c in _UNSPLICEABLE for c in consts):
+            continue  # differing token is loop machinery or unspliceable
+        if any(d_param in _tokens(s.helper.body) for s in cluster):
             continue  # body already uses the data slot
 
         new_name = counter.next_name()
@@ -210,7 +222,7 @@ def _merge_parameterized(outs: list[_MacroOut], counter: _SharedCounter) -> None
         before, after = canonical.body[:start], canonical.body[end:]
         # keep the spliced d a standalone token: pad when flush against
         # a word character on either side
-        mid = "d"
+        mid = d_param
         if before and (before[-1].isalnum() or before[-1] == "_"):
             mid = " " + mid
         if after and (after[0].isalnum() or after[0] == "_"):

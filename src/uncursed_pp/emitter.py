@@ -109,6 +109,10 @@ class _Helper:
     name: str
     params: str
     body: str
+    # name of the spare SEQ_FOR_EACH data-slot parameter when this helper
+    # owns one (loop EACH helpers called with `~` data); the collapse
+    # pass may parameterize through it
+    data_param: str | None = None
 
 
 @dataclass
@@ -1026,7 +1030,10 @@ class _MacroEmitter:
         if self.config.loop_chain_limit >= 256 and self._chain_eligible(loop, data):
             return self._render_chain(body, "", seq_expr, self.arg("e"))
         helper = self._add_helper(
-            "EACH", f"{self.arg('r')}, {self.arg('d')}, {self.arg('e')}", body
+            "EACH",
+            f"{self.arg('r')}, {self.arg('d')}, {self.arg('e')}",
+            body,
+            data_param=self.arg("d"),
         )
         each_call = f"{self.pp('SEQ_FOR_EACH')}({helper}, {data}, "
         if self._chain_eligible(loop, data):
@@ -1065,6 +1072,7 @@ class _MacroEmitter:
             "EACH",
             f"{self.arg('r')}, {self.arg('d')}, {self.arg('i')}, {self.arg('e')}",
             each_body,
+            data_param=self.arg("d"),
         )
         each_call = f"{self.pp('SEQ_FOR_EACH_I')}({helper}, {data}, "
         if self._chain_eligible(join, data):
@@ -1085,11 +1093,15 @@ class _MacroEmitter:
             self.out.helpers.append(_Helper(name=f"{name}_I", params=params, body=pasted))
         return name
 
-    def _add_helper(self, kind: str, params: str, body: str) -> str:
+    def _add_helper(
+        self, kind: str, params: str, body: str, *, data_param: str | None = None
+    ) -> str:
         count = self._helper_counts.get(kind, 0) + 1
         self._helper_counts[kind] = count
         name = f"{self.config.helper_prefix}{self.macro.name}_{kind}{count}"
-        self.out.helpers.append(_Helper(name=name, params=params, body=body))
+        self.out.helpers.append(
+            _Helper(name=name, params=params, body=body, data_param=data_param)
+        )
         return name
 
 
