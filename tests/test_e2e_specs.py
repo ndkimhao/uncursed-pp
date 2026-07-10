@@ -1,12 +1,14 @@
 """Spec-driven e2e: golden templates carry their own invocation specs.
 
     #?  MACRO(args)
-    #=>     expected fragment
-    #=>     another expected fragment
+    #=>     expected expansion (line 1)
+    #=>     expected expansion (line 2)
 
-Every spec compiles the template, invokes the macro from a C snippet,
-runs `cc -E -P` (against the vendored Boost.PP), and asserts each
-expected fragment appears (whitespace-canonicalized) in the expansion.
+The #=> lines together are the COMPLETE expected expansion: the harness
+compiles the template, invokes the macro from a C snippet, runs
+`cc -E -P` (against the vendored Boost.PP), and requires the whole
+preprocessed output to equal the joined expectation (whitespace-
+canonicalized) - a missing or extra token fails the spec.
 """
 
 from pathlib import Path
@@ -59,8 +61,10 @@ def test_every_golden_template_has_specs():
 @pytest.mark.parametrize(("cursed", "invocation", "expecteds"), spec_params())
 def test_spec(tmp_path, cursed, invocation, expecteds):
     out = preprocess_src(tmp_path, cursed.read_text(), cursed.stem, invocation)
-    for expected in expecteds:
-        assert canon(expected) in out, f"{invocation} missing: {expected}"
+    expected = canon(" ".join(expecteds))
+    assert expected == out, (
+        f"{invocation}\n  expected: {expected}\n  actual:   {out}"
+    )
 
 
 @requires_boost

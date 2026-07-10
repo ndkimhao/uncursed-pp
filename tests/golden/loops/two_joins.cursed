@@ -1,0 +1,12 @@
+# Two inline @joins on one line get independent EACH helpers.
+macro ZIP(ks: seq<token>, vs: seq<token>)
+k({{len(ks)}}): @join ks as k with ", ": {{k}}@end / v: @join vs as v with ", ": {{v}}@end
+end
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  ZIP((a)(b), (x)(y))
+#=>     k(2): a, b / v: x, y
+
+# edge: single-element seqs, no separators emitted
+#?  ZIP((only), (one))
+#=>     k(1): only / v: one

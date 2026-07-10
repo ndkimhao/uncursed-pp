@@ -1,0 +1,31 @@
+# Values travel between generated macros: a whole tuple forwarded as one
+# argument, and a whole seq carried inside a 'named variadic' value and
+# handed to a looping macro. is_paren() guards the empty default.
+macro GET_A(p: tuple<a, b>)
+{{p.a}}
+end
+
+macro USE(q: tuple<a, b>)
+first = GET_A({{q}});
+end
+
+macro EACH_FIELD(fields: seq<tuple<t, n>>)
+@for (t, n) in fields
+{{t}} {{n}};
+@end
+end
+
+macro OBJ(name, named variadic FIELDS = )
+struct {{name}} { @if is_paren(FIELDS) EACH_FIELD({{FIELDS}}) @end };
+end
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  USE((x, y))
+#=>     first = x;
+
+#?  OBJ(o, FIELDS(((int, x))((float, y))))
+#=>     struct o { int x; float y; };
+
+# edge: empty default -> is_paren is false -> empty struct body
+#?  OBJ(o)
+#=>     struct o { };

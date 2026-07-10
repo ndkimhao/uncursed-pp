@@ -19,6 +19,16 @@ other({{kind}}, {{val}});
 @end
 end
 
+# Two sequential @ifs in one macro get independently numbered helpers.
+macro SIZE_CLASS(xs: seq<token>)
+@if len(xs) == 1
+single
+@end
+@if len(xs) == 2
+double
+@end
+end
+
 # ── invocation specs (verified through cc -E by the spec harness) ──
 #?  REPORT(p, q, (x))
 #=>     one(p)
@@ -28,3 +38,9 @@ end
 
 #?  EMIT(((1, a))((2, b))((1, c)))
 #=>     one(a); other(2, b); one(c);
+
+#?  SIZE_CLASS((a))
+#=>     single
+
+#?  SIZE_CLASS((a)(b))
+#=>     double

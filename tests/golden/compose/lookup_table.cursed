@@ -14,3 +14,4 @@ end
 # edge: single key
 #?  LOOKUP_TABLE(one, (solo))
 #=>     static const char *one[1] = { "solo" };
+#=>     enum { one_len = 1 };

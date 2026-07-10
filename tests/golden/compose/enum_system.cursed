@@ -21,12 +21,17 @@ end
 # ── invocation specs (verified through cc -E by the spec harness) ──
 #?  DEFINE_ENUM(Color, (RED, 1), (GREEN, 2), (BLUE, 4))
 #=>     typedef enum { Color_RED = 1, Color_GREEN = 2, Color_BLUE = 4, } Color;
-#=>     static const char *Color_to_string(int v)
+#=>     static const char *Color_to_string(int v) { switch (v) {
 #=>     case 1: return "Color_RED";
+#=>     case 2: return "Color_GREEN";
 #=>     case 4: return "Color_BLUE";
+#=>     } return "?"; }
 #=>     enum { Color_count = 3 };
 
 # edge: single entry
 #?  DEFINE_ENUM(Flag, (ON, 1))
 #=>     typedef enum { Flag_ON = 1, } Flag;
+#=>     static const char *Flag_to_string(int v) { switch (v) {
+#=>     case 1: return "Flag_ON";
+#=>     } return "?"; }
 #=>     enum { Flag_count = 1 };

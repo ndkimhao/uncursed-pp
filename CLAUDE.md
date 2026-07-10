@@ -34,9 +34,11 @@ consult it before changing DSL syntax or codegen.
 - Goldens live in category dirs (`tests/golden/{basics,loops,conditionals,
   expressions,args,variadic,compose}/`), discovered recursively. Each
   template carries e2e specs as comments — one `#? INVOCATION` line followed
-  by `#=> expected` line(s); `test_e2e_specs.py` runs each through `cc -E`.
-  New goldens must include specs — `test_every_golden_template_has_specs`
-  enforces it.
+  by `#=> expected` line(s). The `#=>` lines are the COMPLETE expected
+  expansion: `test_e2e_specs.py` runs each through `cc -E` and requires
+  whole-output equality (canonicalized), so a missing or extra emitted token
+  fails. New goldens must include specs —
+  `test_every_golden_template_has_specs` enforces it.
 - Generated helpers are namespaced `CURSEDPP_<MACRO>_*` (shared collapsed helpers:
   `CURSEDPP_H<n>` in first-use order — output must stay deterministic).
 - The `BOOST_PP_` prefix is never hardcoded in emitter output paths; always go

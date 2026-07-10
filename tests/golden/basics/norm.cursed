@@ -13,3 +13,7 @@ end
 # edge: single-element parens still count as parenthesized
 #?  NORM((a))
 #=>     a
+
+# edge: only ONE paren layer is stripped; inner structure survives
+#?  NORM(((a, (b, c))))
+#=>     (a, (b, c))

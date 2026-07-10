@@ -59,3 +59,7 @@ end
 # interpolation's unwrap cancel out, so parens are preserved exactly
 #?  STYLE(s4, COLORS((a, b)))
 #=>     unsigned s4[] = { (a, b) };
+
+# edge: negative number as a keyword value (multi-token, no commas)
+#?  MAKE_WIDGET(wn, WIDTH(-1))
+#=>     struct widget wn = { -1, 50, };
