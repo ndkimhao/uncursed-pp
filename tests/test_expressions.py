@@ -5,6 +5,7 @@ Codegen shape and runtime behavior live in tests/golden/expressions/.
 
 import pytest
 
+from conftest import canon, preprocess_src, requires_boost
 from cursedpp.emitter import compile_source
 from cursedpp.nodes import (
     Concat,
@@ -184,3 +185,40 @@ def test_concat_three_args_keeps_nested_cat():
     # 3-arg nesting measured 1.06x - below the bar, keep BOOST_PP_CAT
     assert "BOOST_PP_CAT(pre_, BOOST_PP_CAT(a, _end))" in out
     assert "CAT3" not in out
+
+
+# ── spread safety: fall back to TUPLE_ELEM when spreading can't work ──
+
+
+SPREAD_IF_SRC = (
+    "macro T(xs: seq<token>, p: tuple<a, b>)\n"
+    "@if len(xs) == 1\n{{p.a}}\n@else\n{{p.b}}\n@end\nend\n"
+)
+
+SPREAD_VARIADIC_SRC = (
+    "macro V(p: tuple<a, b>, items: variadic)\n"
+    '{{p.a}}: @join items as it with ", ": {{it}}@end\nend\n'
+)
+
+
+def test_spread_skipped_when_body_has_blocks():
+    out = compile_source(SPREAD_IF_SRC, "t.cursed")
+    # branch helpers can only transport the whole tuple, so no spreading
+    assert "BODY1" not in out
+    assert "BOOST_PP_TUPLE_ELEM(0, p)" in out
+
+
+def test_spread_skipped_with_variadic_param():
+    out = compile_source(SPREAD_VARIADIC_SRC, "t.cursed")
+    assert "BODY1" not in out
+    assert "#define V(p, ...)" in out
+
+
+@requires_boost
+def test_spread_fallback_expands_correctly(tmp_path):
+    out = preprocess_src(tmp_path, SPREAD_IF_SRC, "sif", "T((q), (foo, bar))")
+    assert canon("foo") == out
+    out = preprocess_src(
+        tmp_path, SPREAD_VARIADIC_SRC, "svar", "V((foo, bar), a, b, c)"
+    )
+    assert canon("foo: a, b, c") == out

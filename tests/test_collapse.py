@@ -58,3 +58,37 @@ def test_collapsed_shared_helper_expands_correctly(tmp_path):
     )
     assert canon("int a; int b;") in out
     assert canon("float u; float v;") in out
+
+
+PUNCT_DIFF = (
+    "macro STMTS(xs: seq<token>)\n@for x in xs\n{{x}};\n@end\nend\n"
+    "macro LBLS(ys: seq<token>)\n@for y in ys\n{{y}}:\n@end\nend\n"
+)
+
+LITERAL_DIFF = (
+    'macro TBL1(xs: seq<token>)\n@for x in xs\n{ {{x}}, "alpha" },\n@end\nend\n'
+    'macro TBL2(ys: seq<token>)\n@for y in ys\n{ {{y}}, "beta" },\n@end\nend\n'
+)
+
+
+def test_punctuation_hole_does_not_paste_into_neighbor():
+    out = compile_source(PUNCT_DIFF, "t.cursed")
+    import re
+
+    assert not re.search(r"\bed\b", out)
+
+
+def test_string_literal_hole_keeps_literal_whole():
+    out = compile_source(LITERAL_DIFF, "t.cursed")
+    # a merge is fine only if the WHOLE literal travels through d;
+    # a "d" spliced inside quotes can never substitute
+    assert '"d"' not in out
+
+
+@requires_boost
+def test_collapse_merges_expand_correctly(tmp_path):
+    out = preprocess_src(tmp_path, PUNCT_DIFF, "punct", "STMTS((a)(b))\nLBLS((done))")
+    assert canon("a; b;") in out and canon("done:") in out
+    out = preprocess_src(tmp_path, LITERAL_DIFF, "lit", "TBL1((k1))\nTBL2((k2))")
+    assert canon('{ k1, "alpha" },') in out
+    assert canon('{ k2, "beta" },') in out

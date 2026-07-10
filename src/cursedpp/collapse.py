@@ -19,9 +19,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .emitter import _Helper, _MacroOut
+from .emitter import C_LITERAL_PATTERN, _Helper, _MacroOut
 
-_TOKEN_RE = re.compile(r"\w+|[^\w\s]")
+# String/char literals are single opaque tokens: a merge hole must never
+# open inside one (macro params don't substitute there), but a WHOLE
+# literal may ride the d slot.
+_TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|\w+|[^\w\s]")
 
 # Loop helpers own the spare `d` data argument; other kinds do not.
 _LOOP_PARAMS = {"r, d, e", "r, d, i, e"}
@@ -151,7 +154,15 @@ def _merge_parameterized(outs: list[_MacroOut], counter: _SharedCounter) -> None
 
         new_name = counter.next_name()
         start, end = spans[hole][1], spans[hole][2]
-        shared_body = canonical.body[:start] + "d" + canonical.body[end:]
+        before, after = canonical.body[:start], canonical.body[end:]
+        # keep the spliced d a standalone token: pad when flush against
+        # a word character on either side
+        mid = "d"
+        if before and (before[-1].isalnum() or before[-1] == "_"):
+            mid = " " + mid
+        if after and (after[0].isalnum() or after[0] == "_"):
+            mid = mid + " "
+        shared_body = before + mid + after
         for site in cluster:
             _rewrite_data_arg(outs, site.helper.name, new_name, _token_spans(site.helper.body)[hole][0])
         canonical.body = shared_body
@@ -161,7 +172,9 @@ def _merge_parameterized(outs: list[_MacroOut], counter: _SharedCounter) -> None
 
 
 def _tokens(text: str) -> list[str]:
-    return _TOKEN_RE.findall(text)
+    # finditer + group(0): findall would return the literal pattern's
+    # group captures instead of whole matches
+    return [m.group(0) for m in _TOKEN_RE.finditer(text)]
 
 
 def _token_spans(text: str) -> list[tuple[str, int, int]]:

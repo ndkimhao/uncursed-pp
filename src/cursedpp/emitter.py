@@ -174,7 +174,17 @@ class _MacroEmitter:
         return self.out
 
     def _spreadable_tuple_params(self) -> set[str]:
-        """Tuple params whose fields can become direct BODY parameters."""
+        """Tuple params whose fields can become direct BODY parameters.
+
+        Spreading erases the whole-tuple name inside BODY1, but block
+        helpers (@if branches, loop bodies) transport values by name and
+        the variadic head mapping bypasses BODY1's fixed parameter list -
+        so any block construct or variadic param disables spreading.
+        """
+        if any(isinstance(p.type, VariadicT) for p in self.macro.params):
+            return set()
+        if _has_blocks(self.macro.body):
+            return set()
         taken = {p.name for p in self.macro.params}
         chosen: set[str] = set()
         for p in self.macro.params:
@@ -764,6 +774,16 @@ class _MacroEmitter:
         name = f"{self.config.helper_prefix}{self.macro.name}_{kind}{count}"
         self.out.helpers.append(_Helper(name=name, params=params, body=body))
         return name
+
+
+def _has_blocks(nodes: list[BodyNode]) -> bool:
+    """True if any @if/@for/@join lives in this body (incl. @let-bound)."""
+    for n in nodes:
+        if isinstance(n, (If, ForEach, Join)):
+            return True
+        if isinstance(n, Let) and isinstance(n.expr, (Join, If)):
+            return True
+    return False
 
 
 def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
