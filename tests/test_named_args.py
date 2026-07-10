@@ -40,6 +40,13 @@ def test_setter_dispatch_one_define_per_keyword():
     assert "#define CURSEDPP_W_SET_A(v) 0, v\n" in out
     assert "#define CURSEDPP_W_SET_B(v) 1, v\n" in out
     assert out.count("BOOST_PP_SEQ_FOLD_LEFT") == 1  # one fold, not one per keyword
+    # slot updates are direct generated replacers, not TUPLE_REPLACE (which
+    # hides a BOOST_PP_WHILE per keyword argument - measured 22x slower)
+    assert "#define CURSEDPP_W_PUT_0(v, state) CURSEDPP_W_PUT_0_D(v, CURSEDPP_KW_SPREAD state)\n" in out
+    assert "#define CURSEDPP_W_PUT_0_D(...) CURSEDPP_W_PUT_0_I(__VA_ARGS__)\n" in out
+    assert "#define CURSEDPP_W_PUT_0_I(v, p0, p1) (v, p1)\n" in out
+    assert "#define CURSEDPP_W_PUT_1_I(v, p0, p1) (p0, v)\n" in out
+    assert "TUPLE_REPLACE" not in out
 
 
 def test_named_variadic_setter_captures_commas():

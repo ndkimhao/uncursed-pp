@@ -91,9 +91,11 @@ def test_pp_include_dir_rewrites_granular_includes():
     assert "boost/preprocessor/" not in out
 
 
-def test_pp_include_dir_applies_to_runtime():
+def test_runtime_is_self_contained():
+    # the runtime needs no boost primitives at all since slot replacement
+    # moved to generated per-slot macros
     rt = runtime_header(EmitConfig(pp_include_dir="boost_foo/preprocessor"))
-    assert "#include <boost_foo/preprocessor/tuple/replace.hpp>" in rt
+    assert "#include" not in rt
 
 
 WIDGET_SRC = (
@@ -111,9 +113,8 @@ def test_runtime_header_matches_golden():
 def test_runtime_header_contents():
     rt = runtime_header(EmitConfig())
     assert "#pragma once" in rt
-    assert "#include <boost/preprocessor/tuple/replace.hpp>" in rt
-    assert "#define CURSEDPP_KW_PUT(state, ...) CURSEDPP_KW_PUT_I(state, __VA_ARGS__)" in rt
-    assert "#define CURSEDPP_KW_PUT_I(state, i, v) BOOST_PP_TUPLE_REPLACE(state, i, v)" in rt
+    assert "#define CURSEDPP_KW_SPREAD(...) __VA_ARGS__" in rt
+    assert "TUPLE_REPLACE" not in rt
     assert "shared by all cursedpp-generated headers" in rt
 
 

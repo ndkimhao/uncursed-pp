@@ -64,7 +64,7 @@ def test_cli_writes_runtime_header_when_needed(tmp_path):
     main([str(src), "-o", str(out)])
     runtime = out.parent / "cursedpp_runtime.h"
     assert runtime.exists()
-    assert "CURSEDPP_KW_PUT" in runtime.read_text()
+    assert "CURSEDPP_KW_SPREAD" in runtime.read_text()
 
 
 def test_cli_no_runtime_for_plain_macros(tmp_path):
