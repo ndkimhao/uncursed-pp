@@ -25,8 +25,9 @@
 # be #define'd" rule.
 #
 # Scenario: a lookup table whose length is derived, not repeated.
+# (`tuple<token...>` written out — the ellipsis marks unboundedness.)
 
-macro DEFINE_LUT(name, vals: tuple)
+macro DEFINE_LUT(name, vals: tuple<token...>)
 static const int {{name}}[] = { @join vals as v with ", ": {{v}}@end };
 enum { {{concat(name, _len)}} = {{len(vals)}} };
 end
@@ -40,10 +41,27 @@ end
 #=>     static const int placeholder[] = { };
 #=>     enum { placeholder_len = 0 };
 
+# ── typed elements: tuple<tuple<k, v>...> ────────────────────────────
+#
+# The element type goes before the ellipsis. Named-tuple elements
+# unpack in loops and give single-paren call sites — compare the
+# double parens a seq<tuple<k, v>> would need: ((dark,1))((huge,2)).
+
+macro DEFINE_MODES(ms: tuple<tuple<mode, bit>...>)
+@for (mode, bit) in ms
+  {{mode}} = 1 << {{bit}},
+@end
+end
+
+#?  DEFINE_MODES(((DARK, 0), (HUGE, 1)))
+#=>     DARK = 1 << 0,
+#=>     HUGE = 1 << 1,
+
 # ── is_empty(): branch on it directly ────────────────────────────────
 #
 # The optional-trailing-arguments pattern: () means "no extras", so
-# the comma after ctx must disappear with them.
+# the comma after ctx must disappear with them. Bare `tuple` is the
+# `tuple<token...>` shorthand.
 
 macro CALL_CTX(fn, extras: tuple)
 @if is_empty(extras)
