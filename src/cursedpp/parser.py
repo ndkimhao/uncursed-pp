@@ -93,6 +93,16 @@ class _Ast(Transformer[Any, Any]):
         name, default = items
         return Param(name=str(name), type=None, default=_clean_default(default), named=True)
 
+    def named_variadic_param(self, items: list[Any]) -> Param:
+        name, default = items
+        return Param(
+            name=str(name),
+            type=None,
+            default=_clean_default(default),
+            named=True,
+            variadic_value=True,
+        )
+
     def seq_type(self, items: list[Any]) -> SeqT:
         return SeqT(items[0])
 

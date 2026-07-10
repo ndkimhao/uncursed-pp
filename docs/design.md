@@ -119,6 +119,7 @@ default `BOOST_PP_`). Generated helpers are namespaced `CURSEDPP_<MACRO>_<KIND>`
 | `stringize(x)` | `BOOST_PP_STRINGIZE(x)` (stringizes computed tokens; plain `#` only works on direct macro params) |
 | loop free vars | outer params referenced in a loop body ride FOR_EACH's `d` slot (one var: `d` itself; several: a tuple in `d`) |
 | `@let name := expr` | generation-time binding; inlined at each use site |
+| `named variadic K = d` | keyword value may contain bare commas: `SET_K(...) slot, (__VA_ARGS__)` re-wraps, interpolation auto-`REMOVE_PARENS` — net effect: verbatim value passthrough |
 | tail defaults | arity chain `CURSEDPP_<M>_1 → ..._N` filling defaults + `#define M(...) BOOST_PP_OVERLOAD(CURSEDPP_<M>_, __VA_ARGS__)(__VA_ARGS__)` |
 | named args | setter dispatch: one `SET_<KW>(v) slot, v` per keyword; each `KW(value)` arg pastes onto `SET_` and names its own slot, a single `SEQ_FOLD_LEFT` TUPLE_REPLACEs slots in the defaults tuple; arity dispatch via OVERLOAD handles the zero-keyword call; shared KW_PUT utils live in a companion runtime header (name via `--runtime-name` / `@pragma runtime_name`), one copy for all generated headers. Unknown keywords are compile errors, not silent defaults |
 | variadic param | `BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)`, then treated as seq |

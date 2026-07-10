@@ -238,3 +238,10 @@ def test_parse_typed_variadic():
     src = "macro F(items: variadic<tuple<a, b>>)\n@for (a, b) in items\n{{a}} {{b}};\n@end\nend\n"
     [macro] = parse_file(src, "t.cursed").macros
     assert macro.params[0].type == VariadicT(TupleT(("a", "b")))
+
+
+def test_parse_named_variadic_param():
+    src = "macro S(name, named variadic COLORS = none)\n{{COLORS}}\nend\n"
+    [macro] = parse_file(src, "t.cursed").macros
+    p = macro.params[1]
+    assert (p.name, p.named, p.variadic_value, p.default) == ("COLORS", True, True, "none")

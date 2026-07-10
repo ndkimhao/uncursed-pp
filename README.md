@@ -102,10 +102,11 @@ customizable via `--runtime-name` or `@pragma runtime_name "acme_common.h"`.
 - **Seqs of tuples need double parens**: `F(((int, x))((float, y)))` — each
   seq element is parenthesized, and the element itself is a tuple.
 - **Bare commas break argument counting**: wrap comma-containing values in
-  parens and unwrap with `remove_parens()` in the template. Same for named
-  arguments — `FLAGS(a, b)` is a compile error (the generated `SET_FLAGS`
-  takes one argument); write `FLAGS((a, b))`, and have the template use
-  `{{remove_parens(FLAGS)}}` when the parens must go.
+  parens and unwrap with `remove_parens()` in the template. For named
+  arguments there's an opt-in: declare the param `named variadic` and the
+  keyword accepts bare commas — `COLORS(red, green, blue)` — with the value
+  passing through verbatim (plain `named` keeps the strict one-token value;
+  `FLAGS(a, b)` there is a compile error naming the keyword's setter).
 - **Seq/variadic arguments must be non-empty** — Boost.PP seqs cannot be empty.
 - **Named-argument keywords** (`WIDTH`, ...) must not be `#define`d at the call
   site, or they expand before detection.

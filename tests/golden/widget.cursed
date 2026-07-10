@@ -6,11 +6,10 @@ macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
 struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };
 end
 
-# Comma-containing keyword values: a bare comma cannot survive as one
-# macro argument (C limitation), so callers wrap — COLORS((red, green)) —
-# and the template strips the wrapper with remove_parens().
-macro STYLE(name, named COLORS = none)
-unsigned {{name}}[] = { {{remove_parens(COLORS)}} };
+# 'named variadic' keyword values may contain bare commas: the generated
+# setter captures __VA_ARGS__ and re-wraps, and {{COLORS}} auto-unwraps.
+macro STYLE(name, named variadic COLORS = none)
+unsigned {{name}}[] = { {{COLORS}} };
 end
 
 # ── invocation specs (verified through cc -E by test_integration) ──
@@ -52,6 +51,11 @@ end
 #?  STYLE(s2, COLORS(red))
 #=>     unsigned s2[] = { red };
 
-# edge: comma-containing value — caller wraps, template remove_parens()-unwraps
-#?  STYLE(s3, COLORS((red, green, blue)))
+# edge: bare commas allowed in a 'named variadic' keyword value
+#?  STYLE(s3, COLORS(red, green, blue))
 #=>     unsigned s3[] = { red, green, blue };
+
+# edge: values pass through verbatim - the setter's wrap and the
+# interpolation's unwrap cancel out, so parens are preserved exactly
+#?  STYLE(s4, COLORS((a, b)))
+#=>     unsigned s4[] = { (a, b) };

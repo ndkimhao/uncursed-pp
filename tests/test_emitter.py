@@ -354,3 +354,21 @@ def test_typed_variadic_unpacks_tuples():
     out = compile_source(src, "t.cursed")
     assert "#define CURSEDPP_F_EACH1(r, d, e) BOOST_PP_TUPLE_ELEM(0, e) BOOST_PP_TUPLE_ELEM(1, e);" in out
     assert "BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)" in out
+
+
+STYLE_SRC = (
+    "macro STYLE(name, named variadic COLORS = none)\n"
+    "unsigned {{name}}[] = { {{COLORS}} };\n"
+    "end\n"
+)
+
+
+def test_named_variadic_setter_captures_commas():
+    out = compile_source(STYLE_SRC, "s.cursed")
+    # variadic-value setter re-wraps so bare commas survive as one argument
+    assert "#define CURSEDPP_STYLE_SET_COLORS(...) 0, (__VA_ARGS__)\n" in out
+    # interpolation auto-unwraps
+    assert "BOOST_PP_REMOVE_PARENS(COLORS)" in out
+    # defaults ride the fold seed / all-defaults path parenthesized
+    assert "BOOST_PP_SEQ_FOLD_LEFT(CURSEDPP_STYLE_STEP, ((none))," in out
+    assert "#define CURSEDPP_STYLE_1(name) CURSEDPP_STYLE_BODY(name, (none))\n" in out

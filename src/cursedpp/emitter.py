@@ -140,6 +140,10 @@ class _MacroEmitter:
             env[p.name] = _Binding(
                 f"{self.pp('VARIADIC_TO_SEQ')}(__VA_ARGS__)", SeqT(p.type.elem)
             )
+        for p in named:
+            if p.variadic_value:
+                # value travels parenthesized; interpolation auto-unwraps
+                env[p.name] = _Binding(f"{self.pp('REMOVE_PARENS')}({p.name})", TokenT())
         body = self._render_block(self.macro.body, env)
 
         if defaulted:
@@ -219,14 +223,22 @@ class _MacroEmitter:
         kw_util = self.config.helper_prefix
         pos_names = [p.name for p in pos]
         all_names = pos_names + [p.name for p in named]
-        defaults = ", ".join(p.default or "" for p in named)
+        defaults = ", ".join(
+            f"({p.default or ''})" if p.variadic_value else (p.default or "")
+            for p in named
+        )
         defines = self.out.defines
 
         # each keyword argument dispatches itself: CAT(SET_, WIDTH(20))
         # -> SET_WIDTH(20) -> "0, 20" (slot index, value); one fold
-        # TUPLE_REPLACEs slots in the defaults tuple.
+        # TUPLE_REPLACEs slots in the defaults tuple. 'named variadic'
+        # setters capture bare commas and re-wrap so the value stays one
+        # macro argument.
         for slot, p in enumerate(named):
-            defines.append(f"#define {base}SET_{p.name}(v) {slot}, v\n")
+            if p.variadic_value:
+                defines.append(f"#define {base}SET_{p.name}(...) {slot}, (__VA_ARGS__)\n")
+            else:
+                defines.append(f"#define {base}SET_{p.name}(v) {slot}, v\n")
         defines.append(
             f"#define {base}STEP(s, state, e) "
             f"{kw_util}KW_PUT(state, {self.pp('CAT')}({base}SET_, e))\n"

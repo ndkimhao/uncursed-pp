@@ -147,6 +147,7 @@ class Param:
     type: Type | None  # None = bare token param
     default: str | None = None  # None = required; "" = defaults to empty
     named: bool = False  # passed as NAME(value) at the call site
+    variadic_value: bool = False  # named value may contain bare commas
     line: int = 0
 
 
