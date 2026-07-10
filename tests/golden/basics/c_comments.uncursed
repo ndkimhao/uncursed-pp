@@ -1,0 +1,24 @@
+# C /* */ comments in body text are preserved into the generated
+# defines - documentation for whoever reads the .h - and the real
+# preprocessor strips them at expansion time, so specs never see them.
+# Comment BLOCKS escape a terminator: this */ stays harmless.
+
+@macro INIT($x)
+setup({{$x}}); /* inline note */
+/* own-line note */
+teardown({{$x}});
+@endmacro
+
+#?  INIT(dev)
+#=>     setup(dev);
+#=>     teardown(dev);
+
+# comments replicate into loop helpers (and chain members) untouched
+@macro EACH_NOTED($xs: seq<token>)
+@for $v in $xs
+poke({{$v}}); /* per item */
+@end
+@endmacro
+
+#?  EACH_NOTED((a)(b))
+#=>     poke(a); poke(b);
