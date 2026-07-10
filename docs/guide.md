@@ -425,7 +425,8 @@ invokes the macro from a C snippet, runs `cc -E -P`, and requires the whole
 preprocessed output to EQUAL the joined `#=>` lines, token-exactly (string
 literal interiors verbatim, whitespace between tokens normalized) — a missing
 or extra emitted token fails. The exact marker `<...>` in an expectation
-is a wildcard matching any run of tokens (including none) — segments stay
+is a wildcard matching any run of tokens (including none); use as many
+per expectation as you like — segments stay
 ordered and anchored at both ends, so
 `#=> typedef struct { int only; } P2; <...>` pins the struct and elides
 the rest. Only the whitespace-free form is magic: `< ... >` written with
