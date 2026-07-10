@@ -7,7 +7,10 @@ are verified token-exact through the real C preprocessor by the test
 suite. What you read is what actually happens.
 
 [`00-readme.uncursed`](00-readme.uncursed) is the front-page demo from the
-top-level README, kept honest by its specs.
+top-level README, kept honest by its specs (it pins `loop_chain off` so
+the header stays three defines); [`00-readme-chains.uncursed`](00-readme-chains.uncursed)
+is the same macro without the pragma — compare the two committed `.h`
+files to see the default consumption-chain codegen side by side.
 
 Read `features/` in order — each file teaches one feature and states the
 call-site rules that apply to it:

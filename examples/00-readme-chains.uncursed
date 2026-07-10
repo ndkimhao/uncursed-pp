@@ -1,0 +1,20 @@
+# The SAME macro as 00-readme.uncursed, with no pragma: default codegen.
+# Compare the two committed headers side by side — 00-readme.h is the
+# compact three-define FOR_EACH form the README shows; this one carries
+# the consumption-chain family (CH1_1..16 + SMALL/BIG/PICK dispatch),
+# which preprocesses ~25x cheaper per call site at the cost of a longer
+# header (see docs/loop-chains.md). Same call sites, same expansions:
+# the specs below are identical to 00-readme's.
+
+@macro DECLARE_FIELDS($fields: variadic<tuple<$type, $name>>)
+@for ($type, $name) in $fields
+  {{$type}} {{$name}};
+@end
+@endmacro
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  DECLARE_FIELDS((int, x), (float, y))
+#=>     int x; float y;
+
+#?  DECLARE_FIELDS((char *, name))
+#=>     char * name;
