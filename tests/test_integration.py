@@ -158,3 +158,18 @@ FOO_VARIADIC_SRC = (
 def test_variadic_paren_normalization(tmp_path):
     out = preprocess_src(tmp_path, FOO_VARIADIC_SRC, "foo", "FOO(a, (b,c), d)")
     assert canon("S{ (a, omit), (b,c), (d, omit) }") in out
+
+
+COLLAPSED_SRC = (
+    "macro DECLARE_INTS(xs: seq<token>)\n@for x in xs\nint {{x}};\n@end\nend\n"
+    "macro DECLARE_FLOATS(ys: seq<token>)\n@for y in ys\nfloat {{y}};\n@end\nend\n"
+)
+
+
+@requires_boost
+def test_collapsed_shared_helper_expands_correctly(tmp_path):
+    out = preprocess_src(
+        tmp_path, COLLAPSED_SRC, "coll", "DECLARE_INTS((a)(b))\nDECLARE_FLOATS((u)(v))"
+    )
+    assert canon("int a; int b;") in out
+    assert canon("float u; float v;") in out

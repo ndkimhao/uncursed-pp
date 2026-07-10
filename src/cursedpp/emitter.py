@@ -501,12 +501,18 @@ def _format_helper(helper: _Helper) -> str:
 
 
 def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None) -> str:
+    from .collapse import collapse
+
     config = config or EmitConfig()
     used: set[str] = set()
     file_state = {"kw_utils": False}
+    outs = [
+        _MacroEmitter(macro, config, source_name, used, file_state).emit()
+        for macro in file.macros
+    ]
+    collapse(outs, config.helper_prefix)
     macro_chunks: list[str] = []
-    for macro in file.macros:
-        out = _MacroEmitter(macro, config, source_name, used, file_state).emit()
+    for out in outs:
         macro_chunks.append("\n")
         for helper in out.helpers:
             macro_chunks.append(_format_helper(helper))
