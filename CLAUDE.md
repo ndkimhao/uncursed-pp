@@ -39,7 +39,8 @@ and refuted ideas — the refuted list is binding).
   by `#=> expected` line(s). The `#=>` lines are the COMPLETE expected
   expansion: `test_e2e_specs.py` runs each through `cc -E` and requires
   whole-output equality (canonicalized), so a missing or extra emitted token
-  fails. New goldens must include specs —
+  fails; the exact marker `<...>` in a `#=>` line is an explicit wildcard
+  for any token run. New goldens must include specs —
   `test_every_golden_template_has_specs` enforces it.
   `examples/` is a second golden root with identical rules (committed .h,
   mandatory #? specs, deliberate regeneration) — its templates are

@@ -88,3 +88,50 @@ def test_run_cpp_kills_runaway_preprocessing_cleanly(tmp_path):
         run_cpp(tmp_path / "bomb.c")
     assert "preprocessing failed" in str(excinfo.value) or "timed out" in str(excinfo.value)
 
+
+
+# ── <...> wildcard matching (exact marker only, token-level) ─────────
+
+
+def _matches(expecteds, actual):
+    from uncursed_pp.speccheck import expectation_matches, expectation_pattern
+
+    return expectation_matches(expectation_pattern(expecteds), actual)
+
+
+def test_wildcard_matches_token_runs():
+    assert _matches(["a <...> d"], canon("a b c d"))
+    assert _matches(["<...> c d"], canon("a b c d"))
+    assert _matches(["a b <...>"], canon("a b c d"))
+
+
+def test_wildcard_matches_zero_tokens():
+    assert _matches(["a <...> b"], canon("a b"))
+    assert _matches(["a b <...>"], canon("a b"))
+
+
+def test_wildcard_segments_stay_anchored():
+    assert not _matches(["a <...> c"], canon("x a b c"))   # head not at start
+    assert not _matches(["a <...> c"], canon("a b c d"))   # tail not at end
+    assert not _matches(["a <...> z"], canon("a b c"))     # missing segment
+
+
+def test_wildcard_is_token_level_not_substring():
+    assert not _matches(["<...> x <...>"], canon("max(a)"))
+    assert _matches(["<...> x <...>"], canon("f(x, y)"))
+
+
+def test_multiple_wildcards_in_order():
+    assert _matches(["s1 <...> s2 <...> s3"], canon("s1 a s2 b b s3"))
+    assert not _matches(["s1 <...> s3 <...> s2"], canon("s1 a s2 b s3"))
+
+
+def test_exact_specs_still_require_whole_output():
+    assert _matches(["a b c"], canon("a  b   c"))
+    assert not _matches(["a b"], canon("a b c"))
+
+
+def test_spaced_form_is_not_a_wildcard():
+    # only the exact, whitespace-free <...> is magic
+    assert _matches(["f(int, < ... >)"], canon("f(int, < ... >)"))
+    assert not _matches(["a < ... > d"], canon("a b c d"))

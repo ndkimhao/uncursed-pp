@@ -424,7 +424,12 @@ its expectations always sit on separate lines:
 invokes the macro from a C snippet, runs `cc -E -P`, and requires the whole
 preprocessed output to EQUAL the joined `#=>` lines, token-exactly (string
 literal interiors verbatim, whitespace between tokens normalized) — a missing
-or extra emitted token fails. `#?! INVOCATION` cases assert that preprocessing
+or extra emitted token fails. The exact marker `<...>` in an expectation
+is a wildcard matching any run of tokens (including none) — segments stay
+ordered and anchored at both ends, so
+`#=> typedef struct { int only; } P2; <...>` pins the struct and elides
+the rest. Only the whitespace-free form is magic: `< ... >` written with
+spaces stays four ordinary tokens. `#?! INVOCATION` cases assert that preprocessing
 must fail (for documented failure modes). Every golden template must carry
 specs, and every macro it defines must be exercised (meta-tests enforce both).
 

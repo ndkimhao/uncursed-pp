@@ -10,7 +10,8 @@ The #=> lines together are the COMPLETE expected expansion: the harness
 compiles the template, invokes the macro from a C snippet, runs
 `cc -E -P` (against the vendored Boost.PP), and requires the whole
 preprocessed output to equal the joined expectation (whitespace-
-canonicalized) - a missing or extra token fails the spec. '#?!' cases
+canonicalized) - a missing or extra token fails the spec. The exact
+marker `<...>` in an expectation is a wildcard for any token run. '#?!' cases
 assert the documented failure modes really fail.
 """
 
@@ -20,6 +21,7 @@ import pytest
 
 from conftest import canon, golden_id, golden_templates, preprocess_src, requires_boost
 from uncursed_pp.speccheck import parse_specs as parse_specs  # re-export for test_harness
+from uncursed_pp.speccheck import expectation_matches, expectation_pattern
 
 
 def spec_params() -> list[Any]:
@@ -80,9 +82,9 @@ def test_spec(tmp_path, template, invocation, expecteds, expect_failure):
             preprocess_src(tmp_path, template.read_text(), template.stem, invocation)
         return
     out = preprocess_src(tmp_path, template.read_text(), template.stem, invocation)
-    expected = canon(" ".join(expecteds))
-    assert expected == out, (
-        f"{invocation}\n  expected: {expected}\n  actual:   {out}"
+    segments = expectation_pattern(expecteds)
+    assert expectation_matches(segments, out), (
+        f"{invocation}\n  expected: {' <...> '.join(segments)}\n  actual:   {out}"
     )
 
 

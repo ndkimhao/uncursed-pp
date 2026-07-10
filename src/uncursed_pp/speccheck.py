@@ -42,6 +42,54 @@ def canon(text: str) -> str:
 
 Spec = tuple[str, list[str], bool]  # (invocation, expected lines, expect-failure)
 
+WILDCARD = "<...>"
+
+
+def expectation_pattern(expecteds: Sequence[str]) -> list[str]:
+    """Canonicalized literal segments, split on `<...>` wildcards.
+
+    Only the exact, whitespace-free `<...>` is a wildcard; `< ... >`
+    written with spaces stays four ordinary tokens (the escape hatch for
+    spec'ing that literal). One segment = exact whole-output spec."""
+    return [canon(part) for part in " ".join(expecteds).split(WILDCARD)]
+
+
+def expectation_matches(segments: Sequence[str], actual: str) -> bool:
+    """True iff the canon token stream matches the segments in order:
+    the first anchored at the start, the last at the end, each `<...>`
+    gap matching any run of tokens INCLUDING none. Matching is
+    token-level - a segment can never match inside a longer token."""
+    if len(segments) == 1:
+        return segments[0] == actual
+    toks = actual.split()
+    segs = [s.split() for s in segments]
+    head, *rest = segs
+    if toks[: len(head)] != head:
+        return False
+    pos = len(head)
+    *mids, tail = rest
+    for seg in mids:
+        pos = _find_segment(toks, seg, pos)
+        if pos < 0:
+            return False
+    if not tail:
+        return True
+    if len(toks) - pos < len(tail):
+        return False
+    return toks[len(toks) - len(tail) :] == tail
+
+
+def _find_segment(toks: list[str], seg: list[str], start: int) -> int:
+    """Leftmost occurrence of seg at/after start; returns the index just
+    past it, or -1. Leftmost is complete for glob-style matching: it
+    leaves the maximal suffix for later segments."""
+    if not seg:
+        return start
+    for i in range(start, len(toks) - len(seg) + 1):
+        if toks[i : i + len(seg)] == seg:
+            return i + len(seg)
+    return -1
+
 
 def parse_specs(text: str) -> list[Spec]:
     """(invocation, [expected, ...], expect_failure) cases from spec comments."""
@@ -200,12 +248,13 @@ def _run_specs(
                 )
             )
             continue
-        expected = canon(" ".join(expecteds))
-        if out == expected:
+        segments = expectation_pattern(expecteds)
+        if expectation_matches(segments, out):
             results.append(SpecResult(invocation, True))
         else:
+            shown = f" {WILDCARD} ".join(segments)
             results.append(
-                SpecResult(invocation, False, f"expected: {expected}\nactual:   {out}")
+                SpecResult(invocation, False, f"expected: {shown}\nactual:   {out}")
             )
     return results
 

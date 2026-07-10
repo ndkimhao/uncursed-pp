@@ -151,3 +151,9 @@
  * #=>         printf("  " "value" " = " "%lu" "\n", v->value);
  * #=>     }
  */
+
+/* # partial spec: `<...>` matches any run of tokens, so a spec can pin
+ * # just the struct and elide the table and printer that follow
+ * #?  REFLECT(P2, (int, only, "%d"))
+ * #=>     typedef struct { int only; } P2; <...>
+ */
