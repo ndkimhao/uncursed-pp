@@ -112,7 +112,7 @@ default `BOOST_PP_`). Generated helpers are namespaced `CURSEDPP_<MACRO>_<KIND>`
 |---|---|
 | `@for` over seq | helper `CURSEDPP_<M>_EACHn(r,d,e)` + `BOOST_PP_SEQ_FOR_EACH` |
 | `@join ... with sep` | `BOOST_PP_SEQ_FOR_EACH_I` + `BOOST_PP_COMMA_IF(i)` for `","`; for other seps `BOOST_PP_IF(i, CURSEDPP_<M>_SEPn, BOOST_PP_EMPTY)()` |
-| tuple named access | `BOOST_PP_TUPLE_ELEM(idx, x)` (modern 2-arg variadic form) |
+| tuple named access | direct AP/BODY parameter when the tuple is unpacked (loops, spread tuple params); `BOOST_PP_TUPLE_ELEM(idx, x)` otherwise (whole-tuple use, name collisions) |
 | seq index `xs[k]` | `BOOST_PP_SEQ_ELEM(k, xs)` |
 | `@if/@else` | branch bodies emitted as separate helper macros, selected by `BOOST_PP_IIF(cond, THEN, ELSE)` then invoked — branch text may contain commas |
 | `len(xs) == n` etc. | `BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), n)` / `LESS` / `GREATER` |

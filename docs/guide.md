@@ -84,6 +84,10 @@ macro M(a, xs: seq<token>, f: tuple<type, name>, rest: variadic)
 Notes:
 
 - `tuple` element names are how you access elements: `{{f.type}}`, `{{f.name}}`.
+- Names bound in scope — parameters, `@for` unpack names, tuple element
+  names — compile to macro parameters, so they substitute wherever they
+  appear in the body, **including literal C text**. Don't reuse a bound name
+  as an ordinary C identifier in the same scope.
 - A **seq of tuples needs double parens** at the call site: the outer paren is
   the seq element wrapper (and protects the tuple's commas), the inner is the
   tuple itself: `((int, x))((float, y))`.
@@ -303,9 +307,13 @@ A custom `pp_prefix` requires `pp_include` **or** a custom `pp_include_dir`
 For each macro, cursedpp emits the public `#define` plus namespaced helpers:
 
 - `CURSEDPP_<MACRO>_EACHn` — loop bodies (`@for`/`@join`)
+- `CURSEDPP_<MACRO>_APn` — tuple-element unpackers applied by juxtaposition
+  (`AP e`): fields are direct parameters, avoiding a `TUPLE_ELEM` dispatch
+  per use
+- `CURSEDPP_<MACRO>_BODY1` — macros with tuple params spread the fields in
 - `CURSEDPP_<MACRO>_SEPn` — non-comma join separators
 - `CURSEDPP_<MACRO>_THENn` / `_ELSEn` — `@if` branches
-- `CURSEDPP_<MACRO>_SET_<KW>`, `_STEP`, `_BODY`, `_UNPACK`, `_KW`, `_<n>` — named args
+- `CURSEDPP_<MACRO>_SET_<KW>`, `_STEP`, `_PUT_<slot>`, `_BODY`, `_UNPACK`, `_KW`, `_<n>` — named args (slot updates are direct generated replacers; no `TUPLE_REPLACE`/`WHILE`)
 - `CURSEDPP_<MACRO>_<n>` — tail-default arity chain
 
 Two whole-file passes keep output small and deterministic:
@@ -327,6 +335,8 @@ never edit by hand — recompile the template.
    `remove_parens()` in the template.
 3. **Seq and variadic arguments must be non-empty** (Boost.PP seqs can't be
    empty). `F()` is not a valid call to a variadic macro in v1.
+3b. **Seqs cap at 256 elements** (`BOOST_PP_LIMIT_SEQ`); a longer call site
+   fails with a cryptic `BOOST_PP_SEQ_SIZE_...` error from the compiler.
 4. **Named-arg keywords must not be `#define`d** at the call site.
 5. **Comparison magnitudes are 0–256** (`len()` counts included).
 6. Arguments are expanded by the preprocessor before dispatch — passing a

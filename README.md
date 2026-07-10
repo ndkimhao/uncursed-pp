@@ -107,7 +107,8 @@ customizable via `--runtime-name` or `@pragma runtime_name "acme_common.h"`.
   keyword accepts bare commas — `COLORS(red, green, blue)` — with the value
   passing through verbatim (plain `named` keeps the strict one-token value;
   `FLAGS(a, b)` there is a compile error naming the keyword's setter).
-- **Seq/variadic arguments must be non-empty** — Boost.PP seqs cannot be empty.
+- **Seq/variadic arguments must be non-empty** — Boost.PP seqs cannot be empty —
+  and cap at **256 elements** (`BOOST_PP_LIMIT_SEQ`).
 - **Named-argument keywords** (`WIDTH`, ...) must not be `#define`d at the call
   site, or they expand before detection.
 - **Defaults/named macros need ≥1 required parameter** — C can't overload on
