@@ -57,6 +57,26 @@ def test_every_golden_template_has_specs():
     assert not missing, f"golden templates without #? specs: {missing}"
 
 
+def test_every_golden_macro_is_exercised():
+    """Each macro a golden defines must be invoked by a spec, or called
+    from another macro in the same template (composition)."""
+    import re
+
+    unexercised = []
+    for cursed in golden_templates():
+        text = cursed.read_text()
+        macros = re.findall(r"^macro\s+(\w+)\s*\(", text, flags=re.MULTILINE)
+        invocations = " ".join(inv for inv, _ in parse_specs(text))
+        bodies = re.sub(r"^macro\s+\w+\s*\(.*$", "", text, flags=re.MULTILINE)
+        bodies = "\n".join(
+            line for line in bodies.splitlines() if not line.strip().startswith("#")
+        )
+        for name in macros:
+            if not re.search(rf"\b{name}\s*\(", invocations + " " + bodies):
+                unexercised.append(f"{golden_id(cursed)}:{name}")
+    assert not unexercised, f"macros never invoked by any spec: {unexercised}"
+
+
 @requires_boost
 @pytest.mark.parametrize(("cursed", "invocation", "expecteds"), spec_params())
 def test_spec(tmp_path, cursed, invocation, expecteds):
