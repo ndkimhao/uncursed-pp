@@ -14,7 +14,6 @@ canonicalized) - a missing or extra token fails the spec. '#?!' cases
 assert the documented failure modes really fail.
 """
 
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -118,36 +117,6 @@ def test_spec(tmp_path, template, invocation, expecteds, expect_failure):
     assert expected == out, (
         f"{invocation}\n  expected: {expected}\n  actual:   {out}"
     )
-
-
-@requires_boost
-def test_example_file_compiles_and_all_macros_expand(tmp_path):
-    """The shipped feature-tour example works end-to-end."""
-    source = (Path(__file__).parent.parent / "examples" / "example.uncursed").read_text()
-    invocations = "\n".join(
-        [
-            "DECLARE_FIELDS(((int, x))((float, y)))",
-            "PROTO(draw, ((struct ctx *, ctx))((int, flags)))",
-            "GETTER((int, age))",
-            "PAIR(((pair<int,int>), b))",
-            "CTOR(w, ((int, x))((int, y)))",
-            "LOG(m, WARN)",
-            "MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))",
-            "NORMALIZE(a, (b,c), d)",
-        ]
-    )
-    out = preprocess_src(tmp_path, source, "example", invocations)
-    for expected in [
-        "int x; float y;",
-        "void draw(struct ctx * ctx, int flags);",
-        "int get_age(const struct self *s) { return s->age; }",
-        "S{ pair<int,int> | b }",
-        "w_init(x, y)",
-        'fprintf(stderr, "[" "WARN" "] %s\\n", m);',
-        "struct widget w3 = { 20, 50, BOLD };",
-        "S{ (a, omit), (b,c), (d, omit) }",
-    ]:
-        assert canon(expected) in out, expected
 
 
 @requires_boost

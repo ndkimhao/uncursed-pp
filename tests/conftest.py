@@ -11,6 +11,7 @@ import pytest
 from uncursed_pp.emitter import C_LITERAL_PATTERN, compile_template
 
 GOLDEN = Path(__file__).parent / "golden"
+EXAMPLES = Path(__file__).parent.parent / "examples"
 
 CC = shutil.which("cc") or shutil.which("gcc")
 
@@ -88,9 +89,12 @@ def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> s
 
 
 def golden_templates() -> list[Path]:
-    """All golden templates, recursively (goldens are organized by category)."""
-    return sorted(GOLDEN.rglob("*.uncursed"))
+    """All spec-carrying templates: regression goldens plus the
+    human-facing examples tree (a second golden root)."""
+    return sorted(GOLDEN.rglob("*.uncursed")) + sorted(EXAMPLES.rglob("*.uncursed"))
 
 
 def golden_id(path: Path) -> str:
+    if path.is_relative_to(EXAMPLES):
+        return "examples/" + path.relative_to(EXAMPLES).with_suffix("").as_posix()
     return path.relative_to(GOLDEN).with_suffix("").as_posix()

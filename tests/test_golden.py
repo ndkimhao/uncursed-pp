@@ -29,3 +29,8 @@ def test_no_orphaned_golden_headers():
         if h.name != "uncursed_pp_runtime.h" and not h.with_suffix(".uncursed").exists()
     ]
     assert not stray, f"golden headers without a .uncursed source: {stray}"
+
+
+def test_examples_tree_is_discovered():
+    ids = [golden_id(p) for p in golden_templates()]
+    assert any(i.startswith("examples/features/") for i in ids), ids
