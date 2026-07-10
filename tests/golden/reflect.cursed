@@ -1,0 +1,45 @@
+# A tiny reflection system: one field list is the single source of truth
+# for a struct definition, a name/type/offset metadata table, a field
+# count, and a debug printer.
+#
+#   REFLECT(Point, (int, x, "%d"), (float, y, "%f"))
+#
+# expands (at C compile time) to:
+#   typedef struct { int x; float y; } Point;
+#   static const cursed_field Point_fields[] = { {"x","int",offsetof(...)}, ... };
+#   enum { Point_field_count = 2 };
+#   static void print_Point(const Point *v) { printf(... "%d" ..., v->x); ... }
+
+macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
+typedef struct {
+@for (type, name, fmt) in fields
+  {{type}} {{name}};
+@end
+} {{sname}};
+end
+
+macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
+static const cursed_field {{concat(sname, _fields)}}[] = {
+@for (type, name, fmt) in fields
+  { {{stringize(name)}}, {{stringize(type)}}, offsetof({{sname}}, {{name}}) },
+@end
+};
+enum { {{concat(sname, _field_count)}} = {{len(fields)}} };
+end
+
+macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
+static void {{concat(print_, sname)}}(const {{sname}} *v) {
+@for (type, name, fmt) in fields
+  printf("  " {{stringize(name)}} " = " {{fmt}} "\n", v->{{name}});
+@end
+}
+end
+
+# Generated macros compose: REFLECT fans out to the three above. Its
+# variadic<tuple<...>> parameter gives call sites single-paren elements;
+# VARIADIC_TO_SEQ hands the inner seq-typed macros their (e)(e) form.
+macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
+DEFINE_STRUCT({{sname}}, {{fields}})
+DEFINE_FIELD_TABLE({{sname}}, {{fields}})
+DEFINE_PRINTER({{sname}}, {{fields}})
+end

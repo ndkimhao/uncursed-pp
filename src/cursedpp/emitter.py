@@ -23,6 +23,7 @@ from .nodes import (
     Param,
     RemoveParens,
     SeqT,
+    Stringize,
     Text,
     TokenT,
     TupleT,
@@ -52,6 +53,7 @@ _PP_HEADERS = {
     "SEQ_SIZE": "seq/size.hpp",
     "SEQ_FOLD_LEFT": "seq/fold_left.hpp",
     "TUPLE_ELEM": "tuple/elem.hpp",
+    "STRINGIZE": "stringize.hpp",
     "COMMA_IF": "punctuation/comma_if.hpp",
     "COMMA": "punctuation/comma.hpp",
     "REMOVE_PARENS": "punctuation/remove_parens.hpp",
@@ -133,9 +135,10 @@ class _MacroEmitter:
 
         env = {p.name: _Binding(p.name, p.type) for p in self.macro.params}
         for p in variadic:
-            # the body sees the variadic tail as a token seq
+            # the body sees the variadic tail as a seq of the element type
+            assert isinstance(p.type, VariadicT)
             env[p.name] = _Binding(
-                f"{self.pp('VARIADIC_TO_SEQ')}(__VA_ARGS__)", SeqT(TokenT())
+                f"{self.pp('VARIADIC_TO_SEQ')}(__VA_ARGS__)", SeqT(p.type.elem)
             )
         body = self._render_block(self.macro.body, env)
 
@@ -272,7 +275,12 @@ class _MacroEmitter:
             elif isinstance(node, If):
                 parts.append(self._render_if(node, env))
             elif isinstance(node, Let):
-                env[node.name] = self._resolve(node.expr, env, node.line)
+                if isinstance(node.expr, Join):
+                    env[node.name] = _Binding(self._render_join(node.expr, env), TokenT())
+                elif isinstance(node.expr, If):
+                    env[node.name] = _Binding(self._render_if(node.expr, env), TokenT())
+                else:
+                    env[node.name] = self._resolve(node.expr, env, node.line)
             else:  # pragma: no cover - future node kinds
                 raise NotImplementedError(f"cannot emit {node!r}")
         return "".join(parts)
@@ -295,6 +303,9 @@ class _MacroEmitter:
         if isinstance(expr, RemoveParens):
             inner = self._resolve(expr.arg, env, line)
             return _Binding(f"{self.pp('REMOVE_PARENS')}({inner.c_expr})", TokenT())
+        if isinstance(expr, Stringize):
+            inner = self._resolve(expr.arg, env, line)
+            return _Binding(f"{self.pp('STRINGIZE')}({inner.c_expr})", TokenT())
         if isinstance(expr, Len):
             inner = self._resolve(expr.arg, env, line)
             if not isinstance(inner.type, SeqT):
@@ -372,7 +383,7 @@ class _MacroEmitter:
             elif isinstance(e, Concat):
                 for a in e.args:
                     walk_expr(a)
-            elif isinstance(e, (RemoveParens, Len, IsParen)):
+            elif isinstance(e, (RemoveParens, Stringize, Len, IsParen)):
                 walk_expr(e.arg)
 
         def loop_names(n: ForEach | Join) -> set[str]:
@@ -395,7 +406,10 @@ class _MacroEmitter:
                 if isinstance(n, Interp):
                     walk_expr(n.expr)
                 elif isinstance(n, Let):
-                    walk_expr(n.expr)
+                    if isinstance(n.expr, (Join, If)):
+                        walk([n.expr], local_bound)
+                    else:
+                        walk_expr(n.expr)
                     local_bound.add(n.name)
                 elif isinstance(n, (ForEach, Join)):
                     add(n.iterable)
@@ -450,16 +464,45 @@ class _MacroEmitter:
             raise CursedppError(f"cannot iterate non-seq {name!r}", self.filename, node.line)
         return binding.c_expr, binding.type.elem
 
+    def _loop_data(
+        self, node: ForEach | Join, env: _Env, loop_env: _Env
+    ) -> tuple[str, _Env]:
+        """Free outer variables in a loop body ride FOR_EACH's `d` slot.
+
+        Returns (data argument for the call site, adjusted loop env).
+        One free variable travels as `d` itself; several as a tuple in `d`.
+        """
+        # bound = names the loop itself introduced or rebound (unpack names,
+        # `as` var, implicit tuple fields); everything else from the outer
+        # env is free and must travel through `d`.
+        bound = {name for name, binding in loop_env.items() if env.get(name) != binding}
+        free = self._free_vars(node.body, env, bound)
+        if not free:
+            return "~", loop_env
+        loop_env = dict(loop_env)
+        if len(free) == 1:
+            data = env[free[0]].c_expr
+            loop_env[free[0]] = _Binding("d", env[free[0]].type)
+        else:
+            data = "(" + ", ".join(env[n].c_expr for n in free) + ")"
+            for idx, name in enumerate(free):
+                loop_env[name] = _Binding(
+                    f"{self.pp('TUPLE_ELEM')}({idx}, d)", env[name].type
+                )
+        return data, loop_env
+
     def _render_foreach(self, loop: ForEach, env: _Env) -> str:
         seq_expr, elem_type = self._iterable_binding(loop.iterable, env, loop)
         loop_env = self._loop_env(env, loop.unpack, loop.var, elem_type, loop)
+        data, loop_env = self._loop_data(loop, env, loop_env)
         body = _collapse_ws(self._render_block(loop.body, loop_env))
         helper = self._add_helper("EACH", "r, d, e", body)
-        return f"{self.pp('SEQ_FOR_EACH')}({helper}, ~, {seq_expr})"
+        return f"{self.pp('SEQ_FOR_EACH')}({helper}, {data}, {seq_expr})"
 
     def _render_join(self, join: Join, env: _Env) -> str:
         seq_expr, elem_type = self._iterable_binding(join.iterable, env, join)
         loop_env = self._loop_env(env, None, join.var, elem_type, join)
+        data, loop_env = self._loop_data(join, env, loop_env)
         body = _collapse_ws(self._render_block(join.body, loop_env))
         sep = join.sep.strip()
         if sep == ",":
@@ -468,7 +511,7 @@ class _MacroEmitter:
             sep_helper = self._add_helper("SEP", "", sep)
             each_body = f"{self.pp('IF')}(i, {sep_helper}, {self.pp('EMPTY')})() {body}"
         helper = self._add_helper("EACH", "r, d, i, e", each_body)
-        return f"{self.pp('SEQ_FOR_EACH_I')}({helper}, ~, {seq_expr})"
+        return f"{self.pp('SEQ_FOR_EACH_I')}({helper}, {data}, {seq_expr})"
 
     def _add_helper(self, kind: str, params: str, body: str) -> str:
         count = self._helper_counts.get(kind, 0) + 1

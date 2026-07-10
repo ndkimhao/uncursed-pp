@@ -59,20 +59,25 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 
 | Feature | Syntax |
 |---|---|
-| Types | `token` (default), `seq<T>`, `tuple<name, ...>`, `variadic` |
+| Types | `token` (default), `seq<T>`, `tuple<name, ...>`, `variadic` / `variadic<T>` |
 | Loop | `@for (a, b) in xs` / `@for x in xs` ... `@end` |
 | Join | `@join xs with ", ": body @end` (inline) or block form; `as x` binds the element |
 | Conditional | `@if len(xs) == 1` / `@if is_paren(x)` ... `@else` ... `@end` (ops: `== != < > <= >=`) |
 | Element access | `{{t.field}}` (tuple, by name), `{{xs[0]}}` (seq, by index) |
 | Paste | `{{concat(get_, f.name)}}` → `BOOST_PP_CAT` — pasting is never implicit |
+| Stringize | `{{stringize(f.name)}}` → `BOOST_PP_STRINGIZE` — works on computed tokens |
 | Strip parens | `{{remove_parens(x)}}` — strips one layer iff present |
-| Binding | `@let g := concat(get_, f.name)` — generation-time, block-scoped |
+| Binding | `@let g := concat(get_, f.name)` — generation-time, block-scoped; also binds an inline `@join`/`@if` for reuse |
 | Tail defaults | `macro LOG(msg, level = INFO, out = stderr)` — arity dispatch |
 | Named args | `macro W(name, named WIDTH = 100)` — call `W(n, WIDTH(20))`, any order/subset |
-| Variadic | `macro F(items: variadic)` — call `F(a, (b,c), d)`; body sees a seq |
+| Variadic | `macro F(items: variadic)` — call `F(a, (b,c), d)`; body sees a seq. `variadic<tuple<t, n>>` gives single-paren tuple call sites: `F((int, x), (float, y))` |
 
 Within a loop over `seq<tuple<...>>`, the tuple's element names are bound
-automatically (`@join args with ", ": {{type}} {{argname}}@end`).
+automatically (`@join args with ", ": {{type}} {{argname}}@end`). Loop bodies
+may reference outer parameters freely — they travel through `FOR_EACH`'s data
+slot. See `tests/golden/reflect.cursed` for a worked example: a reflection
+system where one field list generates a struct, a name/type/offset metadata
+table, and a debug printer.
 
 Identical generated helpers are deduplicated across the file into shared
 `CURSEDPP_H<n>` macros; loop bodies differing by one constant token share a

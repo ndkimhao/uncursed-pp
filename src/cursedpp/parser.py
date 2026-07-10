@@ -35,6 +35,7 @@ from .nodes import (
     Param,
     RemoveParens,
     SeqT,
+    Stringize,
     Text,
     TokenT,
     TupleT,
@@ -101,8 +102,13 @@ class _Ast(Transformer[Any, Any]):
     def token_type(self, _items: list[Any]) -> TokenT:
         return TokenT()
 
-    def variadic_type(self, _items: list[Any]) -> VariadicT:
-        return VariadicT()
+    def variadic_type(self, items: list[Any]) -> VariadicT:
+        elem = items[0]
+        if elem is None:
+            return VariadicT()
+        if not isinstance(elem, (TupleT, TokenT)):
+            raise ValueError("variadic elements must be token or tuple<...>")
+        return VariadicT(elem)
 
     def name_list(self, items: list[Any]) -> tuple[str, ...]:
         return tuple(str(n) for n in items)
@@ -168,6 +174,10 @@ def _build_call(name: str, args: tuple[Expr, ...]) -> Expr:
         if len(args) != 1:
             raise ValueError("remove_parens() takes exactly one argument")
         return RemoveParens(args[0])
+    if name == "stringize":
+        if len(args) != 1:
+            raise ValueError("stringize() takes exactly one argument")
+        return Stringize(args[0])
     if name == "len":
         if len(args) != 1:
             raise ValueError("len() takes exactly one argument")
@@ -176,7 +186,7 @@ def _build_call(name: str, args: tuple[Expr, ...]) -> Expr:
         if len(args) != 1:
             raise ValueError("is_paren() takes exactly one argument")
         return IsParen(args[0])
-    known = "concat, is_paren, len, remove_parens"
+    known = "concat, is_paren, len, remove_parens, stringize"
     raise ValueError(f"unknown function: {name}() (known: {known})")
 
 
@@ -413,6 +423,28 @@ def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef,
     raise CursedppError(f"missing 'end' for macro {name}", filename, header_line)
 
 
+_LET_RE = re.compile(r"let\s+([A-Za-z_]\w*)\s*:=\s*(.*)$")
+
+
+def _parse_let(directive: str, filename: str, lineno: int) -> Let:
+    m = _LET_RE.match(directive)
+    if not m:
+        raise CursedppError("@let needs 'name := value'", filename, lineno)
+    name, rhs = m.group(1), m.group(2).strip()
+    if _INLINE_OPEN_RE.match(rhs):
+        nodes = _parse_segments(rhs, lineno, filename)
+        nodes = [n for n in nodes if not (isinstance(n, Text) and not n.value.strip())]
+        if len(nodes) != 1 or not isinstance(nodes[0], (Join, If)):
+            raise CursedppError(
+                "@let value must be a single expression or one inline @join/@if",
+                filename,
+                lineno,
+            )
+        return Let(name=name, expr=nodes[0], line=lineno)
+    expr = _parse_fragment("expr", rhs, filename, lineno)
+    return Let(name=name, expr=expr, line=lineno)
+
+
 def _handle_directive(directive: str, stack: list[_Block], filename: str, lineno: int) -> None:
     word = directive.split(None, 1)[0]
     if word == "for":
@@ -440,8 +472,7 @@ def _handle_directive(directive: str, stack: list[_Block], filename: str, lineno
             raise CursedppError("duplicate @else", filename, lineno)
         block.target = block.node.else_
     elif word == "let":
-        let = _parse_fragment("let_line", directive, filename, lineno)
-        let.line = lineno
+        let = _parse_let(directive, filename, lineno)
         stack[-1].target.append(let)
     elif directive == "end":
         if len(stack) == 1:

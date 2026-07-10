@@ -293,3 +293,64 @@ def test_custom_pp_prefix_ok_with_custom_include_dir():
     src = "@pragma pp_prefix MYPP_\n@pragma pp_include_dir vendored/pp\nmacro ID(x)\n{{x}}\nend\n"
     out = compile_source(src, "t.cursed")
     assert "MYPP_" not in out  # plain macro uses no primitives; compiles fine
+
+
+def test_stringize_emits_boost_pp_stringize():
+    out = compile_source("macro F(x)\n{{stringize(x)}}\nend\n", "f.cursed")
+    assert "#define F(x) BOOST_PP_STRINGIZE(x)\n" in out
+    assert "#include <boost/preprocessor/stringize.hpp>" in out
+
+
+def test_loop_body_referencing_macro_param_rides_data_slot():
+    src = "macro TAG(prefix, xs: seq<token>)\n@for x in xs\nf({{prefix}}, {{x}});\n@end\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_TAG_EACH1(r, d, e) f(d, e);\n" in out
+    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_TAG_EACH1, prefix, xs)" in out
+
+
+def test_loop_body_with_two_free_params_uses_tuple_data():
+    src = "macro F(a, b, xs: seq<token>)\n@for x in xs\ng({{a}}, {{b}}, {{x}});\n@end\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert (
+        "#define CURSEDPP_F_EACH1(r, d, e) "
+        "g(BOOST_PP_TUPLE_ELEM(0, d), BOOST_PP_TUPLE_ELEM(1, d), e);\n" in out
+    )
+    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_F_EACH1, (a, b), xs)" in out
+
+
+def test_iterable_referenced_inside_loop_rides_data_slot():
+    src = "macro F(xs: seq<token>)\n@for x in xs\nh({{x}}, {{len(xs)}});\n@end\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_F_EACH1(r, d, e) h(e, BOOST_PP_SEQ_SIZE(d));\n" in out
+    assert "BOOST_PP_SEQ_FOR_EACH(CURSEDPP_F_EACH1, xs, xs)" in out
+
+
+def test_let_binds_inline_join():
+    src = (
+        "macro CALL2(fn, args: seq<tuple<type, argname>>)\n"
+        '@let joined := @join args with ", ": {{argname}}@end\n'
+        "{{fn}}({{joined}}, {{joined}})\n"
+        "end\n"
+    )
+    out = compile_source(src, "t.cursed")
+    # rendered once at @let, reused twice; a single helper serves both uses
+    assert out.count("#define CURSEDPP_CALL2_EACH1") == 1
+    assert out.count("BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_CALL2_EACH1, ~, args)") == 2
+
+
+def test_let_binds_inline_if():
+    src = (
+        "macro PICK(x)\n"
+        "@let norm := @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end\n"
+        "g({{norm}})\n"
+        "end\n"
+    )
+    out = compile_source(src, "t.cursed")
+    assert "g(BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(x), CURSEDPP_PICK_THEN1, CURSEDPP_PICK_ELSE1)(x))" in out
+
+
+def test_typed_variadic_unpacks_tuples():
+    src = "macro F(items: variadic<tuple<t, n>>)\n@for (t, n) in items\n{{t}} {{n}};\n@end\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "#define CURSEDPP_F_EACH1(r, d, e) BOOST_PP_TUPLE_ELEM(0, e) BOOST_PP_TUPLE_ELEM(1, e);" in out
+    assert "BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)" in out

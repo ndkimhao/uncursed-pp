@@ -209,3 +209,37 @@ def test_example_file_compiles_and_all_macros_expand(tmp_path):
         "S{ (a, omit), (b,c), (d, omit) }",
     ]:
         assert canon(expected) in out, expected
+
+
+@requires_boost
+def test_loop_free_vars_through_data_slot(tmp_path):
+    src = "macro TAG(prefix, xs: seq<token>)\n@for x in xs\nf({{prefix}}, {{x}});\n@end\nend\n"
+    out = preprocess_src(tmp_path, src, "tag", "TAG(dbg, (a)(b))")
+    assert canon("f(dbg, a); f(dbg, b);") in out
+
+
+@requires_boost
+def test_let_join_reuse(tmp_path):
+    src = (
+        "macro CALL2(fn, args: seq<tuple<type, argname>>)\n"
+        '@let joined := @join args with ", ": {{argname}}@end\n'
+        "{{fn}}({{joined}}, {{joined}})\n"
+        "end\n"
+    )
+    out = preprocess_src(tmp_path, src, "call2", "CALL2(f, ((int, a))((int, b)))")
+    assert canon("f(a, b, a, b)") in out
+
+
+@requires_boost
+def test_reflection_system(tmp_path):
+    """The reflect golden: one field list -> struct + metadata + printer."""
+    source = (GOLDEN / "reflect.cursed").read_text()
+    out = preprocess_src(
+        tmp_path, source, "reflect", 'REFLECT(Point, (int, x, "%d"), (float, y, "%f"))'
+    )
+    assert canon("typedef struct { int x; float y; } Point;") in out
+    assert canon('{ "x", "int", offsetof(Point, x) },') in out
+    assert canon('{ "y", "float", offsetof(Point, y) },') in out
+    assert canon("enum { Point_field_count = 2 };") in out
+    assert canon('printf("  " "x" " = " "%d" "\\n", v->x);') in out
+    assert canon("static void print_Point(const Point *v)") in out

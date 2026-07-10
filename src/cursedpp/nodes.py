@@ -25,7 +25,9 @@ class SeqT:
 
 @dataclass(frozen=True)
 class VariadicT:
-    """Trailing ... parameter; body sees it as a seq of tokens."""
+    """Trailing ... parameter; body sees it as a seq of `elem` values."""
+
+    elem: TupleT | TokenT = TokenT()
 
 
 Type = TokenT | TupleT | SeqT | VariadicT
@@ -56,6 +58,11 @@ class RemoveParens:
 
 
 @dataclass(frozen=True)
+class Stringize:
+    arg: "Expr"
+
+
+@dataclass(frozen=True)
 class Len:
     arg: "Expr"
 
@@ -65,7 +72,7 @@ class IsParen:
     arg: "Expr"
 
 
-Expr = VarRef | ElemAccess | Concat | RemoveParens | Len | IsParen
+Expr = VarRef | ElemAccess | Concat | RemoveParens | Stringize | Len | IsParen
 
 
 # ── Conditions ───────────────────────────────────────────────────────
@@ -116,7 +123,7 @@ class Join:
 @dataclass
 class Let:
     name: str
-    expr: Expr
+    expr: "Expr | Join | If"  # inline @join/@if render to a reusable value
     line: int = 0
 
 
