@@ -77,7 +77,7 @@ C_LITERAL_PATTERN = (
 
 _INLINE_OPEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?P<kw>join|if)\s")
 _INLINE_TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?:join|if)\s|@else\b|@end\b")
-_STRAY_TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?:else|end)\b")
+_STRAY_TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?P<tok>else|end|for|let)\b")
 
 
 def _search_directive(pattern: re.Pattern[str], text: str) -> re.Match[str] | None:
@@ -320,6 +320,8 @@ def _parse_fragment(start: str, text: str, filename: str, line: int) -> Any:
         raise
     except lark_exceptions.UnexpectedInput as exc:
         col = getattr(exc, "column", None)
+        if col is not None and col < 1:
+            col = None  # lark reports -1 at EOF; never print a lie
         raise UncursedPpError(f"syntax error: {exc.__class__.__name__}", filename, line, col) from exc
 
 
@@ -379,6 +381,10 @@ def _parse_segments(text: str, lineno: int, filename: str) -> list[BodyNode]:
 
     stray = _search_directive(_STRAY_TOKEN_RE, text)
     if stray:
+        if stray.group("tok") in {"for", "let"}:
+            raise UncursedPpError(
+                f"{stray.group(0)} must start its own line", filename, lineno
+            )
         raise UncursedPpError(f"stray {stray.group(0)} outside a directive", filename, lineno)
 
     pieces = _INTERP_RE.split(text)
@@ -576,6 +582,9 @@ def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef,
             raise UncursedPpError(
                 "unclosed '@macro' parameter list", filename, header_line
             )
+        if lines[i].strip().startswith("#"):
+            i += 1  # comment lines inside the parameter list
+            continue
         header = f"{header} {lines[i].strip()}"
         i += 1
     name, params = _parse_fragment("signature", header, filename, header_line)
@@ -688,7 +697,9 @@ def _handle_directive(directive: str, stack: list[_Block], filename: str, lineno
     elif word == "let":
         let = _parse_let(directive, filename, lineno)
         stack[-1].target.append(let)
-    elif directive == "end":
+    elif word == "end":
+        if directive.strip() != "end":
+            raise UncursedPpError("unexpected text after @end", filename, lineno)
         if len(stack) == 1:
             raise UncursedPpError("@end without matching @for/@join/@if", filename, lineno)
         stack.pop()

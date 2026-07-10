@@ -339,3 +339,31 @@ def test_positional_param_shaped_like_a_kwarg_slot_is_deconflicted():
     for params in re.findall(r"#define UNCURSED_PP_EC_\d\(([^)]*)\)", out):
         names = [p.strip() for p in params.split(",")]
         assert len(names) == len(set(names)), f"duplicate macro parameter: {params}"
+
+
+def test_midline_for_and_let_are_diagnosed():
+    # line directives silently emitted as literal text used to poison the
+    # header; now they are flagged with a clear error
+    for body in ("foo(); @for $x in $xs", "foo(); @let $b := $a"):
+        with pytest.raises(UncursedPpError) as excinfo:
+            parse_file(f"@macro F($a, $xs: seq<token>)\n{body}\n{{{{$a}}}}\n@endmacro\n", "t.uncursed")
+        assert "must start its own line" in str(excinfo.value), body
+
+
+def test_comment_lines_inside_multiline_param_list():
+    src = "@macro H(\n  $a,\n  # trailing fields\n  $b\n)\n{{$a}} {{$b}}\n@endmacro\n"
+    [macro] = parse_file(src, "t.uncursed").macros
+    assert [p.name for p in macro.params] == ["a", "b"]
+
+
+def test_end_with_arguments_is_diagnosed():
+    src = "@macro I($xs: seq<token>)\n@for $x in $xs\n{{$x}}\n@end foo\n@endmacro\n"
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file(src, "t.uncursed")
+    assert "unexpected text after @end" in str(excinfo.value)
+
+
+def test_syntax_error_positions_never_report_negative_columns():
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file("@macro J($a)\n{{}}\n@endmacro\n", "t.uncursed")
+    assert ":-" not in str(excinfo.value)
