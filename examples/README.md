@@ -6,6 +6,9 @@ committed next to it, and the `#? INVOCATION` / `#=> expansion` comments
 are verified token-exact through the real C preprocessor by the test
 suite. What you read is what actually happens.
 
+[`00-readme.uncursed`](00-readme.uncursed) is the front-page demo from the
+top-level README, kept honest by its specs.
+
 Read `features/` in order — each file teaches one feature and states the
 call-site rules that apply to it:
 

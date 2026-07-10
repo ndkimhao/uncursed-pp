@@ -29,9 +29,12 @@ You describe a macro like a web render template; uncursed-pp emits the cursed
 DECLARE_FIELDS((int, x), (float, y))   /* -> int x; float y; */
 ```
 
-(Without the pragma, loops additionally compile to consumption chains -
-~25x cheaper to preprocess, at ~17 more lines per loop; see
-docs/optimization.md.)
+This exact example lives at [`examples/00-readme.uncursed`](examples/00-readme.uncursed)
+with its generated header committed beside it — its `#?` specs run through the
+real preprocessor in the test suite, so the README cannot silently drift from
+what the compiler does. (Without the pragma, loops additionally compile to
+consumption chains — ~25x cheaper to preprocess, at ~17 more lines per loop;
+see [docs/optimization.md](docs/optimization.md).)
 
 ## Install & use
 
