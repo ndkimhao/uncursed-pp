@@ -114,25 +114,27 @@ JOIN_IN_FOR = (
 )
 
 
-def test_nested_for_is_rejected():
-    with pytest.raises(CursedppError) as excinfo:
-        compile_source(NESTED_FOR, "t.cursed")
-    assert "nested loops" in str(excinfo.value)
+def test_nested_for_uses_repeat():
+    out = compile_source(NESTED_FOR, "t.cursed")
+    # outer level keeps SEQ_FOR_EACH; the inner level iterates via the
+    # auto-reentrant BOOST_PP_REPEAT with SEQ_ELEM element access
+    assert "BOOST_PP_SEQ_FOR_EACH(" in out
+    assert "BOOST_PP_REPEAT(BOOST_PP_SEQ_SIZE(" in out
+    assert "(z, n, d)" in out
 
 
-def test_loop_if_loop_is_rejected():
-    with pytest.raises(CursedppError) as excinfo:
-        compile_source(LOOP_IF_LOOP, "t.cursed")
-    assert "nested loops" in str(excinfo.value)
+def test_loop_if_loop_compiles():
+    out = compile_source(LOOP_IF_LOOP, "t.cursed")
+    assert "BOOST_PP_REPEAT(" in out
 
 
-def test_inline_join_inside_for_is_rejected():
-    with pytest.raises(CursedppError) as excinfo:
-        compile_source(JOIN_IN_FOR, "t.cursed")
-    assert "nested loops" in str(excinfo.value)
+def test_inline_join_inside_for_compiles():
+    out = compile_source(JOIN_IN_FOR, "t.cursed")
+    assert "BOOST_PP_REPEAT(" in out
+    assert "BOOST_PP_COMMA_IF(n)" in out
 
 
-def test_let_join_inside_loop_is_rejected():
+def test_let_join_inside_loop_compiles():
     src = (
         "macro F(xs: seq<token>, ys: seq<token>)\n"
         "@for x in xs\n"
@@ -140,9 +142,19 @@ def test_let_join_inside_loop_is_rejected():
         "g({{j}});\n"
         "@end\nend\n"
     )
+    out = compile_source(src, "t.cursed")
+    assert "BOOST_PP_REPEAT(" in out
+
+
+def test_loops_nest_at_most_four_deep():
+    inner = "quint({{a}}, {{b}}, {{c}}, {{d2}}, {{e2}});\n"
+    src = "macro F(s1: seq<token>, s2: seq<token>, s3: seq<token>, s4: seq<token>, s5: seq<token>)\n"
+    for var, seq in [("a", "s1"), ("b", "s2"), ("c", "s3"), ("d2", "s4"), ("e2", "s5")]:
+        src += f"@for {var} in {seq}\n"
+    src += inner + "@end\n" * 5 + "end\n"
     with pytest.raises(CursedppError) as excinfo:
         compile_source(src, "t.cursed")
-    assert "nested loops" in str(excinfo.value)
+    assert "4 deep" in str(excinfo.value)
 
 
 def test_sibling_loops_are_fine():

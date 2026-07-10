@@ -1,0 +1,59 @@
+# Nested loops (up to 4 deep): the outer level uses SEQ_FOR_EACH; inner
+# levels ride BOOST_PP_REPEAT's three auto-detected dimensions, indexing
+# their seq with SEQ_ELEM. The seq plus free outer variables travel in
+# the inner data tuple.
+
+# cartesian product of two seq params
+macro CROSS(xs: seq<token>, ys: seq<token>)
+@for x in xs
+@for y in ys
+pair({{x}}, {{y}});
+@end
+@end
+end
+
+# iterate a seq<seq<...>>: the inner iterable is the OUTER loop variable
+macro MATRIX(grid: seq<seq<token>>)
+@for row in grid
+@for cell in row
+cell({{cell}});
+@end
+@end
+end
+
+# inline @join per outer element
+macro CALL_ROWS(xs: seq<token>, ys: seq<token>)
+@for x in xs
+call({{x}}, @join ys as y with ", ": {{y}}@end);
+@end
+end
+
+# full depth: 4 nested loops
+macro QUAD(s1: seq<token>, s2: seq<token>, s3: seq<token>, s4: seq<token>)
+@for a in s1
+@for b in s2
+@for c in s3
+@for dd in s4
+quad({{a}}, {{b}}, {{c}}, {{dd}});
+@end
+@end
+@end
+@end
+end
+
+# ── invocation specs (verified through cc -E by the spec harness) ──
+#?  CROSS((a)(b), (u)(v))
+#=>     pair(a, u); pair(a, v); pair(b, u); pair(b, v);
+
+#?  MATRIX(((a)(b))((c)))
+#=>     cell(a); cell(b); cell(c);
+
+#?  CALL_ROWS((p)(q), (u)(v))
+#=>     call(p, u, v); call(q, u, v);
+
+#?  QUAD((1), (2)(20), (3), (4))
+#=>     quad(1, 2, 3, 4); quad(1, 20, 3, 4);
+
+# edge: single-element everything
+#?  QUAD((1), (2), (3), (4))
+#=>     quad(1, 2, 3, 4);

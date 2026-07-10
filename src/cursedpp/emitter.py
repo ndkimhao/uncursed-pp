@@ -48,6 +48,7 @@ class EmitConfig:
 _PP_HEADERS = {
     "CAT": "cat.hpp",
     "SEQ_FOR_EACH": "seq/for_each.hpp",
+    "REPEAT": "repetition/repeat.hpp",
     "SEQ_FOR_EACH_I": "seq/for_each_i.hpp",
     "SEQ_ELEM": "seq/elem.hpp",
     "SEQ_SIZE": "seq/size.hpp",
@@ -515,6 +516,7 @@ class _MacroEmitter:
         var: str | None,
         elem_type: Type,
         node: ForEach | Join,
+        elem: str = "e",
     ) -> _Env:
         loop_env = dict(env)
         if unpack is not None:
@@ -528,12 +530,12 @@ class _MacroEmitter:
                 )
             names: tuple[str, ...] = unpack
         elif var is not None:
-            loop_env[var] = _Binding("e", elem_type)
+            loop_env[var] = _Binding(elem, elem_type)
             names = ()
         else:
             names = elem_type.names if isinstance(elem_type, TupleT) else ()
         for idx, name in enumerate(names):
-            loop_env[name] = _Binding(f"{self.pp('TUPLE_ELEM')}({idx}, e)", TokenT())
+            loop_env[name] = _Binding(f"{self.pp('TUPLE_ELEM')}({idx}, {elem})", TokenT())
         return loop_env
 
     def _iterable_binding(self, name: str, env: _Env, node: ForEach | Join) -> tuple[str, Type]:
@@ -572,16 +574,68 @@ class _MacroEmitter:
                 )
         return data, loop_env
 
-    def _reject_nested_loop(self, node: ForEach | Join) -> None:
-        if self._loop_depth:
+    def _render_inner_loop(
+        self,
+        node: ForEach | Join,
+        env: _Env,
+        seq_expr: str,
+        elem_type: Type,
+        sep: str | None,
+    ) -> str:
+        """Loops below the outermost level iterate via BOOST_PP_REPEAT.
+
+        SEQ_FOR_EACH cannot re-enter itself, but REPEAT auto-detects its
+        repetition dimension (3 available), so inner loops index the seq
+        with SEQ_ELEM(n, ...). The seq travels in slot 0 of the data
+        tuple, free outer variables in the following slots. AP spreading
+        is skipped here: juxtaposition cannot apply a helper to a
+        SEQ_ELEM-computed element.
+        """
+        if self._loop_depth > 3:
             raise CursedppError(
-                "nested loops (@for/@join inside a loop body) are not "
-                "supported: BOOST_PP_SEQ_FOR_EACH cannot re-enter itself. "
-                "Flatten the data or split the inner loop into its own macro "
-                "invoked outside the loop.",
+                "loops nest at most 4 deep: the outer level uses "
+                "SEQ_FOR_EACH and BOOST_PP_REPEAT provides 3 reentrant "
+                "dimensions for inner loops",
                 self.filename,
                 node.line,
             )
+        unpack = node.unpack if isinstance(node, ForEach) else None
+        # preliminary env only to learn which names this loop introduces
+        prelim = self._loop_env(env, unpack, node.var, elem_type, node)
+        bound = {n for n, b in prelim.items() if env.get(n) != b}
+        free = [n for n in self._free_vars(node.body, env, bound) if n != node.iterable]
+
+        if free:
+            parts = [seq_expr] + [env[n].c_expr for n in free]
+            data = "(" + ", ".join(parts) + ")"
+            seq_ref = f"{self.pp('TUPLE_ELEM')}(0, d)"
+        else:
+            data = seq_expr
+            seq_ref = "d"
+        base_env = dict(env)
+        for idx, name in enumerate(free):
+            base_env[name] = _Binding(
+                f"{self.pp('TUPLE_ELEM')}({idx + 1}, d)", env[name].type
+            )
+        if node.iterable in env:
+            base_env[node.iterable] = _Binding(seq_ref, env[node.iterable].type)
+        elem = f"{self.pp('SEQ_ELEM')}(n, {seq_ref})"
+        loop_env = self._loop_env(base_env, unpack, node.var, elem_type, node, elem=elem)
+
+        self._loop_depth += 1
+        try:
+            body = _collapse_ws(self._render_block(node.body, loop_env))
+        finally:
+            self._loop_depth -= 1
+
+        if sep is not None:
+            if sep == ",":
+                body = f"{self.pp('COMMA_IF')}(n) {body}"
+            else:
+                sep_helper = self._add_helper("SEP", "", sep)
+                body = f"{self.pp('IF')}(n, {sep_helper}, {self.pp('EMPTY')})() {body}"
+        helper = self._add_helper("EACH", "z, n, d", body)
+        return f"{self.pp('REPEAT')}({self.pp('SEQ_SIZE')}({seq_expr}), {helper}, {data})"
 
     def _loop_body(
         self, node: ForEach | Join, env: _Env, elem_type: Type
@@ -632,15 +686,17 @@ class _MacroEmitter:
         return f"{ap}_D({d_part}, {spread} e)", data
 
     def _render_foreach(self, loop: ForEach, env: _Env) -> str:
-        self._reject_nested_loop(loop)
         seq_expr, elem_type = self._iterable_binding(loop.iterable, env, loop)
+        if self._loop_depth:
+            return self._render_inner_loop(loop, env, seq_expr, elem_type, sep=None)
         body, data = self._loop_body(loop, env, elem_type)
         helper = self._add_helper("EACH", "r, d, e", body)
         return f"{self.pp('SEQ_FOR_EACH')}({helper}, {data}, {seq_expr})"
 
     def _render_join(self, join: Join, env: _Env) -> str:
-        self._reject_nested_loop(join)
         seq_expr, elem_type = self._iterable_binding(join.iterable, env, join)
+        if self._loop_depth:
+            return self._render_inner_loop(join, env, seq_expr, elem_type, sep=join.sep.strip())
         body, data = self._loop_body(join, env, elem_type)
         sep = join.sep.strip()
         if sep == ",":

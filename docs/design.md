@@ -91,10 +91,12 @@ end
 ### Language rules
 - Body is raw C text; `@`-directives for control flow; `{{expr}}` interpolation.
 - Loops: `@for (a, b) in xs` (tuple unpack) or `@for x in xs` / `@join xs as x with "sep"`.
-- Flat only: one loop level per macro; nested @for/@join (even through @if
-  branches or @let-of-join inside a loop) is rejected with a clear error —
-  verified empirically: SEQ_FOR_EACH cannot re-enter itself and the _R forms
-  do not help. @if nests freely (in loops, in other @ifs).
+- Loops nest up to 4 deep. Verified empirically: SEQ_FOR_EACH cannot
+  re-enter itself (the _R forms do not help), so the outer level uses
+  SEQ_FOR_EACH and inner levels use BOOST_PP_REPEAT (auto-reentrant, 3
+  dimensions) with SEQ_ELEM(n, seq) element access; the seq plus free outer
+  variables ride slot 0+ of the REPEAT data tuple. Depth 5+ is rejected
+  with a clear error. @if nests freely at any depth.
 - Per macro: required positional params + at most ONE of {tail defaults, named
   section, variadic}. Variadic must be last.
 - Seq/variadic args must be non-empty at C call sites (Boost.PP limitation, documented).
@@ -128,7 +130,9 @@ default `BOOST_PP_`). Generated helpers are namespaced `CURSEDPP_<MACRO>_<KIND>`
 | variadic param | `BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)`, then treated as seq |
 
 Efficiency stance: prefer `IIF` over `IF`, keep helper indirection ≤2 deep, no
-deferred-expansion tricks; flat-only means non-reentrant FOR_EACH is fine.
+deferred-expansion tricks; only the outermost loop uses (non-reentrant)
+FOR_EACH — inner levels are REPEAT-based, trading O(n) SEQ_ELEM access per
+element for reentrancy.
 
 ### Helper deduplication / factoring pass
 

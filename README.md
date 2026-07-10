@@ -119,12 +119,11 @@ customizable via `--runtime-name` or `@pragma runtime_name "acme_common.h"`.
   zero arguments.
 - `len()` comparisons ride `BOOST_PP_EQUAL`/friends: magnitudes limited to
   0–256.
-- One loop level per macro (v1): nested `@for`/`@join` (including via an
-  `@if` branch or a `@let` inside a loop) is a compile error —
-  `BOOST_PP_SEQ_FOR_EACH` cannot re-enter itself. Loops inside `@if`
-  branches and `@if`s inside `@if`s nest freely. Don't call another looping
-  generated macro from a loop body (cursedpp can't see call sites to reject
-  it).
+- Loops nest up to **4 deep**: the outer level compiles to `SEQ_FOR_EACH`
+  and inner levels to `BOOST_PP_REPEAT` (3 auto-detected dimensions) with
+  `SEQ_ELEM` indexing — deeper nesting is a compile error. `@if` nests
+  freely at any depth. Don't call another looping generated macro from a
+  loop body (cursedpp can't see call sites to guard it).
 
 ## Architecture
 
