@@ -231,6 +231,21 @@ def test_readme_documents_every_pragma():
     assert not missing, f"pragmas absent from README table: {missing}"
 
 
+def test_pragma_example_lists_every_pragma():
+    """Example 15's teaching list must cover everything the parser
+    accepts — it went stale once (missing runtime_include/arg_prefix)."""
+    from uncursed_pp.parser import _KNOWN_PRAGMAS
+
+    example = (
+        Path(__file__).parent.parent
+        / "examples"
+        / "features"
+        / "15-pragma-config.uncursed"
+    ).read_text()
+    missing = [p for p in sorted(_KNOWN_PRAGMAS) if f"@pragma {p}" not in example]
+    assert not missing, f"pragmas absent from example 15's list: {missing}"
+
+
 # ── chain-limit tables live in the shared runtime ────────────────────
 
 
