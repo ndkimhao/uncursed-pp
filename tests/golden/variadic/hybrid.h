@@ -22,11 +22,11 @@
  */
 
 /* uncursed-pp source:
- * @macro DECL_FIELD(f: tuple<fname, ftype, token...>)
- * @if is_empty(f)
- *   {{f.ftype}} {{f.fname}};
+ * @macro DECL_FIELD($f: tuple<$fname, $ftype, token...>)
+ * @if is_empty($f)
+ *   {{$f.$ftype}} {{$f.$fname}};
  * @else
- *   {{f.ftype}} {{f.fname}} __attribute__((@join f as a with ", ": {{a}}@end));
+ *   {{$f.$ftype}} {{$f.$fname}} __attribute__((@join $f as $a with ", ": {{$a}}@end));
  * @end
  * @endmacro
  */
@@ -50,8 +50,8 @@
 
 /* uncursed-pp source:
  * # len() and [i] are tail-scoped: the head does not count
- * @macro TAIL_INFO(f: tuple<n, token...>)
- * {{f.n}}: {{len(f)}} flags, first {{f[0]}}
+ * @macro TAIL_INFO($f: tuple<$n, token...>)
+ * {{$f.$n}}: {{len($f)}} flags, first {{$f[0]}}
  * @endmacro
  */
 #define UNCURSED_PP_HYBRID_H4(t) UNCURSED_PP_HYBRID_H3 t
@@ -68,10 +68,10 @@
 
 /* uncursed-pp source:
  * # typed tails unpack; heads stay named
- * @macro ROUTE(r: tuple<verb, tuple<code, action>...>)
- * {{concat(switch_, r.verb)}}:
- * @for (code, action) in r
- *   case {{code}}: {{action}}();
+ * @macro ROUTE($r: tuple<$verb, tuple<$code, $action>...>)
+ * {{concat(switch_, $r.$verb)}}:
+ * @for ($code, $action) in $r
+ *   case {{$code}}: {{$action}}();
  * @end
  * @endmacro
  */
@@ -113,9 +113,9 @@
  * # helper family through the TAIL extraction (chain families move as
  * # units - docs/optimization.md round 3); small and empty inputs pin
  * # the CAT-dispatched paths
- * @macro EMIT_A(f: tuple<n, token...>)
- * @for x in f
- *   emit({{x}});
+ * @macro EMIT_A($f: tuple<$n, token...>)
+ * @for $x in $f
+ *   emit({{$x}});
  * @end
  * @endmacro
  */
@@ -143,9 +143,9 @@
 #define EMIT_A(f) BOOST_PP_IIF(UNCURSED_PP_HYBRID_H2(UNCURSED_PP_HYBRID_H4(f)), UNCURSED_PP_HYBRID_H1, UNCURSED_PP_EMIT_A_LOOP1)(f)
 
 /* uncursed-pp source:
- * @macro EMIT_B(f: tuple<n, token...>)
- * @for x in f
- *   emit({{x}});
+ * @macro EMIT_B($f: tuple<$n, token...>)
+ * @for $x in $f
+ *   emit({{$x}});
  * @end
  * @endmacro
  */
@@ -169,9 +169,9 @@
 
 /* uncursed-pp source:
  * # hybrids as seq elements: per-row heads, variable-width tails
- * @macro ROWS(fs: seq<tuple<n, token...>>)
- * @for f in fs
- *   {{f.n}}[ @join f as a with ", ": {{a}}@end ]
+ * @macro ROWS($fs: seq<tuple<$n, token...>>)
+ * @for $f in $fs
+ *   {{$f.$n}}[ @join $f as $a with ", ": {{$a}}@end ]
  * @end
  * @endmacro
  */

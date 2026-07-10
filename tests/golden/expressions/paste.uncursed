@@ -1,16 +1,16 @@
 # Explicit pasting and stringizing of computed tokens; @let chains.
-@macro NAME_OF(x)
-{{stringize(concat(pre_, x))}}
+@macro NAME_OF($x)
+{{stringize(concat(pre_, $x))}}
 @endmacro
 
-@macro TRIPLE(a)
-{{concat(pre_, a, _post)}}
+@macro TRIPLE($a)
+{{concat(pre_, $a, _post)}}
 @endmacro
 
-@macro CHAIN(base)
-@let a := concat(base, _mid)
-@let b := concat(a, _end)
-{{b}}
+@macro CHAIN($base)
+@let $a := concat($base, _mid)
+@let $b := concat($a, _end)
+{{$b}}
 @endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──

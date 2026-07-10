@@ -18,12 +18,12 @@
 
 /* uncursed-pp source:
  * # @for inside an @else branch
- * @macro OPT(xs: seq<token>)
- * @if len(xs) == 1
- * solo({{xs[0]}})
+ * @macro OPT($xs: seq<token>)
+ * @if len($xs) == 1
+ * solo({{$xs[0]}})
  * @else
- * @for x in xs
- * many({{x}});
+ * @for $x in $xs
+ * many({{$x}});
  * @end
  * @end
  * @endmacro
@@ -54,9 +54,9 @@
 
 /* uncursed-pp source:
  * # @if inside an @if branch
- * @macro GRADE(xs: seq<token>)
- * @if len(xs) < 3
- * @if len(xs) == 1
+ * @macro GRADE($xs: seq<token>)
+ * @if len($xs) < 3
+ * @if len($xs) == 1
  * tiny
  * @else
  * small
@@ -74,15 +74,15 @@
 
 /* uncursed-pp source:
  * # three levels: @if -> @for -> @if
- * @macro TRIAGE(xs: seq<tuple<kind, val>>)
- * @if len(xs) == 1
- * only({{xs[0].val}});
+ * @macro TRIAGE($xs: seq<tuple<$kind, $val>>)
+ * @if len($xs) == 1
+ * only({{$xs[0].$val}});
  * @else
- * @for (kind, val) in xs
- * @if kind == 1
- * urgent({{val}});
+ * @for ($kind, $val) in $xs
+ * @if $kind == 1
+ * urgent({{$val}});
  * @else
- * routine({{kind}}, {{val}});
+ * routine({{$kind}}, {{$val}});
  * @end
  * @end
  * @end

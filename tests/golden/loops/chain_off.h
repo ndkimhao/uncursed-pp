@@ -7,9 +7,9 @@
 /* # loop_chain opt-out: loops compile to plain SEQ_FOR_EACH machinery only. */
 
 /* uncursed-pp source:
- * @macro FIELDS_OFF(fields: seq<tuple<t, n>>)
- * @for (t, n) in fields
- *   {{t}} {{n}};
+ * @macro FIELDS_OFF($fields: seq<tuple<$t, $n>>)
+ * @for ($t, $n) in $fields
+ *   {{$t}} {{$n}};
  * @end
  * @endmacro
  */

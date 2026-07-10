@@ -13,8 +13,8 @@
  * # Values travel between generated macros: a whole tuple forwarded as one
  * # argument, and a whole seq carried inside a 'named variadic' value and
  * # handed to a looping macro. is_paren() guards the empty default.
- * @macro GET_A(p: tuple<a, b>)
- * {{p.a}}
+ * @macro GET_A($p: tuple<$a, $b>)
+ * {{$p.$a}}
  * @endmacro
  */
 #define UNCURSED_PP_GET_A_BODY1(a, b) a
@@ -22,16 +22,16 @@
 #define GET_A(p) UNCURSED_PP_GET_A_BODY1_D(UNCURSED_PP_KW_SPREAD p)
 
 /* uncursed-pp source:
- * @macro USE(q: tuple<a, b>)
- * first = GET_A({{q}});
+ * @macro USE($q: tuple<$a, $b>)
+ * first = GET_A({{$q}});
  * @endmacro
  */
 #define USE(q) first = GET_A(q);
 
 /* uncursed-pp source:
- * @macro EACH_FIELD(fields: seq<tuple<t, n>>)
- * @for (t, n) in fields
- * {{t}} {{n}};
+ * @macro EACH_FIELD($fields: seq<tuple<$t, $n>>)
+ * @for ($t, $n) in $fields
+ * {{$t}} {{$n}};
  * @end
  * @endmacro
  */
@@ -59,8 +59,8 @@
 #define EACH_FIELD(fields) UNCURSED_PP_EACH_FIELD_PICK1(BOOST_PP_SEQ_SIZE(fields))(fields)
 
 /* uncursed-pp source:
- * @macro OBJ(name, named variadic FIELDS = )
- * struct {{name}} { @if is_paren(FIELDS) EACH_FIELD({{FIELDS}}) @end };
+ * @macro OBJ($name, named variadic $FIELDS = )
+ * struct {{$name}} { @if is_paren($FIELDS) EACH_FIELD({{$FIELDS}}) @end };
  * @endmacro
  */
 #define UNCURSED_PP_OBJ_THEN1(FIELDS) EACH_FIELD(FIELDS)

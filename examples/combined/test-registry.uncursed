@@ -7,13 +7,13 @@
 # One list of (suite, name) pairs produces the forward declarations
 # and a runner that registers each test with its human-readable name.
 
-@macro TEST_REGISTRY(tests: variadic<tuple<suite, tname>>)
-@for (suite, tname) in tests
-static void {{concat(test_, suite, _, tname)}}(void);
+@macro TEST_REGISTRY($tests: variadic<tuple<$suite, $tname>>)
+@for ($suite, $tname) in $tests
+static void {{concat(test_, $suite, _, $tname)}}(void);
 @end
 static void run_all_tests(void) {
-@for (suite, tname) in tests
-  run_test({{stringize(concat(suite, _, tname))}}, {{concat(test_, suite, _, tname)}});
+@for ($suite, $tname) in $tests
+  run_test({{stringize(concat($suite, _, $tname))}}, {{concat(test_, $suite, _, $tname)}});
 @end
 }
 @endmacro

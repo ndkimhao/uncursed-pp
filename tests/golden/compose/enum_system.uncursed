@@ -1,21 +1,21 @@
 # Composition: typed variadic + loops with free vars + nested concat +
 # stringize + len. One entry list yields an enum, a to-string helper,
 # and a count.
-@macro DEFINE_ENUM(ename, entries: variadic<tuple<name, value>>)
+@macro DEFINE_ENUM($ename, $entries: variadic<tuple<$name, $value>>)
 typedef enum {
-@for (name, value) in entries
-  {{concat(ename, concat(_, name))}} = {{value}},
+@for ($name, $value) in $entries
+  {{concat($ename, concat(_, $name))}} = {{$value}},
 @end
-} {{ename}};
-static const char *{{concat(ename, _to_string)}}(int v) {
+} {{$ename}};
+static const char *{{concat($ename, _to_string)}}(int v) {
   switch (v) {
-@for (name, value) in entries
-    case {{value}}: return {{stringize(concat(ename, concat(_, name)))}};
+@for ($name, $value) in $entries
+    case {{$value}}: return {{stringize(concat($ename, concat(_, $name)))}};
 @end
   }
   return "?";
 }
-enum { {{concat(ename, _count)}} = {{len(entries)}} };
+enum { {{concat($ename, _count)}} = {{len($entries)}} };
 @endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──

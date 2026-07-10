@@ -12,11 +12,11 @@
 /* uncursed-pp source:
  * # Branch helpers receive the union of both branches' free variables;
  * # branch bodies may contain commas safely (each lives in its own helper).
- * @macro REPORT(a, b, xs: seq<token>)
- * @if len(xs) == 1
- * one({{a}})
+ * @macro REPORT($a, $b, $xs: seq<token>)
+ * @if len($xs) == 1
+ * one({{$a}})
  * @else
- * many({{b}}, {{len(xs)}})
+ * many({{$b}}, {{len($xs)}})
  * @end
  * @endmacro
  */
@@ -26,12 +26,12 @@
 
 /* uncursed-pp source:
  * # Line-form @if nested in a @for: branch per element.
- * @macro EMIT(xs: seq<tuple<kind, val>>)
- * @for (kind, val) in xs
- * @if kind == 1
- * one({{val}});
+ * @macro EMIT($xs: seq<tuple<$kind, $val>>)
+ * @for ($kind, $val) in $xs
+ * @if $kind == 1
+ * one({{$val}});
  * @else
- * other({{kind}}, {{val}});
+ * other({{$kind}}, {{$val}});
  * @end
  * @end
  * @endmacro
@@ -63,11 +63,11 @@
 
 /* uncursed-pp source:
  * # Two sequential @ifs in one macro get independently numbered helpers.
- * @macro SIZE_CLASS(xs: seq<token>)
- * @if len(xs) == 1
+ * @macro SIZE_CLASS($xs: seq<token>)
+ * @if len($xs) == 1
  * single
  * @end
- * @if len(xs) == 2
+ * @if len($xs) == 2
  * double
  * @end
  * @endmacro

@@ -13,9 +13,9 @@
 # Scenario: a plugin's event handlers must each be registered at startup.
 # One list, one line per handler, no copy-paste drift.
 
-@macro REGISTER_HANDLERS(handlers: seq<token>)
-@for h in handlers
-  register_handler({{h}});
+@macro REGISTER_HANDLERS($handlers: seq<token>)
+@for $h in $handlers
+  register_handler({{$h}});
 @end
 @endmacro
 

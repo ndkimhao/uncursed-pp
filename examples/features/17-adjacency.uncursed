@@ -10,9 +10,9 @@
 #
 # The two lines below differ only in concat() — compare their output.
 
-@macro SHOW_PASTE_RULE(prefix, name)
-int {{prefix}}{{name}} = 0;
-int {{concat(prefix, name)}} = 1;
+@macro SHOW_PASTE_RULE($prefix, $name)
+int {{$prefix}}{{$name}} = 0;
+int {{concat($prefix, $name)}} = 1;
 @endmacro
 
 # Line 1: TWO tokens (`user_ id`, not an identifier).

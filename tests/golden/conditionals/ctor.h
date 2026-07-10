@@ -12,11 +12,11 @@
 
 /* uncursed-pp source:
  * # Branch on argument count: single-arg vs n-arg initializer.
- * @macro CTOR(name, args: seq<tuple<type, argname>>)
- * @if len(args) == 1
- *   explicit_single_arg_init({{name}})
+ * @macro CTOR($name, $args: seq<tuple<$type, $argname>>)
+ * @if len($args) == 1
+ *   explicit_single_arg_init({{$name}})
  * @else
- *   {{concat(name, _init)}}(@join args with ", ": {{argname}}@end)
+ *   {{concat($name, _init)}}(@join $args with ", ": {{$argname}}@end)
  * @end
  * @endmacro
  */

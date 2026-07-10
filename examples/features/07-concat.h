@@ -18,9 +18,9 @@
  */
 
 /* uncursed-pp source:
- * @macro DEFINE_ACCESSORS(sname, f: tuple<ftype, fname>)
- * static {{f.ftype}} {{concat(get_, f.fname)}}(const struct {{sname}} *o) { return o->{{f.fname}}; }
- * static void {{concat(set_, f.fname)}}(struct {{sname}} *o, {{f.ftype}} v) { o->{{f.fname}} = v; }
+ * @macro DEFINE_ACCESSORS($sname, $f: tuple<$ftype, $fname>)
+ * static {{$f.$ftype}} {{concat(get_, $f.$fname)}}(const struct {{$sname}} *o) { return o->{{$f.$fname}}; }
+ * static void {{concat(set_, $f.$fname)}}(struct {{$sname}} *o, {{$f.$ftype}} v) { o->{{$f.$fname}} = v; }
  * @endmacro
  */
 #define UNCURSED_PP_DEFINE_ACCESSORS_BODY1(sname, ftype, fname) \

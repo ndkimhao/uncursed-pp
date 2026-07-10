@@ -4,8 +4,8 @@
 /* uncursed-pp source:
  * # Tail defaults: arity dispatch at C compile time.
  * #   LOG(m) / LOG(m, WARN) / LOG(m, WARN, stdout)
- * @macro LOG(msg, level = INFO, out = stderr)
- * fprintf({{out}}, "[" #{{level}} "] %s\n", {{msg}});
+ * @macro LOG($msg, $level = INFO, $out = stderr)
+ * fprintf({{$out}}, "[" #{{$level}} "] %s\n", {{$msg}});
  * @endmacro
  */
 #define UNCURSED_PP_LOG_1(msg) UNCURSED_PP_LOG_3(msg, INFO, stderr)

@@ -19,11 +19,11 @@
 # Scenario: struct field descriptors — every field has a name and type,
 # SOME fields carry extra attributes.
 
-@macro DECL(f: tuple<fname, ftype, token...>)
-@if is_empty(f)
-  {{f.ftype}} {{f.fname}};
+@macro DECL($f: tuple<$fname, $ftype, token...>)
+@if is_empty($f)
+  {{$f.$ftype}} {{$f.$fname}};
 @else
-  {{f.ftype}} {{f.fname}} __attribute__((@join f as a with ", ": {{a}}@end));
+  {{$f.$ftype}} {{$f.$fname}} __attribute__((@join $f as $a with ", ": {{$a}}@end));
 @end
 @endmacro
 
@@ -36,8 +36,8 @@
 
 # ── the head never counts: len()/[i] see only the tail ───────────────
 
-@macro SUMMARY(f: tuple<owner, token...>)
-{{f.owner}} has {{len(f)}} tags
+@macro SUMMARY($f: tuple<$owner, token...>)
+{{$f.$owner}} has {{len($f)}} tags
 @endmacro
 
 #?  SUMMARY((alice, admin, staff))

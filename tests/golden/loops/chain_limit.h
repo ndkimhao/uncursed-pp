@@ -14,9 +14,9 @@
  */
 
 /* uncursed-pp source:
- * @macro FIELDS4(fields: seq<tuple<t, n>>)
- * @for (t, n) in fields
- *   {{t}} {{n}};
+ * @macro FIELDS4($fields: seq<tuple<$t, $n>>)
+ * @for ($t, $n) in $fields
+ *   {{$t}} {{$n}};
  * @end
  * @endmacro
  */

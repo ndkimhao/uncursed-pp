@@ -19,15 +19,15 @@
  */
 
 /* uncursed-pp source:
- * @macro DEFINE_FSM(fsm, states: seq<token>, transitions: seq<tuple<src, evt, dst>>)
- * enum {{concat(fsm, _state)}} {
- * @for s in states
- *   {{s}},
+ * @macro DEFINE_FSM($fsm, $states: seq<token>, $transitions: seq<tuple<$src, $evt, $dst>>)
+ * enum {{concat($fsm, _state)}} {
+ * @for $s in $states
+ *   {{$s}},
  * @end
  * };
- * static int {{concat(fsm, _step)}}(int s, int ev) {
- * @for (src, evt, dst) in transitions
- *   if (s == {{src}} && ev == {{evt}}) return {{dst}};
+ * static int {{concat($fsm, _step)}}(int s, int ev) {
+ * @for ($src, $evt, $dst) in $transitions
+ *   if (s == {{$src}} && ev == {{$evt}}) return {{$dst}};
  * @end
  *   return s;
  * }

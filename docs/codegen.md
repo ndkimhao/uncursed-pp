@@ -43,7 +43,10 @@ read back with `TUPLE_ELEM(i, d)`.
 - *Name capture*: names bound in scope — macro parameters, `@for` unpack
   names, tuple field names — compile to macro parameters, so they
   substitute **anywhere in the raw C body text**, not just inside `{{...}}`.
-  Don't reuse a bound name as an ordinary C identifier in the same scope.
+  The template-side `$` prefix is stripped in generated code (a `$suite`
+  variable becomes a plain `suite` parameter), so the hazard is about the
+  PLAIN name: don't reuse a bound name as an ordinary C identifier in the
+  same scope.
 - Seqs cap at 256 elements (`BOOST_PP_LIMIT_SEQ`) and must be non-empty.
 - Seq-of-tuples call sites need double parens: `((int, x))((float, y))` —
   or declare the parameter `variadic<tuple<...>>` for single-paren calls.
@@ -84,7 +87,7 @@ Conditions:
   known at generation time; Boost's `LESS`/`GREATER` hide a `WHILE` loop
   that measured ~27× slower). `<`/`<=` swap the branch order; `x < 0` and
   `x >= 0` constant-fold.
-- `is_paren(x)` → `IS_BEGIN_PARENS`; `is_empty(x)` → the emptiness probe.
+- `is_paren($x)` → `IS_BEGIN_PARENS`; `is_empty($x)` → the emptiness probe.
 
 **Sharp edges**
 - All compared magnitudes (including `len()`) live in 0–256.
@@ -103,8 +106,8 @@ Conditions:
 | `concat(...)` ≥ 4 args | one generated k-ary paste `<M>_CAT<k>` | 2 expansions total |
 | `stringize(x)` | `BOOST_PP_STRINGIZE` | works on computed tokens; plain `#` only works on direct parameters |
 | `remove_parens(x)` | `BOOST_PP_REMOVE_PARENS` | conditional by necessity: the value may legitimately be bare |
-| `len(xs)` | `BOOST_PP_SEQ_SIZE` | O(n) paste chain, cheap |
-| `{{f.name}}` on a spread tuple param | the field's own parameter | zero-cost; falls back to `TUPLE_ELEM` when the whole tuple is also used or names collide |
+| `len($xs)` | `BOOST_PP_SEQ_SIZE` | O(n) paste chain, cheap |
+| `{{$f.$name}}` on a spread tuple param | the field's own parameter | zero-cost; falls back to `TUPLE_ELEM` when the whole tuple is also used or names collide |
 
 `@let` bindings are generation-time: the rendered expression is inlined at
 each use site. A `@let` bound to an inline `@join`/`@if` renders its helper

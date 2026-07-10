@@ -24,11 +24,11 @@
  */
 
 /* uncursed-pp source:
- * @macro DECLARE_BUFFER(name, dims: seq<token>)
- * @if len(dims) == 1
- *   static char {{name}}[{{dims[0]}}];
+ * @macro DECLARE_BUFFER($name, $dims: seq<token>)
+ * @if len($dims) == 1
+ *   static char {{$name}}[{{$dims[0]}}];
  * @else
- *   static char {{name}}[@join dims as d with " * ": {{d}}@end];
+ *   static char {{$name}}[@join $dims as $d with " * ": {{$d}}@end];
  * @end
  * @endmacro
  */
@@ -68,8 +68,8 @@
 /* # Relational tests: pick a strategy by list size. */
 
 /* uncursed-pp source:
- * @macro PICK_SEARCH(xs: seq<token>)
- * @if len(xs) <= 3
+ * @macro PICK_SEARCH($xs: seq<token>)
+ * @if len($xs) <= 3
  *   linear_scan
  * @else
  *   binary_search

@@ -25,9 +25,9 @@
  */
 
 /* uncursed-pp source:
- * @macro DECLARE_REGISTERS(regs: seq<tuple<ctype, regname>>)
- * @for (ctype, regname) in regs
- *   volatile {{ctype}} {{regname}};
+ * @macro DECLARE_REGISTERS($regs: seq<tuple<$ctype, $regname>>)
+ * @for ($ctype, $regname) in $regs
+ *   volatile {{$ctype}} {{$regname}};
  * @end
  * @endmacro
  */

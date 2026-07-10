@@ -19,10 +19,10 @@
  */
 
 /* uncursed-pp source:
- * @macro DEFINE_ERROR_NAMES(codes: seq<token>)
+ * @macro DEFINE_ERROR_NAMES($codes: seq<token>)
  * static const char *error_name[] = {
- * @for c in codes
- *   [{{c}}] = {{stringize(c)}},
+ * @for $c in $codes
+ *   [{{$c}}] = {{stringize($c)}},
  * @end
  * };
  * @endmacro

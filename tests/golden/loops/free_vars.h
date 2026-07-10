@@ -9,9 +9,9 @@
  * # Outer params referenced inside a loop ride FOR_EACH's spare d slot:
  * # one free var travels as d itself, several as a tuple in d, and the
  * # iterable itself may be referenced too (e.g. via len()).
- * @macro TAG(prefix, xs: seq<token>)
- * @for x in xs
- * {{prefix}}({{x}});
+ * @macro TAG($prefix, $xs: seq<token>)
+ * @for $x in $xs
+ * {{$prefix}}({{$x}});
  * @end
  * @endmacro
  */
@@ -19,9 +19,9 @@
 #define TAG(prefix, xs) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_TAG_EACH1, prefix, xs)
 
 /* uncursed-pp source:
- * @macro BOTH(a, b, xs: seq<token>)
- * @for x in xs
- * g({{a}}, {{b}}, {{x}});
+ * @macro BOTH($a, $b, $xs: seq<token>)
+ * @for $x in $xs
+ * g({{$a}}, {{$b}}, {{$x}});
  * @end
  * @endmacro
  */
@@ -29,9 +29,9 @@
 #define BOTH(a, b, xs) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_BOTH_EACH1, (a, b), xs)
 
 /* uncursed-pp source:
- * @macro COUNTED(xs: seq<token>)
- * @for x in xs
- * h({{x}}, {{len(xs)}});
+ * @macro COUNTED($xs: seq<token>)
+ * @for $x in $xs
+ * h({{$x}}, {{len($xs)}});
  * @end
  * @endmacro
  */

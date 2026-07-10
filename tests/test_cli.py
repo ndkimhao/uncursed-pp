@@ -12,7 +12,7 @@ def test_cli_help_runs(capsys):
 
 def test_cli_compiles_to_default_output(tmp_path, monkeypatch):
     src = tmp_path / "fields.uncursed"
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n')
     main([str(src)])
     out = tmp_path / "fields.h"
     assert out.exists()
@@ -22,7 +22,7 @@ def test_cli_compiles_to_default_output(tmp_path, monkeypatch):
 
 def test_cli_explicit_output(tmp_path):
     src = tmp_path / "a.uncursed"
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n')
     dest = tmp_path / "sub" / "b.h"
     dest.parent.mkdir()
     main([str(src), "-o", str(dest)])
@@ -50,10 +50,7 @@ def test_cli_has_no_config_flags():
 def test_cli_config_via_pragmas(tmp_path):
     src = tmp_path / "d.uncursed"
     src.write_text(
-        "@pragma pp_prefix V_PP_\n"
-        '@pragma pp_include "v/pp.hpp"\n'
-        "@pragma helper_prefix MY_\n"
-        "@macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
+        '@pragma pp_prefix V_PP_\n@pragma pp_include "v/pp.hpp"\n@pragma helper_prefix MY_\n@macro D($xs: seq<token>)\n@for $x in $xs\nf({{$x}});\n@end\n@endmacro\n'
     )
     out = tmp_path / "d.h"
     main([str(src), "-o", str(out)])
@@ -65,7 +62,7 @@ def test_cli_config_via_pragmas(tmp_path):
 
 def test_cli_default_does_not_write_runtime_but_notes(tmp_path, capsys):
     src = tmp_path / "w.uncursed"
-    src.write_text("@macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\n@endmacro\n")
+    src.write_text('@macro SP($p: tuple<$a, $b>)\n{{$p.$a}} {{$p.$b}}\n@endmacro\n')
     out = tmp_path / "sub" / "w.h"
     out.parent.mkdir()
     main([str(src), "-o", str(out)])
@@ -76,7 +73,7 @@ def test_cli_default_does_not_write_runtime_but_notes(tmp_path, capsys):
 
 def test_cli_emit_runtime_writes_when_needed(tmp_path, capsys):
     src = tmp_path / "w.uncursed"
-    src.write_text("@macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\n@endmacro\n")
+    src.write_text('@macro SP($p: tuple<$a, $b>)\n{{$p.$a}} {{$p.$b}}\n@endmacro\n')
     out = tmp_path / "sub" / "w.h"
     out.parent.mkdir()
     main([str(src), "-o", str(out), "--emit-runtime"])
@@ -89,7 +86,7 @@ def test_cli_emit_runtime_writes_when_needed(tmp_path, capsys):
 def test_cli_emit_runtime_writes_even_when_not_needed(tmp_path):
     # explicit request pre-seeds a directory shared by several headers
     src = tmp_path / "p.uncursed"
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n')
     main([str(src), "--emit-runtime"])
     runtime = tmp_path / "uncursed_pp_runtime.h"
     assert runtime.exists()
@@ -98,7 +95,7 @@ def test_cli_emit_runtime_writes_even_when_not_needed(tmp_path):
 
 def test_cli_no_emit_runtime_is_silent(tmp_path, capsys):
     src = tmp_path / "w.uncursed"
-    src.write_text("@macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\n@endmacro\n")
+    src.write_text('@macro SP($p: tuple<$a, $b>)\n{{$p.$a}} {{$p.$b}}\n@endmacro\n')
     main([str(src), "--no-emit-runtime"])
     assert not (tmp_path / "uncursed_pp_runtime.h").exists()
     assert capsys.readouterr().err == ""
@@ -106,7 +103,7 @@ def test_cli_no_emit_runtime_is_silent(tmp_path, capsys):
 
 def test_cli_no_runtime_and_no_note_for_plain_macros(tmp_path, capsys):
     src = tmp_path / "p.uncursed"
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n')
     main([str(src)])
     assert not (tmp_path / "uncursed_pp_runtime.h").exists()
     assert capsys.readouterr().err == ""
@@ -115,8 +112,7 @@ def test_cli_no_runtime_and_no_note_for_plain_macros(tmp_path, capsys):
 def test_cli_runtime_name_pragma(tmp_path):
     src = tmp_path / "w.uncursed"
     src.write_text(
-        '@pragma runtime_name "acme_common.h"\n'
-        "@macro SP(p: tuple<a, b>)\n{{p.a}} {{p.b}}\n@endmacro\n"
+        '@pragma runtime_name "acme_common.h"\n@macro SP($p: tuple<$a, $b>)\n{{$p.$a}} {{$p.$b}}\n@endmacro\n'
     )
     main([str(src), "--emit-runtime"])
     assert (tmp_path / "acme_common.h").exists()
@@ -126,10 +122,7 @@ def test_cli_runtime_name_pragma(tmp_path):
 def test_cli_extra_include_and_pp_include_dir_pragmas(tmp_path):
     src = tmp_path / "d.uncursed"
     src.write_text(
-        '@pragma include "myproj/types.h"\n'
-        "@pragma include <stdio.h>\n"
-        "@pragma pp_include_dir boost_foo/preprocessor\n"
-        "@macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
+        '@pragma include "myproj/types.h"\n@pragma include <stdio.h>\n@pragma pp_include_dir boost_foo/preprocessor\n@macro D($xs: seq<token>)\n@for $x in $xs\nf({{$x}});\n@end\n@endmacro\n'
     )
     main([str(src)])
     text = (tmp_path / "d.h").read_text()
@@ -140,7 +133,7 @@ def test_cli_extra_include_and_pp_include_dir_pragmas(tmp_path):
 
 def test_cli_refuses_to_overwrite_input(tmp_path, capsys):
     src = tmp_path / "already.h"
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n')
     with pytest.raises(SystemExit) as excinfo:
         main([str(src)])
     assert excinfo.value.code == 1
@@ -158,7 +151,7 @@ def test_cli_missing_input_is_clean_error(tmp_path, capsys):
 
 def test_cli_unwritable_output_is_clean_error(tmp_path, capsys):
     src = tmp_path / "a.uncursed"
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n')
     with pytest.raises(SystemExit) as excinfo:
         main([str(src), "-o", str(tmp_path / "no_dir" / "a.h")])
     assert excinfo.value.code == 1
@@ -169,8 +162,7 @@ def test_cli_unwritable_output_is_clean_error(tmp_path, capsys):
 def test_cli_runtime_chain_limits_flag(tmp_path):
     src = tmp_path / "k.uncursed"
     src.write_text(
-        "@pragma loop_chain_limit 4\n"
-        "@macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\n@endmacro\n"
+        '@pragma loop_chain_limit 4\n@macro D($xs: seq<token>)\n@for $x in $xs\nf({{$x}});\n@end\n@endmacro\n'
     )
     main([str(src), "--emit-runtime", "--runtime-chain-limits", "8,24"])
     rt = (tmp_path / "uncursed_pp_runtime.h").read_text()

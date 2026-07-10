@@ -15,9 +15,9 @@
  */
 
 /* uncursed-pp source:
- * @macro DECLARE_INTS(xs: seq<token>)
- * @for x in xs
- *   int {{x}};
+ * @macro DECLARE_INTS($xs: seq<token>)
+ * @for $x in $xs
+ *   int {{$x}};
  * @end
  * @endmacro
  */
@@ -44,9 +44,9 @@
 #define DECLARE_INTS(xs) UNCURSED_PP_DECLARE_INTS_PICK1(BOOST_PP_SEQ_SIZE(xs))(xs)
 
 /* uncursed-pp source:
- * @macro DECLARE_MORE_INTS(ys: seq<token>)
- * @for y in ys
- *   int {{y}};
+ * @macro DECLARE_MORE_INTS($ys: seq<token>)
+ * @for $y in $ys
+ *   int {{$y}};
  * @end
  * @endmacro
  */

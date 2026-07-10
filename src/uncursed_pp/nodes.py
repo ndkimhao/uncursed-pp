@@ -54,6 +54,16 @@ Type = TokenT | TupleT | VarTupleT | SeqT | VariadicT
 
 @dataclass(frozen=True)
 class VarRef:
+    """A $-prefixed variable reference; `name` is stored without the $."""
+
+    name: str
+
+
+@dataclass(frozen=True)
+class Literal:
+    """A bare name in an expression: always a literal token, never a
+    variable (only valid where literals are allowed, e.g. concat args)."""
+
     name: str
 
 
@@ -93,7 +103,9 @@ class IsEmpty:
     arg: "Expr"
 
 
-Expr = VarRef | ElemAccess | Concat | RemoveParens | Stringize | Len | IsParen | IsEmpty
+Expr = (
+    VarRef | Literal | ElemAccess | Concat | RemoveParens | Stringize | Len | IsParen | IsEmpty
+)
 
 
 # ── Conditions ───────────────────────────────────────────────────────

@@ -15,8 +15,8 @@
  */
 
 /* uncursed-pp source:
- * @macro DEFINE_GRADIENT(name, named variadic STOPS = black)
- * static const int {{name}}[] = { {{STOPS}} };
+ * @macro DEFINE_GRADIENT($name, named variadic $STOPS = black)
+ * static const int {{$name}}[] = { {{$STOPS}} };
  * @endmacro
  */
 #define UNCURSED_PP_DEFINE_GRADIENT_SET_STOPS(...) 0, (__VA_ARGS__)

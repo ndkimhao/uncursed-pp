@@ -30,9 +30,9 @@
  */
 
 /* uncursed-pp source:
- * @macro TRACE_CALLS(fns: seq<token>)
- * @for f in fns
- *   trace_enter({{f}});
+ * @macro TRACE_CALLS($fns: seq<token>)
+ * @for $f in $fns
+ *   trace_enter({{$f}});
  * @end
  * @endmacro
  */
@@ -59,9 +59,9 @@
 #define TRACE_CALLS(fns) UNCURSED_PP_TRACE_CALLS_PICK1(BOOST_PP_SEQ_SIZE(fns))(fns)
 
 /* uncursed-pp source:
- * @macro AUDIT_CALLS(fns: seq<token>)
- * @for f in fns
- *   trace_enter({{f}});
+ * @macro AUDIT_CALLS($fns: seq<token>)
+ * @for $f in $fns
+ *   trace_enter({{$f}});
  * @end
  * @endmacro
  */

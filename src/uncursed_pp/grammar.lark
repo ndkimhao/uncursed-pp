@@ -1,12 +1,14 @@
 // Mini-grammars for the structured fragments of a .uncursed file.
 // The line-level pass in parser.py decides which start rule applies.
+// Uncursed variables are $-prefixed (DNAME) at binding and use sites;
+// bare CNAMEs in expressions are literal tokens.
 
 signature: CNAME "(" [param_list] ")"
 param_list: param ("," param)* ","?
-param: "named" "variadic" CNAME "=" [DEFAULT] -> named_variadic_param
-     | "named" CNAME "=" [DEFAULT] -> named_param
-     | CNAME "=" [DEFAULT]         -> defaulted_param
-     | CNAME [":" type]            -> plain_param
+param: "named" "variadic" DNAME "=" [DEFAULT] -> named_variadic_param
+     | "named" DNAME "=" [DEFAULT] -> named_param
+     | DNAME "=" [DEFAULT]         -> defaulted_param
+     | DNAME [":" type]            -> plain_param
 DEFAULT: /[^,()\s][^,()]*/
 
 type: "seq" "<" type ">"                        -> seq_type
@@ -16,24 +18,27 @@ type: "seq" "<" type ">"                        -> seq_type
     | "tuple"                                   -> bare_var_tuple_type
     | "token"                                   -> token_type
     | "variadic" ["<" type ">"]                 -> variadic_type
-name_list: CNAME ("," CNAME)*
+name_list: DNAME ("," DNAME)*
 
-for_line: "for" for_target "in" CNAME
+for_line: "for" for_target "in" DNAME
 for_target: "(" name_list ")" -> unpack_target
-          | CNAME             -> var_target
+          | DNAME             -> var_target
 
-join_header: "join" CNAME ["as" CNAME] "with" ESCAPED_STRING
+join_header: "join" DNAME ["as" DNAME] "with" ESCAPED_STRING
 
-let_line: "let" CNAME ":=" expr
+let_line: "let" DNAME ":=" expr
 
 cond: expr [CMP INT]
 CMP: "==" | "!=" | "<=" | ">=" | "<" | ">"
 
 expr: CNAME "(" expr ("," expr)* ")" -> func_call
     | postfix
-postfix: CNAME accessor*
-accessor: "." CNAME  -> field_access
+postfix: DNAME accessor*  -> var_postfix
+       | CNAME accessor*  -> literal_postfix
+accessor: "." DNAME  -> field_access
         | "[" INT "]" -> index_access
+
+DNAME: /\$[A-Za-z_]\w*/
 
 %import common.CNAME
 %import common.INT

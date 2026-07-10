@@ -17,9 +17,9 @@
 /* # demo only: skip the (faster, but longer) loop-chain codegen */
 
 /* uncursed-pp source:
- * @macro DECLARE_FIELDS(fields: variadic<tuple<type, name>>)
- * @for (type, name) in fields
- *   {{type}} {{name}};
+ * @macro DECLARE_FIELDS($fields: variadic<tuple<$type, $name>>)
+ * @for ($type, $name) in $fields
+ *   {{$type}} {{$name}};
  * @end
  * @endmacro
  */

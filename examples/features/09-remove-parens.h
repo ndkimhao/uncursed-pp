@@ -16,8 +16,8 @@
  */
 
 /* uncursed-pp source:
- * @macro DECLARE_MEMBER(m: tuple<mtype, mname>)
- * {{remove_parens(m.mtype)}} {{m.mname}};
+ * @macro DECLARE_MEMBER($m: tuple<$mtype, $mname>)
+ * {{remove_parens($m.$mtype)}} {{$m.$mname}};
  * @endmacro
  */
 #define UNCURSED_PP_DECLARE_MEMBER_BODY1(mtype, mname) BOOST_PP_REMOVE_PARENS(mtype) mname;

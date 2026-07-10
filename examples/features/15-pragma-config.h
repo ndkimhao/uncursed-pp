@@ -35,9 +35,9 @@
  */
 
 /* uncursed-pp source:
- * @macro DECLARE_OPTIONS(opts: seq<tuple<otype, oname>>)
- * @for (otype, oname) in opts
- *   {{otype}} {{oname}};
+ * @macro DECLARE_OPTIONS($opts: seq<tuple<$otype, $oname>>)
+ * @for ($otype, $oname) in $opts
+ *   {{$otype}} {{$oname}};
  * @end
  * @endmacro
  */

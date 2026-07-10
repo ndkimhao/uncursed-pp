@@ -32,6 +32,7 @@ from .nodes import (
     Join,
     Len,
     Let,
+    Literal,
     MacroDef,
     Param,
     RemoveParens,
@@ -69,9 +70,9 @@ _STRAY_TOKEN_RE = re.compile(r"@(else|end)\b")
 
 _CMP = r"(?:==|!=|<=|>=|<|>)"
 _COND_PATTERNS = [
-    re.compile(rf"len\(\s*\w+\s*\)\s*{_CMP}\s*\d+"),
+    re.compile(rf"len\(\s*\$?\w+\s*\)\s*{_CMP}\s*\d+"),
     re.compile(rf"(?:is_paren|is_empty)\((?:[^()]|\([^()]*\))*\)(?:\s*{_CMP}\s*\d+)?"),
-    re.compile(rf"[A-Za-z_][\w.\[\]]*\s*{_CMP}\s*\d+"),
+    re.compile(rf"\$?[A-Za-z_][\w.$\[\]]*\s*{_CMP}\s*\d+"),
 ]
 
 
@@ -85,20 +86,20 @@ class _Ast(Transformer[Any, Any]):
 
     def plain_param(self, items: list[Any]) -> Param:
         name, type_ = items
-        return Param(name=str(name), type=type_)
+        return Param(name=str(name)[1:], type=type_)
 
     def defaulted_param(self, items: list[Any]) -> Param:
         name, default = items
-        return Param(name=str(name), type=None, default=_clean_default(default))
+        return Param(name=str(name)[1:], type=None, default=_clean_default(default))
 
     def named_param(self, items: list[Any]) -> Param:
         name, default = items
-        return Param(name=str(name), type=None, default=_clean_default(default), named=True)
+        return Param(name=str(name)[1:], type=None, default=_clean_default(default), named=True)
 
     def named_variadic_param(self, items: list[Any]) -> Param:
         name, default = items
         return Param(
-            name=str(name),
+            name=str(name)[1:],
             type=None,
             default=_clean_default(default),
             named=True,
@@ -133,7 +134,7 @@ class _Ast(Transformer[Any, Any]):
         return VariadicT(elem)
 
     def name_list(self, items: list[Any]) -> tuple[str, ...]:
-        return tuple(str(n) for n in items)
+        return tuple(str(n)[1:] for n in items)
 
     def for_line(self, items: list[Any]) -> ForEach:
         target, iterable = items
@@ -141,22 +142,26 @@ class _Ast(Transformer[Any, Any]):
         return ForEach(
             unpack=value if kind == "unpack" else None,
             var=value if kind == "var" else None,
-            iterable=str(iterable),
+            iterable=str(iterable)[1:],
         )
 
     def unpack_target(self, items: list[Any]) -> tuple[str, tuple[str, ...]]:
         return ("unpack", items[0])
 
     def var_target(self, items: list[Any]) -> tuple[str, str]:
-        return ("var", str(items[0]))
+        return ("var", str(items[0])[1:])
 
     def join_header(self, items: list[Any]) -> Join:
         iterable, var, sep = items
-        return Join(var=str(var) if var else None, iterable=str(iterable), sep=_unquote(sep))
+        return Join(
+            var=str(var)[1:] if var else None,
+            iterable=str(iterable)[1:],
+            sep=_unquote(sep),
+        )
 
     def let_line(self, items: list[Any]) -> Let:
         name, expr = items
-        return Let(name=str(name), expr=expr)
+        return Let(name=str(name)[1:], expr=expr)
 
     def cond(self, items: list[Any]) -> Cond:
         lhs, op, value = items
@@ -172,15 +177,21 @@ class _Ast(Transformer[Any, Any]):
         name, *args = items
         return _build_call(str(name), tuple(args))
 
-    def postfix(self, items: list[Any]) -> Expr:
+    def var_postfix(self, items: list[Any]) -> Expr:
         base, *accessors = items
-        expr: Expr = VarRef(str(base))
+        return self._postfix(VarRef(str(base)[1:]), accessors)
+
+    def literal_postfix(self, items: list[Any]) -> Expr:
+        base, *accessors = items
+        return self._postfix(Literal(str(base)), accessors)
+
+    def _postfix(self, expr: Expr, accessors: list[Any]) -> Expr:
         for kind, value in accessors:
             expr = ElemAccess(expr, value)
         return expr
 
     def field_access(self, items: list[Any]) -> tuple[str, str]:
-        return ("field", str(items[0]))
+        return ("field", str(items[0])[1:])
 
     def index_access(self, items: list[Any]) -> tuple[str, int]:
         return ("index", int(items[0]))
@@ -525,13 +536,13 @@ def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef,
     raise UncursedPpError(f"missing '@endmacro' for macro {name}", filename, header_line)
 
 
-_LET_RE = re.compile(r"let\s+([A-Za-z_]\w*)\s*:=\s*(.*)$")
+_LET_RE = re.compile(r"let\s+\$([A-Za-z_]\w*)\s*:=\s*(.*)$")
 
 
 def _parse_let(directive: str, filename: str, lineno: int) -> Let:
     m = _LET_RE.match(directive)
     if not m:
-        raise UncursedPpError("@let needs 'name := value'", filename, lineno)
+        raise UncursedPpError("@let needs '$name := value'", filename, lineno)
     name, rhs = m.group(1), m.group(2).strip()
     if _INLINE_OPEN_RE.match(rhs):
         nodes = _parse_segments(rhs, lineno, filename)

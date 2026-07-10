@@ -6,10 +6,10 @@
 
 /* uncursed-pp source:
  * # Getter function for one (type, name) field; concat() pastes the identifier.
- * @macro GETTER(field: tuple<type, name>)
- * @let getter := concat(get_, field.name)
- * {{field.type}} {{getter}}(const struct self *s) {
- *   return s->{{field.name}};
+ * @macro GETTER($field: tuple<$type, $name>)
+ * @let $getter := concat(get_, $field.$name)
+ * {{$field.$type}} {{$getter}}(const struct self *s) {
+ *   return s->{{$field.$name}};
  * }
  * @endmacro
  */

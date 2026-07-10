@@ -17,8 +17,8 @@
  */
 
 /* uncursed-pp source:
- * @macro OPEN_WINDOW(title, named W = 640, named H = 480, named MONITOR = 0)
- * open_window({{title}}, {{W}}, {{H}}, {{MONITOR}});
+ * @macro OPEN_WINDOW($title, named $W = 640, named $H = 480, named $MONITOR = 0)
+ * open_window({{$title}}, {{$W}}, {{$H}}, {{$MONITOR}});
  * @endmacro
  */
 #define UNCURSED_PP_OPEN_WINDOW_SET_W(v) 0, v

@@ -12,9 +12,9 @@
 /* uncursed-pp source:
  * # Non-comma separator: baked between chain members on the small-seq
  * # path; the SEQ_FOR_EACH_I fallback keeps it in its own SEP helper.
- * @macro ORS(xs: seq<token>)
- * @join xs as x with " || "
- * ({{x}})
+ * @macro ORS($xs: seq<token>)
+ * @join $xs as $x with " || "
+ * ({{$x}})
  * @end
  * @endmacro
  */

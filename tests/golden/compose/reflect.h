@@ -24,12 +24,12 @@
  */
 
 /* uncursed-pp source:
- * @macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
+ * @macro DEFINE_STRUCT($sname, $fields: seq<tuple<$type, $name, $fmt>>)
  * typedef struct {
- * @for (type, name, fmt) in fields
- *   {{type}} {{name}};
+ * @for ($type, $name, $fmt) in $fields
+ *   {{$type}} {{$name}};
  * @end
- * } {{sname}};
+ * } {{$sname}};
  * @endmacro
  */
 #define UNCURSED_PP_DEFINE_STRUCT_AP1(type, name, fmt) type name;
@@ -59,13 +59,13 @@
     } sname;
 
 /* uncursed-pp source:
- * @macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
- * static const uncursed_field {{concat(sname, _fields)}}[] = {
- * @for (type, name, fmt) in fields
- *   { {{stringize(name)}}, {{stringize(type)}}, offsetof({{sname}}, {{name}}) },
+ * @macro DEFINE_FIELD_TABLE($sname, $fields: seq<tuple<$type, $name, $fmt>>)
+ * static const uncursed_field {{concat($sname, _fields)}}[] = {
+ * @for ($type, $name, $fmt) in $fields
+ *   { {{stringize($name)}}, {{stringize($type)}}, offsetof({{$sname}}, {{$name}}) },
  * @end
  * };
- * enum { {{concat(sname, _field_count)}} = {{len(fields)}} };
+ * enum { {{concat($sname, _field_count)}} = {{len($fields)}} };
  * @endmacro
  */
 #define UNCURSED_PP_DEFINE_FIELD_TABLE_AP1(sname, type, name, fmt) { BOOST_PP_STRINGIZE(name), BOOST_PP_STRINGIZE(type), offsetof(sname, name) },
@@ -78,10 +78,10 @@
     enum { BOOST_PP_CAT(sname, _field_count) = BOOST_PP_SEQ_SIZE(fields) };
 
 /* uncursed-pp source:
- * @macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
- * static void {{concat(print_, sname)}}(const {{sname}} *v) {
- * @for (type, name, fmt) in fields
- *   printf("  " {{stringize(name)}} " = " {{fmt}} "\n", v->{{name}});
+ * @macro DEFINE_PRINTER($sname, $fields: seq<tuple<$type, $name, $fmt>>)
+ * static void {{concat(print_, $sname)}}(const {{$sname}} *v) {
+ * @for ($type, $name, $fmt) in $fields
+ *   printf("  " {{stringize($name)}} " = " {{$fmt}} "\n", v->{{$name}});
  * @end
  * }
  * @endmacro
@@ -115,10 +115,10 @@
  * # Generated macros compose: REFLECT fans out to the three above. Its
  * # variadic<tuple<...>> parameter gives call sites single-paren elements;
  * # VARIADIC_TO_SEQ hands the inner seq-typed macros their (e)(e) form.
- * @macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
- * DEFINE_STRUCT({{sname}}, {{fields}})
- * DEFINE_FIELD_TABLE({{sname}}, {{fields}})
- * DEFINE_PRINTER({{sname}}, {{fields}})
+ * @macro REFLECT($sname, $fields: variadic<tuple<$type, $name, $fmt>>)
+ * DEFINE_STRUCT({{$sname}}, {{$fields}})
+ * DEFINE_FIELD_TABLE({{$sname}}, {{$fields}})
+ * DEFINE_PRINTER({{$sname}}, {{$fields}})
  * @endmacro
  */
 #define REFLECT(sname, ...) \

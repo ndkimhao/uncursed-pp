@@ -24,9 +24,9 @@
  */
 
 /* uncursed-pp source:
- * @macro REGISTER_HANDLERS(handlers: seq<token>)
- * @for h in handlers
- *   register_handler({{h}});
+ * @macro REGISTER_HANDLERS($handlers: seq<token>)
+ * @for $h in $handlers
+ *   register_handler({{$h}});
  * @end
  * @endmacro
  */

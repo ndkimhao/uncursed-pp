@@ -27,9 +27,9 @@
 # Scenario: a lookup table whose length is derived, not repeated.
 # (`tuple<token...>` written out — the ellipsis marks unboundedness.)
 
-@macro DEFINE_LUT(name, vals: tuple<token...>)
-static const int {{name}}[] = { @join vals as v with ", ": {{v}}@end };
-enum { {{concat(name, _len)}} = {{len(vals)}} };
+@macro DEFINE_LUT($name, $vals: tuple)
+static const int {{$name}}[] = { @join $vals as $v with ", ": {{$v}}@end };
+enum { {{concat($name, _len)}} = {{len($vals)}} };
 @endmacro
 
 #?  DEFINE_LUT(gamma, (0, 12, 34))
@@ -47,9 +47,9 @@ enum { {{concat(name, _len)}} = {{len(vals)}} };
 # unpack in loops and give single-paren call sites — compare the
 # double parens a seq<tuple<k, v>> would need: ((dark,1))((huge,2)).
 
-@macro DEFINE_MODES(ms: tuple<tuple<mode, bit>...>)
-@for (mode, bit) in ms
-  {{mode}} = 1 << {{bit}},
+@macro DEFINE_MODES($ms: tuple<tuple<$mode, $bit>...>)
+@for ($mode, $bit) in $ms
+  {{$mode}} = 1 << {{$bit}},
 @end
 @endmacro
 
@@ -63,11 +63,11 @@ enum { {{concat(name, _len)}} = {{len(vals)}} };
 # the comma after ctx must disappear with them. Bare `tuple` is the
 # `tuple<token...>` shorthand.
 
-@macro CALL_CTX(fn, extras: tuple)
-@if is_empty(extras)
-  {{fn}}(ctx);
+@macro CALL_CTX($fn, $extras: tuple)
+@if is_empty($extras)
+  {{$fn}}(ctx);
 @else
-  {{fn}}(ctx, @join extras as a with ", ": {{a}}@end);
+  {{$fn}}(ctx, @join $extras as $a with ", ": {{$a}}@end);
 @end
 @endmacro
 

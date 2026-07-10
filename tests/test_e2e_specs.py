@@ -91,10 +91,7 @@ def test_spec(tmp_path, template, invocation, expecteds, expect_failure):
 @requires_boost
 def test_adjacency_no_paste_e2e(tmp_path):
     src = (
-        "@macro G(f: tuple<t, n>, xs: seq<token>)\n"
-        "pre{{f.n}} mid{{f.t}}\n"
-        "@for x in xs\nitem{{x}};\n@end\n"
-        "@endmacro\n"
+        '@macro G($f: tuple<$t, $n>, $xs: seq<token>)\npre{{$f.$n}} mid{{$f.$t}}\n@for $x in $xs\nitem{{$x}};\n@end\n@endmacro\n'
     )
     out = preprocess_src(tmp_path, src, "adj", "G((int, age), (a)(b))")
     assert canon("pre age mid int item a; item b;") == out

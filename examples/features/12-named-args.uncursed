@@ -10,8 +10,8 @@
 #
 # Scenario: opening a window without remembering a 4-argument order.
 
-@macro OPEN_WINDOW(title, named W = 640, named H = 480, named MONITOR = 0)
-open_window({{title}}, {{W}}, {{H}}, {{MONITOR}});
+@macro OPEN_WINDOW($title, named $W = 640, named $H = 480, named $MONITOR = 0)
+open_window({{$title}}, {{$W}}, {{$H}}, {{$MONITOR}});
 @endmacro
 
 # All defaults:

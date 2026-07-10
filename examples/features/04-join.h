@@ -23,8 +23,8 @@
  */
 
 /* uncursed-pp source:
- * @macro DECLARE_FN(ret, fname, params: seq<tuple<ptype, pname>>)
- * {{ret}} {{fname}}(@join params with ", ": {{ptype}} {{pname}}@end);
+ * @macro DECLARE_FN($ret, $fname, $params: seq<tuple<$ptype, $pname>>)
+ * {{$ret}} {{$fname}}(@join $params with ", ": {{$ptype}} {{$pname}}@end);
  * @endmacro
  */
 #define UNCURSED_PP_DECLARE_FN_AP1(ptype, pname) ptype pname
@@ -64,8 +64,8 @@
  */
 
 /* uncursed-pp source:
- * @macro ANY_FLAG_SET(mask, flags: seq<token>)
- * (@join flags as f with " || ": ({{mask}} & {{f}})@end)
+ * @macro ANY_FLAG_SET($mask, $flags: seq<token>)
+ * (@join $flags as $f with " || ": ({{$mask}} & {{$f}})@end)
  * @endmacro
  */
 #define UNCURSED_PP_ANY_FLAG_SET_SEP1() ||

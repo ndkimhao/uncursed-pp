@@ -12,75 +12,75 @@ C compile time.
 
 ```text
 # Comments start with '#'. A file holds any number of macro definitions.
-# Arg types: token (default), seq<T>, tuple<name, ...> (named elems),
+# Arg types: token (default), seq<T>, tuple<$name, ...> (named elems),
 # tuple / tuple<T...> (unbounded: variable count of T elements), variadic.
 
 # ── 1. Loop over a seq of tuples ────────────────────────────────────
-@macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
-@for (type, name) in fields
-  {{type}} {{name}};
+@macro DECLARE_FIELDS($fields: seq<tuple<$type, $name>>)
+@for ($type, $name) in $fields
+  {{$type}} {{$name}};
 @end
 @endmacro
 #   DECLARE_FIELDS(((int, x))((float, y)))  →  int x; float y;
 
 # ── 2. Inline @join — separator between items ───────────────────────
-@macro PROTO(name, args: seq<tuple<type, argname>>)
-void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
+@macro PROTO($name, $args: seq<tuple<$type, $argname>>)
+void {{$name}}(@join $args with ", ": {{$type}} {{$argname}}@end);
 @endmacro
 #   PROTO(draw, ((struct ctx *, ctx))((int, flags)))
 #     →  void draw(struct ctx * ctx, int flags);
 
 # ── 3. Element access: named for tuples, indexed for seqs ───────────
-@macro GETTER(field: tuple<type, name>)
-@let getter := concat(get_, field.name)
-{{field.type}} {{getter}}(const struct self *s) {
-  return s->{{field.name}};
+@macro GETTER($field: tuple<$type, $name>)
+@let $getter := concat(get_, $field.$name)
+{{$field.$type}} {{$getter}}(const struct self *s) {
+  return s->{{$field.$name}};
 }
 @endmacro
 # concat() is EXPLICIT token pasting (BOOST_PP_CAT); adjacent text never
 # pastes implicitly. @let binds a generation-time name to an expression;
-# {{getter}} inlines it. Scope: enclosing block. In expressions, a bare
-# name resolves to a param/loop var/let if one is in scope, else it is a
-# literal token (like get_ above).
+# {{$getter}} inlines it. Scope: enclosing block. In expressions, bare
+# names are always literal tokens (like get_ above); variables are the
+# $-prefixed ones.
 
-@macro FIRST_TWO(xs: seq<token>)
-{{xs[0]}}, {{xs[1]}}
+@macro FIRST_TWO($xs: seq<token>)
+{{$xs[0]}}, {{$xs[1]}}
 @endmacro
 
 # ── 4. Default tail arguments (positional, arity dispatch) ──────────
-@macro LOG(msg, level = INFO, out = stderr)
-fprintf({{out}}, "[" #level "] %s\n", {{msg}});
+@macro LOG($msg, $level = INFO, $out = stderr)
+fprintf({{$out}}, "[" #level "] %s\n", {{$msg}});
 @endmacro
 #   LOG(m) / LOG(m, WARN) / LOG(m, WARN, stdout) all valid.
 #   Default may be empty:  @macro ATTR(name, qualifiers = )
 
 # ── 5. Named arguments — any order, any subset ──────────────────────
-@macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
-struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };
+@macro MAKE_WIDGET($name, named $WIDTH = 100, named $HEIGHT = 50, named $FLAGS = )
+struct widget {{$name}} = { {{$WIDTH}}, {{$HEIGHT}}, {{$FLAGS}} };
 @endmacro
 #   MAKE_WIDGET(w1)
 #   MAKE_WIDGET(w2, HEIGHT(80))
 #   MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))
 
 # ── 6. Maybe-paren stripping (comma protection) ─────────────────────
-@macro PAIR(p: tuple<a, b>)
-S{ {{remove_parens(p.a)}} | {{p.b}} }
+@macro PAIR($p: tuple<$a, $b>)
+S{ {{remove_parens($p.$a)}} | {{$p.$b}} }
 @endmacro
 #   PAIR((a, b))                → S{ a | b }
 #   PAIR(((pair<int,int>), b))  → S{ pair<int,int> | b }
 
 # ── 7. Variadic parameter + is_paren() ──────────────────────────────
-@macro FOO(items: variadic)
-S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @end@end }
+@macro FOO($items: variadic)
+S{ @join $items as $it with ", ": @if is_paren($it) {{$it}} @else ({{$it}}, omit) @end@end }
 @endmacro
 #   FOO(a, (b,c), d)  →  S{ (a, omit), (b, c), (d, omit) }
 
 # ── 8. Conditionals: len() tests and integer equality ───────────────
-@macro CTOR(name, args: seq<tuple<type, argname>>)
-@if len(args) == 1
-  explicit_single_arg_init({{name}})
+@macro CTOR($name, $args: seq<tuple<$type, $argname>>)
+@if len($args) == 1
+  explicit_single_arg_init({{$name}})
 @else
-  {{concat(name, _init)}}(@join args with ", ": {{argname}}@end)
+  {{concat($name, _init)}}(@join $args with ", ": {{$argname}}@end)
 @end
 @endmacro
 
@@ -91,7 +91,7 @@ S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @en
 
 ### Language rules
 - Body is raw C text; `@`-directives for control flow; `{{expr}}` interpolation.
-- Loops: `@for (a, b) in xs` (tuple unpack) or `@for x in xs` / `@join xs as x with "sep"`.
+- Loops: `@for ($a, $b) in $xs` (tuple unpack) or `@for $x in $xs` / `@join $xs as $x with "sep"`.
 - Loops nest up to 4 deep. Verified empirically: SEQ_FOR_EACH cannot
   re-enter itself (the _R forms do not help), so the outer level uses
   SEQ_FOR_EACH and inner levels use BOOST_PP_REPEAT (auto-reentrant, 3
@@ -101,8 +101,8 @@ S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @en
 - Per macro: required positional params + at most ONE of {tail defaults, named
   section, variadic}. Variadic must be last.
 - Seq/variadic args must be non-empty at C call sites (Boost.PP limitation, documented).
-- Conditions: `len(seq) == N` (and <, >, etc.), integer equality (0–256 range),
-  `is_paren(x)`, `is_empty(x)`.
+- Conditions: `len($seq) == N` (and <, >, etc.), integer equality (0–256 range),
+  `is_paren($x)`, `is_empty($x)`.
 - Unbounded tuples (`tuple<T...>`; bare `tuple` = `tuple<token...>`): call
   site `(a, b, c)`, `()` = zero elements, ≤64 elements. Support `len`,
   `[i]`, iteration/unpacking, `is_empty`; no named access. Allowed as
@@ -128,15 +128,15 @@ All `BOOST_PP_` occurrences below use the configured prefix
 | tuple named access | direct AP/BODY parameter when the tuple is unpacked (loops, spread tuple params); `BOOST_PP_TUPLE_ELEM(idx, x)` otherwise (whole-tuple use, name collisions) |
 | seq index `xs[k]` | `BOOST_PP_SEQ_ELEM(k, xs)` |
 | `@if/@else` | branch bodies emitted as separate helper macros, selected by `BOOST_PP_IIF(cond, THEN, ELSE)` then invoked — branch text may contain commas |
-| `len(xs) == n` etc. | `BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), n)` for ==/!=; relationals compile to saturating `BOOL(DEC^k(lhs))` chains with branch swap for </<= (the LESS/GREATER family hides a WHILE-based SUB) |
-| `is_paren(x)` | `BOOST_PP_IS_BEGIN_PARENS(x)` |
-| `is_empty(x)` | `BOOST_PP_IS_EMPTY(x)`; on unbounded tuples via the shared `ISNIL(x) = IS_EMPTY x` probe (argument expands first, then its own parens become the call — safe for computed values) |
+| `len($xs) == n` etc. | `BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), n)` for ==/!=; relationals compile to saturating `BOOL(DEC^k(lhs))` chains with branch swap for </<= (the LESS/GREATER family hides a WHILE-based SUB) |
+| `is_paren($x)` | `BOOST_PP_IS_BEGIN_PARENS(x)` |
+| `is_empty($x)` | `BOOST_PP_IS_EMPTY(x)`; on unbounded tuples via the shared `ISNIL(x) = IS_EMPTY x` probe (argument expands first, then its own parens become the call — safe for computed values) |
 | unbounded-tuple loop/`len` | emptiness gate `IIF(ISNIL(t), NIL/0, ...)` (selected-then-invoked, like @if branches) around `TUPLE_TO_SEQ(t)` + the normal seq machinery / `TUPLE_SIZE(t)`; `()` iterates zero times and measures 0 |
 | `remove_parens(x)` | `BOOST_PP_REMOVE_PARENS(x)` |
 | `concat(a, b, ...)` | nested `BOOST_PP_CAT(a, BOOST_PP_CAT(b, ...))` |
 | `stringize(x)` | `BOOST_PP_STRINGIZE(x)` (stringizes computed tokens; plain `#` only works on direct macro params) |
 | loop free vars | outer params referenced in a loop body ride FOR_EACH's `d` slot (one var: `d` itself; several: a tuple in `d`) |
-| `@let name := expr` | generation-time binding; inlined at each use site |
+| `@let $name := expr` | generation-time binding; inlined at each use site |
 | `named variadic K = d` | keyword value may contain bare commas: `SET_K(...) slot, (__VA_ARGS__)` re-wraps, interpolation auto-`REMOVE_PARENS` — net effect: verbatim value passthrough |
 | tail defaults | arity chain `UNCURSED_PP_<M>_1 → ..._N` filling defaults + a per-macro max-arity size scan (`OVERLOAD`'s 65-slot scan is ~2x slower) |
 | named args | setter dispatch: one `SET_<KW>` per keyword; each `KW(value)` arg pastes onto `SET_` and names its own slot; arity-specific setter chains apply slot updates via generated per-slot replacers (`PUT_<n>`, spread through `KW_SPREAD`) — no fold, no `TUPLE_REPLACE`/`WHILE`; a bounded max-arity size scan dispatches arity (no `OVERLOAD`). Shared `KW_SPREAD` lives in the companion runtime header (`@pragma runtime_name`). Unknown keywords are compile errors, not silent defaults |
@@ -244,7 +244,7 @@ named/variadic; default-less param after defaulted one; unknown pragma.
 ## Implementation order (each step ends green)
 
 1. Scaffold: mise.toml, pyproject, package skeleton, CLI stub, pytest wired.
-2. Core path: parser + AST + emitter for plain macros, `{{var}}`, `@for` with
+2. Core path: parser + AST + emitter for plain macros, `{{$var}}`, `@for` with
    tuple unpack → DECLARE_FIELDS works end-to-end; golden test + first `cc -E` test.
 3. `@join` (inline + line form), element access, `remove_parens`.
 4. `@if/@else` with `len()`/int-equality/`is_paren` conditions (branch-helper codegen).

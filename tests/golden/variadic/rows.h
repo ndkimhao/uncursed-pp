@@ -25,9 +25,9 @@
  */
 
 /* uncursed-pp source:
- * @macro CALL_ALL(fn, row: tuple)
- * @for x in row
- *   {{fn}}({{x}});
+ * @macro CALL_ALL($fn, $row: tuple)
+ * @for $x in $row
+ *   {{$fn}}({{$x}});
  * @end
  * @endmacro
  */
@@ -48,11 +48,11 @@
 
 /* uncursed-pp source:
  * # is_empty() branches; len() reports 0 for ()
- * @macro DESCRIBE(row: tuple)
- * @if is_empty(row)
+ * @macro DESCRIBE($row: tuple)
+ * @if is_empty($row)
  *   nothing
  * @else
- *   {{len(row)}} items: @join row as x with " + ": {{x}}@end
+ *   {{len($row)}} items: @join $row as $x with " + ": {{$x}}@end
  * @end
  * @endmacro
  */
@@ -93,9 +93,9 @@
 
 /* uncursed-pp source:
  * # typed elements: named pairs give single-paren call sites
- * @macro SET_ALL(ps: tuple<tuple<key, value>...>)
- * @for (key, value) in ps
- *   cfg_set({{stringize(key)}}, {{value}});
+ * @macro SET_ALL($ps: tuple<tuple<$key, $value>...>)
+ * @for ($key, $value) in $ps
+ *   cfg_set({{stringize($key)}}, {{$value}});
  * @end
  * @endmacro
  */
@@ -137,9 +137,9 @@
  * # collapse interaction: two macros with identical no-free-var loop bodies
  * # share one helper family (chain members merge as a unit; small and empty
  * # inputs pin the CAT-dispatched paths - see docs/optimization.md round 3)
- * @macro TRACE_ROW(row: tuple)
- * @for x in row
- *   trace({{x}});
+ * @macro TRACE_ROW($row: tuple)
+ * @for $x in $row
+ *   trace({{$x}});
  * @end
  * @endmacro
  */
@@ -167,9 +167,9 @@
 #define TRACE_ROW(row) BOOST_PP_IIF(UNCURSED_PP_ROWS_H1(row), UNCURSED_PP_ROWS_H2, UNCURSED_PP_TRACE_ROW_LOOP1)(row)
 
 /* uncursed-pp source:
- * @macro AUDIT_ROW(row: tuple)
- * @for x in row
- *   trace({{x}});
+ * @macro AUDIT_ROW($row: tuple)
+ * @for $x in $row
+ *   trace({{$x}});
  * @end
  * @endmacro
  */
@@ -193,9 +193,9 @@
 
 /* uncursed-pp source:
  * # nesting: a seq of variable-width rows; the inner tuple may be empty
- * @macro FLATTEN(rows: seq<tuple<token...>>)
- * @for row in rows
- *   { @join row as x with ", ": {{x}}@end }
+ * @macro FLATTEN($rows: seq<tuple>)
+ * @for $row in $rows
+ *   { @join $row as $x with ", ": {{$x}}@end }
  * @end
  * @endmacro
  */

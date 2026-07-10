@@ -15,8 +15,8 @@
  */
 
 /* uncursed-pp source:
- * @macro RETRY(call, attempts = 3, on_fail = abort)
- * for (int i_ = 0; i_ < {{attempts}}; i_++) { if ({{call}}() == 0) break; if (i_ == {{attempts}} - 1) {{on_fail}}(); }
+ * @macro RETRY($call, $attempts = 3, $on_fail = abort)
+ * for (int i_ = 0; i_ < {{$attempts}}; i_++) { if ({{$call}}() == 0) break; if (i_ == {{$attempts}} - 1) {{$on_fail}}(); }
  * @endmacro
  */
 #define UNCURSED_PP_RETRY_1(call) UNCURSED_PP_RETRY_3(call, 3, abort)
@@ -43,8 +43,8 @@
 /* # A default may be EMPTY — here `quals` disappears when omitted. */
 
 /* uncursed-pp source:
- * @macro EXPORT_FN(ret, fname, quals = )
- * {{quals}} {{ret}} {{fname}}(void);
+ * @macro EXPORT_FN($ret, $fname, $quals = )
+ * {{$quals}} {{$ret}} {{$fname}}(void);
  * @endmacro
  */
 #define UNCURSED_PP_EXPORT_FN_2(ret, fname) UNCURSED_PP_EXPORT_FN_3(ret, fname, )

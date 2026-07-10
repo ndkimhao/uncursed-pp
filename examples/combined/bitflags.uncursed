@@ -8,17 +8,17 @@
 # name-lookup function. Add a flag in one place; everything stays
 # consistent.
 
-@macro DEFINE_BITFLAGS(setname, flags: seq<tuple<fname, bit>>)
+@macro DEFINE_BITFLAGS($setname, $flags: seq<tuple<$fname, $bit>>)
 enum {
-@for (fname, bit) in flags
-  {{fname}} = 1 << {{bit}},
+@for ($fname, $bit) in $flags
+  {{$fname}} = 1 << {{$bit}},
 @end
-  {{concat(setname, _ALL)}} = @join flags with " | ": {{fname}}@end
+  {{concat($setname, _ALL)}} = @join $flags with " | ": {{$fname}}@end
 };
-static const char *{{concat(setname, _name)}}(int f) {
+static const char *{{concat($setname, _name)}}(int f) {
   switch (f) {
-@for (fname, bit) in flags
-    case {{fname}}: return {{stringize(fname)}};
+@for ($fname, $bit) in $flags
+    case {{$fname}}: return {{stringize($fname)}};
 @end
   }
   return "?";

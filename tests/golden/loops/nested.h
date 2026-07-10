@@ -16,10 +16,10 @@
 
 /* uncursed-pp source:
  * # cartesian product of two seq params
- * @macro CROSS(xs: seq<token>, ys: seq<token>)
- * @for x in xs
- * @for y in ys
- * pair({{x}}, {{y}});
+ * @macro CROSS($xs: seq<token>, $ys: seq<token>)
+ * @for $x in $xs
+ * @for $y in $ys
+ * pair({{$x}}, {{$y}});
  * @end
  * @end
  * @endmacro
@@ -30,10 +30,10 @@
 
 /* uncursed-pp source:
  * # iterate a seq<seq<...>>: the inner iterable is the OUTER loop variable
- * @macro MATRIX(grid: seq<seq<token>>)
- * @for row in grid
- * @for cell in row
- * cell({{cell}});
+ * @macro MATRIX($grid: seq<seq<token>>)
+ * @for $row in $grid
+ * @for $cell in $row
+ * cell({{$cell}});
  * @end
  * @end
  * @endmacro
@@ -44,9 +44,9 @@
 
 /* uncursed-pp source:
  * # inline @join per outer element
- * @macro CALL_ROWS(xs: seq<token>, ys: seq<token>)
- * @for x in xs
- * call({{x}}, @join ys as y with ", ": {{y}}@end);
+ * @macro CALL_ROWS($xs: seq<token>, $ys: seq<token>)
+ * @for $x in $xs
+ * call({{$x}}, @join $ys as $y with ", ": {{$y}}@end);
  * @end
  * @endmacro
  */
@@ -56,12 +56,12 @@
 
 /* uncursed-pp source:
  * # full depth: 4 nested loops
- * @macro QUAD(s1: seq<token>, s2: seq<token>, s3: seq<token>, s4: seq<token>)
- * @for a in s1
- * @for b in s2
- * @for c in s3
- * @for dd in s4
- * quad({{a}}, {{b}}, {{c}}, {{dd}});
+ * @macro QUAD($s1: seq<token>, $s2: seq<token>, $s3: seq<token>, $s4: seq<token>)
+ * @for $a in $s1
+ * @for $b in $s2
+ * @for $c in $s3
+ * @for $dd in $s4
+ * quad({{$a}}, {{$b}}, {{$c}}, {{$dd}});
  * @end
  * @end
  * @end

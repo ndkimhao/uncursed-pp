@@ -19,15 +19,15 @@
 # so they hit the chain-family path) pin that behavior through the
 # real preprocessor.
 
-@macro TRACE_CALLS(fns: seq<token>)
-@for f in fns
-  trace_enter({{f}});
+@macro TRACE_CALLS($fns: seq<token>)
+@for $f in $fns
+  trace_enter({{$f}});
 @end
 @endmacro
 
-@macro AUDIT_CALLS(fns: seq<token>)
-@for f in fns
-  trace_enter({{f}});
+@macro AUDIT_CALLS($fns: seq<token>)
+@for $f in $fns
+  trace_enter({{$f}});
 @end
 @endmacro
 

@@ -15,9 +15,9 @@
 /* uncursed-pp source:
  * # @let may capture an inline @join or @if; the rendered helper is reused
  * # at every use site. @let inside a loop body binds per element.
- * @macro CALL2(fn, args: seq<tuple<type, argname>>)
- * @let joined := @join args with ", ": {{argname}}@end
- * {{fn}}({{joined}}, {{joined}})
+ * @macro CALL2($fn, $args: seq<tuple<$type, $argname>>)
+ * @let $joined := @join $args with ", ": {{$argname}}@end
+ * {{$fn}}({{$joined}}, {{$joined}})
  * @endmacro
  */
 #define UNCURSED_PP_CALL2_AP1(type, argname) argname
@@ -44,9 +44,9 @@
 #define CALL2(fn, args) fn(UNCURSED_PP_CALL2_PICK1(BOOST_PP_SEQ_SIZE(args))(args), UNCURSED_PP_CALL2_PICK1(BOOST_PP_SEQ_SIZE(args))(args))
 
 /* uncursed-pp source:
- * @macro PICK(x)
- * @let norm := @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end
- * g({{norm}})
+ * @macro PICK($x)
+ * @let $norm := @if is_paren($x) {{remove_parens($x)}} @else {{$x}} @end
+ * g({{$norm}})
  * @endmacro
  */
 #define UNCURSED_PP_PICK_THEN1(x) BOOST_PP_REMOVE_PARENS(x)
@@ -54,10 +54,10 @@
 #define PICK(x) g(BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(x), UNCURSED_PP_PICK_THEN1, UNCURSED_PP_PICK_ELSE1)(x))
 
 /* uncursed-pp source:
- * @macro PAIRS(xs: seq<token>)
- * @for x in xs
- * @let id := concat(x, _id)
- * int {{id}} = sizeof({{id}});
+ * @macro PAIRS($xs: seq<token>)
+ * @for $x in $xs
+ * @let $id := concat($x, _id)
+ * int {{$id}} = sizeof({{$id}});
  * @end
  * @endmacro
  */

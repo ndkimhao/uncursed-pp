@@ -1,10 +1,10 @@
 # Composition: @if len over a seq, inline @join inside a branch,
 # indexing in the other branch, concat in both.
-@macro DISPATCH(fn, args: seq<token>)
-@if len(args) == 1
-{{concat(fn, _1)}}({{args[0]}})
+@macro DISPATCH($fn, $args: seq<token>)
+@if len($args) == 1
+{{concat($fn, _1)}}({{$args[0]}})
 @else
-{{concat(fn, _n)}}({{len(args)}}, @join args as a with ", ": {{a}}@end)
+{{concat($fn, _n)}}({{len($args)}}, @join $args as $a with ", ": {{$a}}@end)
 @end
 @endmacro
 

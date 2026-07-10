@@ -155,7 +155,7 @@ parameter names MUST live in the reserved helper namespace
 (`uncursed_pp_h`, not `h`) — a bare `h` param captured a template's own
 `h()` call during implementation (caught by the COUNTED golden spec).
 
-Round-4 refuted: `len(xs)` scrutinee hoisting across else-if ladders
+Round-4 refuted: `len($xs)` scrutinee hoisting across else-if ladders
 (token divergence when the value feeds a pasting consumer:
 `MANY_BOOST_PP_SEQ_SIZE(...)` vs `MANY_5`), @let continuation hoisting
 (gain did not survive independent scales), SEQ_SIZE threading through

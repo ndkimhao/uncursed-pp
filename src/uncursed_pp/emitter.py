@@ -22,6 +22,7 @@ from .nodes import (
     Join,
     Len,
     Let,
+    Literal,
     MacroDef,
     Param,
     RemoveParens,
@@ -406,12 +407,19 @@ class _MacroEmitter:
         return _join_segments(parts)
 
     def _resolve(self, expr: Expr, env: _Env, line: int, allow_literal: bool = False) -> _Binding:
+        if isinstance(expr, Literal):
+            if allow_literal:
+                return _Binding(expr.name, TokenT())
+            raise UncursedPpError(
+                f"bare name {expr.name!r} is a literal token (allowed in "
+                f"concat() arguments); write ${expr.name} for the variable",
+                self.filename,
+                line,
+            )
         if isinstance(expr, VarRef):
             if expr.name in env:
                 return env[expr.name]
-            if allow_literal:
-                return _Binding(expr.name, TokenT())
-            raise UncursedPpError(f"undefined variable: {expr.name}", self.filename, line)
+            raise UncursedPpError(f"undefined variable: ${expr.name}", self.filename, line)
         if isinstance(expr, ElemAccess):
             return self._resolve_access(expr, env, line)
         if isinstance(expr, Concat):

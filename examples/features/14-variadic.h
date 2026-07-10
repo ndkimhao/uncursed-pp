@@ -21,9 +21,9 @@
  */
 
 /* uncursed-pp source:
- * @macro FREE_ALL(ptrs: variadic)
- * @for p in ptrs
- *   free({{p}});
+ * @macro FREE_ALL($ptrs: variadic)
+ * @for $p in $ptrs
+ *   free({{$p}});
  * @end
  * @endmacro
  */
@@ -60,9 +60,9 @@
  */
 
 /* uncursed-pp source:
- * @macro SET_DEFAULTS(pairs: variadic<tuple<key, value>>)
- * @for (key, value) in pairs
- *   config_set({{stringize(key)}}, {{value}});
+ * @macro SET_DEFAULTS($pairs: variadic<tuple<$key, $value>>)
+ * @for ($key, $value) in $pairs
+ *   config_set({{stringize($key)}}, {{$value}});
  * @end
  * @endmacro
  */

@@ -27,40 +27,40 @@ def _last_param_type(sig: str) -> object:
 
 
 def test_bare_tuple_is_unbounded_of_tokens():
-    assert _last_param_type("row: tuple") == VarTupleT(TokenT())
+    assert _last_param_type("$row: tuple") == VarTupleT(TokenT())
 
 
 def test_explicit_token_ellipsis():
-    assert _last_param_type("row: tuple<token...>") == VarTupleT(TokenT())
+    assert _last_param_type("$row: tuple<token...>") == VarTupleT(TokenT())
 
 
 def test_named_tuple_element_type():
-    assert _last_param_type("ps: tuple<tuple<k, v>...>") == VarTupleT(TupleT(("k", "v")))
+    assert _last_param_type("$ps: tuple<tuple<$k, $v>...>") == VarTupleT(TupleT(("k", "v")))
 
 
 def test_seq_element_type():
-    assert _last_param_type("rows: tuple<seq<token>...>") == VarTupleT(SeqT(TokenT()))
+    assert _last_param_type("$rows: tuple<seq<token>...>") == VarTupleT(SeqT(TokenT()))
 
 
 def test_unbounded_tuple_inside_seq():
-    assert _last_param_type("rows: seq<tuple<token...>>") == SeqT(VarTupleT(TokenT()))
+    assert _last_param_type("$rows: seq<tuple<token...>>") == SeqT(VarTupleT(TokenT()))
 
 
 def test_unbounded_tuple_inside_variadic():
-    assert _last_param_type("rows: variadic<tuple>") == VariadicT(VarTupleT(TokenT()))
+    assert _last_param_type("$rows: variadic<tuple>") == VariadicT(VarTupleT(TokenT()))
 
 
 def test_tuple_of_single_name_is_still_a_named_tuple():
     # tuple<token> is a 1-tuple whose element is NAMED "token" — the
     # ellipsis, not the word, marks unboundedness
-    assert _last_param_type("t: tuple<token>") == TupleT(("token",))
+    assert _last_param_type("$t: tuple<$token>") == TupleT(("token",))
 
 
 # ── is_empty() ───────────────────────────────────────────────────────
 
 
 def test_is_empty_parses_as_condition():
-    src = "@macro F(row: tuple)\n@if is_empty(row)\nnil\n@end\n@endmacro\n"
+    src = '@macro F($row: tuple)\n@if is_empty($row)\nnil\n@end\n@endmacro\n'
     [macro] = parse_file(src, "t.uncursed").macros
     node = macro.body[0]
     assert isinstance(node, If)
@@ -77,14 +77,14 @@ def test_is_empty_takes_exactly_one_argument():
 
 def test_named_access_on_unbounded_tuple_is_an_error():
     with pytest.raises(UncursedPpError) as excinfo:
-        compile_source("@macro F(row: tuple)\n{{row.first}}\n@endmacro\n", "t.uncursed")
+        compile_source('@macro F($row: tuple)\n{{$row.$first}}\n@endmacro\n', "t.uncursed")
     assert "no named elements" in str(excinfo.value)
 
 
 def test_unpack_needs_a_named_tuple_element():
     with pytest.raises(UncursedPpError) as excinfo:
         compile_source(
-            "@macro F(row: tuple<token...>)\n@for (a, b) in row\nx\n@end\n@endmacro\n",
+            '@macro F($row: tuple)\n@for ($a, $b) in $row\nx\n@end\n@endmacro\n',
             "t.uncursed",
         )
     assert "tuple unpacking" in str(excinfo.value)
@@ -92,27 +92,27 @@ def test_unpack_needs_a_named_tuple_element():
 
 def test_iterating_a_token_is_still_an_error():
     with pytest.raises(UncursedPpError):
-        compile_source("@macro F(x)\n@for a in x\n{{a}}\n@end\n@endmacro\n", "t.uncursed")
+        compile_source('@macro F($x)\n@for $a in $x\n{{$a}}\n@end\n@endmacro\n', "t.uncursed")
 
 
 def test_len_on_plain_token_is_still_an_error():
     with pytest.raises(UncursedPpError):
-        compile_source("@macro F(x)\n{{len(x)}}\n@endmacro\n", "t.uncursed")
+        compile_source('@macro F($x)\n{{len($x)}}\n@endmacro\n', "t.uncursed")
 
 
 def test_len_accepts_unbounded_tuple():
-    compile_source("@macro F(row: tuple)\n{{len(row)}}\n@endmacro\n", "t.uncursed")
+    compile_source('@macro F($row: tuple)\n{{len($row)}}\n@endmacro\n', "t.uncursed")
 
 
 def test_unbounded_tuple_loops_compile():
     compile_source(
-        "@macro F(row: tuple)\n@for x in row\nf({{x}});\n@end\n@endmacro\n", "t.uncursed"
+        '@macro F($row: tuple)\n@for $x in $row\nf({{$x}});\n@end\n@endmacro\n', "t.uncursed"
     )
 
 
 def test_unpack_loop_over_pair_elements_compiles():
     compile_source(
-        "@macro F(ps: tuple<tuple<k, v>...>)\n@for (k, v) in ps\nset({{k}}, {{v}});\n@end\n@endmacro\n",
+        '@macro F($ps: tuple<tuple<$k, $v>...>)\n@for ($k, $v) in $ps\nset({{$k}}, {{$v}});\n@end\n@endmacro\n',
         "t.uncursed",
     )
 
@@ -121,26 +121,26 @@ def test_unpack_loop_over_pair_elements_compiles():
 
 
 def test_hybrid_type_parses():
-    assert _last_param_type("f: tuple<fname, ftype, token...>") == VarTupleT(
+    assert _last_param_type("$f: tuple<$fname, $ftype, token...>") == VarTupleT(
         TokenT(), ("fname", "ftype")
     )
 
 
 def test_hybrid_with_typed_tail():
-    assert _last_param_type("f: tuple<key, tuple<a, b>...>") == VarTupleT(
+    assert _last_param_type("$f: tuple<$key, tuple<$a, $b>...>") == VarTupleT(
         TupleT(("a", "b")), ("key",)
     )
 
 
 def test_hybrid_inside_seq():
-    assert _last_param_type("fs: seq<tuple<n, token...>>") == SeqT(
+    assert _last_param_type("$fs: seq<tuple<$n, token...>>") == SeqT(
         VarTupleT(TokenT(), ("n",))
     )
 
 
 def test_hybrid_named_head_access_compiles():
     compile_source(
-        "@macro F(f: tuple<fname, ftype, token...>)\n{{f.fname}} {{f.ftype}}\n@endmacro\n",
+        '@macro F($f: tuple<$fname, $ftype, token...>)\n{{$f.$fname}} {{$f.$ftype}}\n@endmacro\n',
         "t.uncursed",
     )
 
@@ -148,7 +148,7 @@ def test_hybrid_named_head_access_compiles():
 def test_hybrid_unknown_field_lists_names():
     with pytest.raises(UncursedPpError) as excinfo:
         compile_source(
-            "@macro F(f: tuple<fname, ftype, token...>)\n{{f.nope}}\n@endmacro\n",
+            '@macro F($f: tuple<$fname, $ftype, token...>)\n{{$f.$nope}}\n@endmacro\n',
             "t.uncursed",
         )
     assert "fname" in str(excinfo.value) and "ftype" in str(excinfo.value)
@@ -156,10 +156,7 @@ def test_hybrid_unknown_field_lists_names():
 
 def test_hybrid_tail_ops_compile():
     compile_source(
-        "@macro F(f: tuple<n, token...>)\n"
-        "{{f.n}}: {{len(f)}} {{f[0]}}\n"
-        "@for a in f\n[{{a}}]\n@end\n"
-        "@endmacro\n",
+        '@macro F($f: tuple<$n, token...>)\n{{$f.$n}}: {{len($f)}} {{$f[0]}}\n@for $a in $f\n[{{$a}}]\n@end\n@endmacro\n',
         "t.uncursed",
     )
 
@@ -167,7 +164,7 @@ def test_hybrid_tail_ops_compile():
 def test_hybrid_unpack_needs_tuple_tail():
     with pytest.raises(UncursedPpError) as excinfo:
         compile_source(
-            "@macro F(f: tuple<n, token...>)\n@for (a, b) in f\nx\n@end\n@endmacro\n",
+            '@macro F($f: tuple<$n, token...>)\n@for ($a, $b) in $f\nx\n@end\n@endmacro\n',
             "t.uncursed",
         )
     assert "tuple unpacking" in str(excinfo.value)

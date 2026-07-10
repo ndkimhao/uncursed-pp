@@ -1,22 +1,22 @@
 # Values travel between generated macros: a whole tuple forwarded as one
 # argument, and a whole seq carried inside a 'named variadic' value and
 # handed to a looping macro. is_paren() guards the empty default.
-@macro GET_A(p: tuple<a, b>)
-{{p.a}}
+@macro GET_A($p: tuple<$a, $b>)
+{{$p.$a}}
 @endmacro
 
-@macro USE(q: tuple<a, b>)
-first = GET_A({{q}});
+@macro USE($q: tuple<$a, $b>)
+first = GET_A({{$q}});
 @endmacro
 
-@macro EACH_FIELD(fields: seq<tuple<t, n>>)
-@for (t, n) in fields
-{{t}} {{n}};
+@macro EACH_FIELD($fields: seq<tuple<$t, $n>>)
+@for ($t, $n) in $fields
+{{$t}} {{$n}};
 @end
 @endmacro
 
-@macro OBJ(name, named variadic FIELDS = )
-struct {{name}} { @if is_paren(FIELDS) EACH_FIELD({{FIELDS}}) @end };
+@macro OBJ($name, named variadic $FIELDS = )
+struct {{$name}} { @if is_paren($FIELDS) EACH_FIELD({{$FIELDS}}) @end };
 @endmacro
 
 # ── invocation specs (verified through cc -E by the spec harness) ──

@@ -11,11 +11,11 @@
 
 /* uncursed-pp source:
  * # Composition: @let of len() and @let of an inline @join, each reused.
- * @macro LOOKUP_TABLE(tname, keys: seq<token>)
- * @let n := len(keys)
- * @let strings := @join keys as k with ", ": {{stringize(k)}}@end
- * static const char *{{tname}}[{{n}}] = { {{strings}} };
- * enum { {{concat(tname, _len)}} = {{n}} };
+ * @macro LOOKUP_TABLE($tname, $keys: seq<token>)
+ * @let $n := len($keys)
+ * @let $strings := @join $keys as $k with ", ": {{stringize($k)}}@end
+ * static const char *{{$tname}}[{{$n}}] = { {{$strings}} };
+ * enum { {{concat($tname, _len)}} = {{$n}} };
  * @endmacro
  */
 #define UNCURSED_PP_LOOKUP_TABLE_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) BOOST_PP_STRINGIZE(e)

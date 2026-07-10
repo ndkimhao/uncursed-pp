@@ -22,10 +22,10 @@
  */
 
 /* uncursed-pp source:
- * @macro FILL_DISPATCH(modes: seq<token>, widths: seq<token>)
- * @for m in modes
- * @for w in widths
- *   table[{{m}}][{{w}}] = op_generic;
+ * @macro FILL_DISPATCH($modes: seq<token>, $widths: seq<token>)
+ * @for $m in $modes
+ * @for $w in $widths
+ *   table[{{$m}}][{{$w}}] = op_generic;
  * @end
  * @end
  * @endmacro

@@ -16,9 +16,9 @@ are **not** expanded when uncursed-pp runs. They compile into Boost.PP machinery
 compiler preprocesses your code**. Call sites pass real, variable-length data:
 
 ```text
-@macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
-@for (type, name) in fields
-  {{type}} {{name}};
+@macro DECLARE_FIELDS($fields: seq<tuple<$type, $name>>)
+@for ($type, $name) in $fields
+  {{$type}} {{$name}};
 @end
 @endmacro
 ```
@@ -72,7 +72,7 @@ instead.
 A macro definition:
 
 ```text
-@macro NAME(param, param, ...)
+@macro NAME($param, $param, ...)
 <body: raw C text, directives, interpolations>
 @endmacro
 ```
@@ -82,9 +82,9 @@ multiple lines (a trailing comma is allowed):
 
 ```text
 @macro MAKE_WIDGET(
-    name,
-    named WIDTH = 100,
-    named HEIGHT = 50,
+    $name,
+    named $WIDTH = 100,
+    named $HEIGHT = 50,
 )
 ```
 
@@ -95,7 +95,7 @@ earlier ones *textually* in their bodies (see the reflection example, §13).
 ## 4. Parameters and types
 
 ```text
-@macro M(a, xs: seq<token>, f: tuple<type, name>, rest: variadic)
+@macro M($a, $xs: seq<token>, $f: tuple<$type, $name>, $rest: variadic)
 ```
 
 | Type | Declares | C call-site shape |
@@ -109,10 +109,17 @@ earlier ones *textually* in their bodies (see the reflection example, §13).
 
 Notes:
 
-- `tuple` element names are how you access elements: `{{f.type}}`, `{{f.name}}`.
+- **Variables are `$`-prefixed** — at every binding site (parameters,
+  tuple field declarations, loop targets, `as`/`@let` names, `named`
+  keywords) and every use site (`{{$x}}`, `$xs[0]`, `$f.$name`,
+  `len($xs)`). Bare names in expressions are always literal tokens; a
+  bare name where a variable is required is a compile error suggesting
+  the `$`. The `$` never reaches the generated C — helper parameters
+  keep plain names.
+- `tuple` element names are how you access elements: `{{$f.$type}}`, `{{$f.$name}}` — the field name is `$`-prefixed too.
 - **Unbounded tuples** (`tuple<T...>` — the ellipsis is what distinguishes
-  them from a name list, so `tuple<token>` is still a 1-tuple whose element
-  is *named* "token") support `len()`, `[i]` indexing, iteration
+  them from a fixed field list — `tuple<$token>` would be a 1-tuple whose
+  element is *named* token) support `len()`, `[i]` indexing, iteration
   (`@for`/`@join`, with unpacking when `T` is `tuple<...>`), and
   `is_empty()`. Loops and `len()` are emptiness-gated, so `()` means zero
   elements. Elements cap at **64** (vs 256 for seqs); named access is a
@@ -136,8 +143,8 @@ Notes:
 ### Tail defaults
 
 ```text
-@macro LOG(msg, level = INFO, out = stderr)
-fprintf({{out}}, "[" #{{level}} "] %s\n", {{msg}});
+@macro LOG($msg, $level = INFO, $out = stderr)
+fprintf({{$out}}, "[" #{{$level}} "] %s\n", {{$msg}});
 @endmacro
 ```
 
@@ -150,8 +157,8 @@ contain commas or parens.
 ### Named parameters
 
 ```text
-@macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
-struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };
+@macro MAKE_WIDGET($name, named $WIDTH = 100, named $HEIGHT = 50, named $FLAGS = )
+struct widget {{$name}} = { {{$WIDTH}}, {{$HEIGHT}}, {{$FLAGS}} };
 @endmacro
 ```
 
@@ -188,21 +195,22 @@ parameter (C cannot overload on a zero-argument call).
 | `concat(a, b, ...)` | **explicit** token pasting (≥2 args) | nested `BOOST_PP_CAT` |
 | `stringize(x)` | make a C string literal from tokens | `BOOST_PP_STRINGIZE(x)` |
 | `remove_parens(x)` | strip ONE paren layer iff present | `BOOST_PP_REMOVE_PARENS(x)` |
-| `len(xs)` | element count of a seq/variadic/unbounded tuple | `BOOST_PP_SEQ_SIZE(xs)`; tuples: emptiness-gated `BOOST_PP_TUPLE_SIZE` (so `len(()) == 0`) |
-| `is_paren(x)` | 1 if `x` is parenthesized else 0 | `BOOST_PP_IS_BEGIN_PARENS(x)` |
-| `is_empty(x)` | 1 if `x` has no tokens (unbounded tuple: no elements) | `BOOST_PP_IS_EMPTY`; conditions, like `is_paren` |
+| `len($xs)` | element count of a seq/variadic/unbounded tuple | `BOOST_PP_SEQ_SIZE(xs)`; tuples: emptiness-gated `BOOST_PP_TUPLE_SIZE` (so `len(()) == 0`) |
+| `is_paren($x)` | 1 if `$x` is parenthesized else 0 | `BOOST_PP_IS_BEGIN_PARENS(x)` |
+| `is_empty($x)` | 1 if `$x` has no tokens (unbounded tuple: no elements) | `BOOST_PP_IS_EMPTY`; conditions, like `is_paren` |
 
 Three rules that surprise newcomers:
 
-- **uncursed-pp never token-pastes implicitly.** `get_{{name}}` produces two
+- **uncursed-pp never token-pastes implicitly.** `get_{{$name}}` produces two
   separate tokens `get_` and `<name>`; to build one identifier write
-  `{{concat(get_, name)}}`.
-- In `concat(...)` arguments, a name resolves to a variable if one is in
-  scope, **otherwise it is a literal token** (like `get_` above).
+  `{{concat(get_, $name)}}`.
+- In `concat(...)` arguments, bare names are **always literal tokens**
+  (like `get_` above); variables are the `$`-prefixed ones. A bare name
+  anywhere a variable is required is a compile error suggesting the `$`.
 - The C `#` stringize operator only works on direct macro parameters, so
-  `#{{x}}` only works where `x` maps to a real parameter (e.g. tail-default
+  `#{{$x}}` only works where `$x` maps to a real parameter (e.g. tail-default
   bodies). For computed tokens — tuple elements, loop variables — use
-  `{{stringize(x)}}`.
+  `{{stringize($x)}}`.
 
 `remove_parens` is the comma-protection idiom: callers wrap comma-containing
 values in parens, the template unwraps: `PAIR(((pair<int,int>), b))`.
@@ -212,12 +220,12 @@ values in parens, the template unwraps: `PAIR(((pair<int,int>), b))`.
 ### `@for` — loop over a seq
 
 ```text
-@for (type, name) in fields    # unpack tuple elements (arity must match)
-  {{type}} {{name}};
+@for ($type, $name) in $fields # unpack tuple elements (arity must match)
+  {{$type}} {{$name}};
 @end
 
-@for x in xs                   # bind each element to x
-  f({{x}});
+@for $x in $xs                 # bind each element to $x
+  f({{$x}});
 @end
 ```
 
@@ -229,11 +237,11 @@ element names are bound implicitly inside the loop.
 Block form and inline form (inline is handy inside argument lists):
 
 ```text
-@join xs as x with " || "
-({{x}})
+@join $xs as $x with " || "
+({{$x}})
 @end
 
-void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
+void {{$name}}(@join $args with ", ": {{$type}} {{$argname}}@end);
 ```
 
 - `as x` binds the element; for tuple elements the field names are also
@@ -244,19 +252,19 @@ void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
 ### `@if` / `@else` — compile-time branching
 
 ```text
-@if len(args) == 1
-  explicit_single_arg_init({{name}})
+@if len($args) == 1
+  explicit_single_arg_init({{$name}})
 @else
-  {{concat(name, _init)}}(@join args with ", ": {{argname}}@end)
+  {{concat($name, _init)}}(@join $args with ", ": {{$argname}}@end)
 @end
 ```
 
-Inline form: `@if is_paren(x) {{remove_parens(x)}} @else {{x}} @end`.
+Inline form: `@if is_paren($x) {{remove_parens($x)}} @else {{$x}} @end`.
 
-Conditions are either `is_paren(expr)` or a comparison `lhs OP integer` with
-`OP` ∈ `== != < > <= >=` and `lhs` any expression (typically `len(xs)` or a
+Conditions are either `is_paren(expr)`, `is_empty(expr)`, or a comparison `lhs OP integer` with
+`OP` ∈ `== != < > <= >=` and `lhs` any expression (typically `len($xs)` or a
 token parameter). Integer magnitudes are limited to **0–256** (Boost.PP
-arithmetic range). Negate `is_paren` by comparing: `@if is_paren(x) == 0`.
+arithmetic range). Negate `is_paren` by comparing: `@if is_paren($x) == 0`.
 `@else` is optional. Branch bodies may contain commas freely — they compile to
 separate helper macros selected by `BOOST_PP_IIF`, parameterized by exactly the
 variables each branch uses.
@@ -264,18 +272,18 @@ variables each branch uses.
 ### `@let` — generation-time bindings
 
 ```text
-@let getter := concat(get_, field.name)
-{{field.type}} {{getter}}(const struct self *s) { ... }
+@let $getter := concat(get_, $field.$name)
+{{$field.$type}} {{$getter}}(const struct self *s) { ... }
 ```
 
-`@let name := value` binds a name usable as `{{name}}` from that point to the
+`@let $name := value` binds a name usable as `{{$name}}` from that point to the
 end of the enclosing block (macro body, loop body, or branch). The value is any
 expression from §5 — or a single **inline `@join`/`@if`**, whose rendered form
 is then reused at every use site (the loop helper is generated once):
 
 ```text
-@let joined := @join args with ", ": {{argname}}@end
-{{fn}}({{joined}}, {{joined}})
+@let $joined := @join $args with ", ": {{$argname}}@end
+{{$fn}}({{$joined}}, {{$joined}})
 ```
 
 ### Directive cheat-sheet
@@ -304,9 +312,9 @@ loop — are fine.
 Loop bodies may reference anything in scope — outer parameters included:
 
 ```text
-@macro TABLE(sname, fields: seq<tuple<type, name, fmt>>)
-@for (type, name, fmt) in fields
-  { {{stringize(name)}}, offsetof({{sname}}, {{name}}) },
+@macro TABLE($sname, $fields: seq<tuple<$type, $name, $fmt>>)
+@for ($type, $name, $fmt) in $fields
+  { {{stringize($name)}}, offsetof({{$sname}}, {{$name}}) },
 @end
 @endmacro
 ```
@@ -444,35 +452,35 @@ specs, and every macro it defines must be exercised (meta-tests enforce both).
 list is the single source of truth:
 
 ```text
-@macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
+@macro DEFINE_STRUCT($sname, $fields: seq<tuple<$type, $name, $fmt>>)
 typedef struct {
-@for (type, name, fmt) in fields
-  {{type}} {{name}};
+@for ($type, $name, $fmt) in $fields
+  {{$type}} {{$name}};
 @end
-} {{sname}};
+} {{$sname}};
 @endmacro
 
-@macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
-static const uncursed_field {{concat(sname, _fields)}}[] = {
-@for (type, name, fmt) in fields
-  { {{stringize(name)}}, {{stringize(type)}}, offsetof({{sname}}, {{name}}) },
+@macro DEFINE_FIELD_TABLE($sname, $fields: seq<tuple<$type, $name, $fmt>>)
+static const uncursed_field {{concat($sname, _fields)}}[] = {
+@for ($type, $name, $fmt) in $fields
+  { {{stringize($name)}}, {{stringize($type)}}, offsetof({{$sname}}, {{$name}}) },
 @end
 };
-enum { {{concat(sname, _field_count)}} = {{len(fields)}} };
+enum { {{concat($sname, _field_count)}} = {{len($fields)}} };
 @endmacro
 
-@macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
-static void {{concat(print_, sname)}}(const {{sname}} *v) {
-@for (type, name, fmt) in fields
-  printf("  " {{stringize(name)}} " = " {{fmt}} "\n", v->{{name}});
+@macro DEFINE_PRINTER($sname, $fields: seq<tuple<$type, $name, $fmt>>)
+static void {{concat(print_, $sname)}}(const {{$sname}} *v) {
+@for ($type, $name, $fmt) in $fields
+  printf("  " {{stringize($name)}} " = " {{$fmt}} "\n", v->{{$name}});
 @end
 }
 @endmacro
 
-@macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
-DEFINE_STRUCT({{sname}}, {{fields}})
-DEFINE_FIELD_TABLE({{sname}}, {{fields}})
-DEFINE_PRINTER({{sname}}, {{fields}})
+@macro REFLECT($sname, $fields: variadic<tuple<$type, $name, $fmt>>)
+DEFINE_STRUCT({{$sname}}, {{$fields}})
+DEFINE_FIELD_TABLE({{$sname}}, {{$fields}})
+DEFINE_PRINTER({{$sname}}, {{$fields}})
 @endmacro
 ```
 

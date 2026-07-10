@@ -37,7 +37,7 @@ body for one element and then naming its successor, which eats the next
 ```
 
 ~2 macro expansions per element instead of `FOR`'s state machine. The
-special case of an *identity comma join* (`@join xs with ", ": {{x}}@end`)
+special case of an *identity comma join* (`@join $xs with ", ": {{$x}}@end`)
 is cheaper still: it compiles to a bare `BOOST_PP_SEQ_ENUM(xs)` with no
 helpers at all (~50–140×).
 
@@ -80,7 +80,7 @@ helpers at all (~50–140×).
 These loops always use the `SEQ_FOR_EACH`/`REPEAT` forms regardless of the
 pragma (correctness-driven exclusions):
 
-- **Loops referencing outer parameters** (e.g. `offsetof({{sname}}, ...)`
+- **Loops referencing outer parameters** (e.g. `offsetof({{$sname}}, ...)`
   inside the loop): chain members are top-level defines and cannot see
   outer macro parameters, so the value rides `FOR_EACH`'s data slot instead.
 - **Nested loops** (any loop whose body contains another loop) — inner

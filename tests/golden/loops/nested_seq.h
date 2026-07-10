@@ -11,10 +11,10 @@
 /* uncursed-pp source:
  * # seq<seq<token>>: index the outer seq, bind the inner one with @let,
  * # then loop over it (one loop level - the outer access is an index).
- * @macro FIRST_ROW(grid: seq<seq<token>>)
- * @let row := grid[0]
- * @for x in row
- * cell({{x}});
+ * @macro FIRST_ROW($grid: seq<seq<token>>)
+ * @let $row := $grid[0]
+ * @for $x in $row
+ * cell({{$x}});
  * @end
  * @endmacro
  */

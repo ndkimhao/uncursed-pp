@@ -8,7 +8,7 @@ from uncursed_pp.speccheck import main
 
 pytestmark = pytest.mark.skipif(CC is None, reason="no C compiler available")
 
-PASSING = "@macro ID(x)\n{{x}}\n@endmacro\n#?  ID(7)\n#=>     7\n"
+PASSING = '@macro ID($x)\n{{$x}}\n@endmacro\n#?  ID(7)\n#=>     7\n'
 
 
 def _run(argv):
@@ -28,7 +28,7 @@ def test_passing_file_exits_zero(tmp_path, capsys):
 
 def test_failing_expectation_exits_one_with_diff(tmp_path, capsys):
     src = tmp_path / "bad.uncursed"
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n#?  ID(7)\n#=>     8\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n#?  ID(7)\n#=>     8\n')
     assert _run([str(src)]) == 1
     out = capsys.readouterr().out
     assert "FAIL  ID(7)" in out
@@ -38,27 +38,27 @@ def test_failing_expectation_exits_one_with_diff(tmp_path, capsys):
 def test_expected_failure_spec_passes(tmp_path):
     src = tmp_path / "xfail.uncursed"
     # unbalanced parens at the call site: preprocessing must fail
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n#?! ID(\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n#?! ID(\n')
     assert _run([str(src)]) == 0
 
 
 def test_expected_failure_that_succeeds_exits_one(tmp_path, capsys):
     src = tmp_path / "notfail.uncursed"
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n#?! ID(7)\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n#?! ID(7)\n')
     assert _run([str(src)]) == 1
     assert "expected preprocessing to FAIL" in capsys.readouterr().out
 
 
 def test_no_specs_is_a_setup_error(tmp_path, capsys):
     src = tmp_path / "nospecs.uncursed"
-    src.write_text("@macro ID(x)\n{{x}}\n@endmacro\n")
+    src.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n')
     assert _run([str(src)]) == 2
     assert "no #? specs" in capsys.readouterr().err
 
 
 def test_template_error_is_a_setup_error(tmp_path, capsys):
     src = tmp_path / "broken.uncursed"
-    src.write_text("@macro ID(x)\n{{x}}\n#?  ID(1)\n#=> 1\n")  # missing @endmacro
+    src.write_text("@macro ID($x)\n{{$x}}\n#?  ID(1)\n#=> 1\n")  # missing @endmacro
     assert _run([str(src)]) == 2
     assert "@endmacro" in capsys.readouterr().err
 
@@ -87,7 +87,7 @@ def test_multiple_inputs_one_failing_exits_one(tmp_path, capsys):
     good = tmp_path / "good.uncursed"
     good.write_text(PASSING)
     bad = tmp_path / "bad.uncursed"
-    bad.write_text("@macro ID(x)\n{{x}}\n@endmacro\n#?  ID(7)\n#=>     8\n")
+    bad.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n#?  ID(7)\n#=>     8\n')
     assert _run([str(good), str(bad)]) == 1
     out = capsys.readouterr().out
     assert "good.uncursed: 1/1 specs passed" in out
@@ -108,7 +108,7 @@ def test_directory_input_checks_all_templates_recursively(tmp_path, capsys):
     (tmp_path / "sub").mkdir()
     (tmp_path / "a.uncursed").write_text(PASSING)
     (tmp_path / "sub" / "b.uncursed").write_text(
-        "@macro ID(x)\n{{x}}\n@endmacro\n#?  ID(7)\n#=>     8\n"
+        '@macro ID($x)\n{{$x}}\n@endmacro\n#?  ID(7)\n#=>     8\n'
     )
     assert _run([str(tmp_path)]) == 1
     out = capsys.readouterr().out
@@ -135,7 +135,7 @@ def test_multi_file_output_has_separators_and_summary(tmp_path, capsys):
     good = tmp_path / "good.uncursed"
     good.write_text(PASSING)
     bad = tmp_path / "bad.uncursed"
-    bad.write_text("@macro ID(x)\n{{x}}\n@endmacro\n#?  ID(7)\n#=>     8\n")
+    bad.write_text('@macro ID($x)\n{{$x}}\n@endmacro\n#?  ID(7)\n#=>     8\n')
     also = tmp_path / "also.uncursed"
     also.write_text(PASSING)
     assert _run([str(good), str(bad), str(also)]) == 1

@@ -1,16 +1,16 @@
 # Expressions over mixed data: concat of tuple fields, stringize of a
 # seq element and of a computed len(), remove_parens per loop element.
-@macro FUSE(p: tuple<a, b>)
-{{concat(p.a, p.b)}}
+@macro FUSE($p: tuple<$a, $b>)
+{{concat($p.$a, $p.$b)}}
 @endmacro
 
-@macro STR0(xs: seq<token>)
-{{stringize(xs[0])}} / {{stringize(len(xs))}}
+@macro STR0($xs: seq<token>)
+{{stringize($xs[0])}} / {{stringize(len($xs))}}
 @endmacro
 
-@macro CLEAN(fields: seq<tuple<t, n>>)
-@for (t, n) in fields
-{{remove_parens(t)}} {{n}};
+@macro CLEAN($fields: seq<tuple<$t, $n>>)
+@for ($t, $n) in $fields
+{{remove_parens($t)}} {{$n}};
 @end
 @endmacro
 

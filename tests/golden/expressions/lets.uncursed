@@ -1,19 +1,19 @@
 # @let may capture an inline @join or @if; the rendered helper is reused
 # at every use site. @let inside a loop body binds per element.
-@macro CALL2(fn, args: seq<tuple<type, argname>>)
-@let joined := @join args with ", ": {{argname}}@end
-{{fn}}({{joined}}, {{joined}})
+@macro CALL2($fn, $args: seq<tuple<$type, $argname>>)
+@let $joined := @join $args with ", ": {{$argname}}@end
+{{$fn}}({{$joined}}, {{$joined}})
 @endmacro
 
-@macro PICK(x)
-@let norm := @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end
-g({{norm}})
+@macro PICK($x)
+@let $norm := @if is_paren($x) {{remove_parens($x)}} @else {{$x}} @end
+g({{$norm}})
 @endmacro
 
-@macro PAIRS(xs: seq<token>)
-@for x in xs
-@let id := concat(x, _id)
-int {{id}} = sizeof({{id}});
+@macro PAIRS($xs: seq<token>)
+@for $x in $xs
+@let $id := concat($x, _id)
+int {{$id}} = sizeof({{$id}});
 @end
 @endmacro
 

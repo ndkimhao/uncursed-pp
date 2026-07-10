@@ -31,11 +31,11 @@
  */
 
 /* uncursed-pp source:
- * @macro DECL(f: tuple<fname, ftype, token...>)
- * @if is_empty(f)
- *   {{f.ftype}} {{f.fname}};
+ * @macro DECL($f: tuple<$fname, $ftype, token...>)
+ * @if is_empty($f)
+ *   {{$f.$ftype}} {{$f.$fname}};
  * @else
- *   {{f.ftype}} {{f.fname}} __attribute__((@join f as a with ", ": {{a}}@end));
+ *   {{$f.$ftype}} {{$f.$fname}} __attribute__((@join $f as $a with ", ": {{$a}}@end));
  * @end
  * @endmacro
  */
@@ -60,8 +60,8 @@
 /* # ── the head never counts: len()/[i] see only the tail ─────────────── */
 
 /* uncursed-pp source:
- * @macro SUMMARY(f: tuple<owner, token...>)
- * {{f.owner}} has {{len(f)}} tags
+ * @macro SUMMARY($f: tuple<$owner, token...>)
+ * {{$f.$owner}} has {{len($f)}} tags
  * @endmacro
  */
 #define UNCURSED_PP_SUMMARY_TL1(t) UNCURSED_PP_SUMMARY_TL1_I t

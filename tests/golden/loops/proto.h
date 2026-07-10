@@ -11,8 +11,8 @@
 
 /* uncursed-pp source:
  * # Function prototype from a seq of (type, argname) tuples.
- * @macro PROTO(name, args: seq<tuple<type, argname>>)
- * void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
+ * @macro PROTO($name, $args: seq<tuple<$type, $argname>>)
+ * void {{$name}}(@join $args with ", ": {{$type}} {{$argname}}@end);
  * @endmacro
  */
 #define UNCURSED_PP_PROTO_AP1(type, argname) type argname

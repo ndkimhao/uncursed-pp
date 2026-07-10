@@ -17,9 +17,9 @@
  */
 
 /* uncursed-pp source:
- * @macro SHOW_PASTE_RULE(prefix, name)
- * int {{prefix}}{{name}} = 0;
- * int {{concat(prefix, name)}} = 1;
+ * @macro SHOW_PASTE_RULE($prefix, $name)
+ * int {{$prefix}}{{$name}} = 0;
+ * int {{concat($prefix, $name)}} = 1;
  * @endmacro
  */
 #define SHOW_PASTE_RULE(prefix, name) \

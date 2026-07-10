@@ -17,10 +17,10 @@
  */
 
 /* uncursed-pp source:
- * @macro COUNTED_ARRAY(name, elems: seq<token>)
- * @let n := len(elems)
- * static const int {{name}}[{{n}}] = { @join elems as e with ", ": {{e}}@end };
- * enum { {{concat(name, _len)}} = {{n}} };
+ * @macro COUNTED_ARRAY($name, $elems: seq<token>)
+ * @let $n := len($elems)
+ * static const int {{$name}}[{{$n}}] = { @join $elems as $e with ", ": {{$e}}@end };
+ * enum { {{concat($name, _len)}} = {{$n}} };
  * @endmacro
  */
 #define COUNTED_ARRAY(name, elems) \

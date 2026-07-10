@@ -15,11 +15,11 @@
  */
 
 /* uncursed-pp source:
- * @macro INIT_CALL(fn, arg)
- * @if is_paren(arg)
- *   {{fn}}{{arg}};
+ * @macro INIT_CALL($fn, $arg)
+ * @if is_paren($arg)
+ *   {{$fn}}{{$arg}};
  * @else
- *   {{fn}}(({{arg}}));
+ *   {{$fn}}(({{$arg}}));
  * @end
  * @endmacro
  */

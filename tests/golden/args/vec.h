@@ -8,9 +8,9 @@
 /* uncursed-pp source:
  * # Named args composed with a loop: BODY params referenced inside the
  * # loop ride the d slot as a tuple.
- * @macro VEC(name, items: seq<token>, named PREFIX = v)
- * @for i in items
- * {{concat(PREFIX, i)}} {{name}};
+ * @macro VEC($name, $items: seq<token>, named $PREFIX = v)
+ * @for $i in $items
+ * {{concat($PREFIX, $i)}} {{$name}};
  * @end
  * @endmacro
  */

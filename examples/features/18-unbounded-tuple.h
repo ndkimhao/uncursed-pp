@@ -43,9 +43,9 @@
  */
 
 /* uncursed-pp source:
- * @macro DEFINE_LUT(name, vals: tuple<token...>)
- * static const int {{name}}[] = { @join vals as v with ", ": {{v}}@end };
- * enum { {{concat(name, _len)}} = {{len(vals)}} };
+ * @macro DEFINE_LUT($name, $vals: tuple)
+ * static const int {{$name}}[] = { @join $vals as $v with ", ": {{$v}}@end };
+ * enum { {{concat($name, _len)}} = {{len($vals)}} };
  * @endmacro
  */
 #define UNCURSED_PP_DEFINE_LUT_LOOP1(vals) BOOST_PP_SEQ_ENUM(BOOST_PP_TUPLE_TO_SEQ(vals))
@@ -74,9 +74,9 @@
  */
 
 /* uncursed-pp source:
- * @macro DEFINE_MODES(ms: tuple<tuple<mode, bit>...>)
- * @for (mode, bit) in ms
- *   {{mode}} = 1 << {{bit}},
+ * @macro DEFINE_MODES($ms: tuple<tuple<$mode, $bit>...>)
+ * @for ($mode, $bit) in $ms
+ *   {{$mode}} = 1 << {{$bit}},
  * @end
  * @endmacro
  */
@@ -118,11 +118,11 @@
  */
 
 /* uncursed-pp source:
- * @macro CALL_CTX(fn, extras: tuple)
- * @if is_empty(extras)
- *   {{fn}}(ctx);
+ * @macro CALL_CTX($fn, $extras: tuple)
+ * @if is_empty($extras)
+ *   {{$fn}}(ctx);
  * @else
- *   {{fn}}(ctx, @join extras as a with ", ": {{a}}@end);
+ *   {{$fn}}(ctx, @join $extras as $a with ", ": {{$a}}@end);
  * @end
  * @endmacro
  */
