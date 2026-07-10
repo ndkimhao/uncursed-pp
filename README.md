@@ -90,13 +90,13 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 Within a loop over `seq<tuple<...>>`, the tuple's element names are bound
 automatically (`@join args with ", ": {{type}} {{argname}}@end`). Loop bodies
 may reference outer parameters freely — they travel through `FOR_EACH`'s data
-slot. See `tests/golden/reflect.uncursed` for a worked example: a reflection
-system where one field list generates a struct, a name/type/offset metadata
-table, and a debug printer.
+slot. See `tests/golden/compose/reflect.uncursed` for a worked example: a
+reflection system where one field list generates a struct, a name/type/offset
+metadata table, and a debug printer.
 
 Identical generated helpers are deduplicated across the file into shared
-`UNCURSED_PP_H<n>` macros; loop bodies differing by one constant token share a
-helper with the constant passed through `FOR_EACH`'s data slot.
+`UNCURSED_PP_<FILESTEM>_H<n>` macros; loop bodies differing by one constant
+token share a helper with the constant passed through `FOR_EACH`'s data slot.
 
 Common utilities (currently the `KW_SPREAD` tuple-unpacking helper) are not
 inlined: headers that need them `#include "uncursed_pp_runtime.h"`, a small

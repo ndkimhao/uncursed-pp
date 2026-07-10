@@ -323,10 +323,12 @@ For each macro, uncursed-pp emits the public `#define` plus namespaced helpers:
 
 Two whole-file passes keep output small and deterministic:
 
-- **Helper collapse**: identical helpers merge into shared `UNCURSED_PP_H<n>`
-  macros (numbered in first-use order); loop helpers differing by exactly one
-  constant token merge with the constant passed through the `d` slot. Anything
-  needing more machinery stays unmerged on purpose.
+- **Helper collapse**: identical helpers merge into shared
+  `UNCURSED_PP_<FILESTEM>_H<n>` macros, numbered in first-use order and
+  namespaced by file stem so two generated headers never collide; loop
+  helpers differing by exactly one constant token merge with the constant
+  passed through the `d` slot. Anything needing more machinery stays
+  unmerged on purpose.
 - **Granular includes**: only the `boost/preprocessor/*.hpp` headers for
   primitives actually used are included (sorted), unless `pp_include` overrides.
 
@@ -380,8 +382,8 @@ specs, and every macro it defines must be exercised (meta-tests enforce both).
 
 ## 13. Worked example: a reflection system
 
-`tests/golden/reflect.uncursed` shows the pieces composing. One field list is
-the single source of truth:
+`tests/golden/compose/reflect.uncursed` shows the pieces composing. One field
+list is the single source of truth:
 
 ```text
 macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)

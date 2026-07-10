@@ -67,7 +67,7 @@ the refuted section):
 | 2-arg `BOOST_PP_TUPLE_ELEM` | modern variadic form; the 3-arg size operand is ignored anyway |
 | `IIF` over `IF` | skips a `BOOL` when the condition is already 0/1 |
 | Branch bodies as selected-then-invoked helpers | commas in branches stay legal; no `EXPAND`/defer tricks |
-| Helper collapse pass | identical helpers dedup into `UNCURSED_PP_H<n>`; loop helpers differing by ONE constant merge via the free `d` slot (never more — indirection budget) |
+| Helper collapse pass | identical helpers dedup into `UNCURSED_PP_<FILESTEM>_H<n>`; loop helpers differing by ONE constant merge via the free `d` slot (never more — indirection budget) |
 
 ### Round 1 — first measured audit (2026-07-10, commits `6837f27`, `8ad8ae0`)
 
