@@ -113,11 +113,11 @@ default `BOOST_PP_`). Generated helpers are namespaced `CURSEDPP_<MACRO>_<KIND>`
 | Construct | Generated code |
 |---|---|
 | `@for` over seq | helper `CURSEDPP_<M>_EACHn(r,d,e)` + `BOOST_PP_SEQ_FOR_EACH` |
-| `@join ... with sep` | `BOOST_PP_SEQ_FOR_EACH_I` + `BOOST_PP_COMMA_IF(i)` for `","`; for other seps `BOOST_PP_IF(i, CURSEDPP_<M>_SEPn, BOOST_PP_EMPTY)()` |
+| `@join ... with sep` | identity comma joins: table-driven `BOOST_PP_SEQ_ENUM`; otherwise `BOOST_PP_SEQ_FOR_EACH_I` + `BOOST_PP_COMMA_IF(i)` for `","`, `BOOST_PP_IF(i, CURSEDPP_<M>_SEPn, BOOST_PP_EMPTY)()` for other seps |
 | tuple named access | direct AP/BODY parameter when the tuple is unpacked (loops, spread tuple params); `BOOST_PP_TUPLE_ELEM(idx, x)` otherwise (whole-tuple use, name collisions) |
 | seq index `xs[k]` | `BOOST_PP_SEQ_ELEM(k, xs)` |
 | `@if/@else` | branch bodies emitted as separate helper macros, selected by `BOOST_PP_IIF(cond, THEN, ELSE)` then invoked — branch text may contain commas |
-| `len(xs) == n` etc. | `BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), n)` / `LESS` / `GREATER` |
+| `len(xs) == n` etc. | `BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), n)` for ==/!=; relationals compile to saturating `BOOL(DEC^k(lhs))` chains with branch swap for </<= (the LESS/GREATER family hides a WHILE-based SUB) |
 | `is_paren(x)` | `BOOST_PP_IS_BEGIN_PARENS(x)` |
 | `remove_parens(x)` | `BOOST_PP_REMOVE_PARENS(x)` |
 | `concat(a, b, ...)` | nested `BOOST_PP_CAT(a, BOOST_PP_CAT(b, ...))` |
@@ -125,7 +125,7 @@ default `BOOST_PP_`). Generated helpers are namespaced `CURSEDPP_<MACRO>_<KIND>`
 | loop free vars | outer params referenced in a loop body ride FOR_EACH's `d` slot (one var: `d` itself; several: a tuple in `d`) |
 | `@let name := expr` | generation-time binding; inlined at each use site |
 | `named variadic K = d` | keyword value may contain bare commas: `SET_K(...) slot, (__VA_ARGS__)` re-wraps, interpolation auto-`REMOVE_PARENS` — net effect: verbatim value passthrough |
-| tail defaults | arity chain `CURSEDPP_<M>_1 → ..._N` filling defaults + `#define M(...) BOOST_PP_OVERLOAD(CURSEDPP_<M>_, __VA_ARGS__)(__VA_ARGS__)` |
+| tail defaults | arity chain `CURSEDPP_<M>_1 → ..._N` filling defaults + a per-macro max-arity size scan (`OVERLOAD`'s 65-slot scan is ~2x slower) |
 | named args | setter dispatch: one `SET_<KW>(v) slot, v` per keyword; each `KW(value)` arg pastes onto `SET_` and names its own slot, a single `SEQ_FOLD_LEFT` TUPLE_REPLACEs slots in the defaults tuple; arity dispatch via OVERLOAD handles the zero-keyword call; shared KW_PUT utils live in a companion runtime header (name via `--runtime-name` / `@pragma runtime_name`), one copy for all generated headers. Unknown keywords are compile errors, not silent defaults |
 | variadic param | `BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)`, then treated as seq |
 
