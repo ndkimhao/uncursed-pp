@@ -1,3 +1,4 @@
 [tools]
+make = "latest"
 python = "3.14"
 uv = "latest"
