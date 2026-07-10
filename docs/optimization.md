@@ -32,13 +32,24 @@ gcc -E -P -fmem-report file.c -o /dev/null 2>&1 | grep -E '^Total +[0-9]' | head
 Rules that made results trustworthy (several were learned the hard way — see
 the refuted section):
 
-0. **Cap memory, always.** Benchmark TUs at audit scale allocate gigabytes,
-   and parallel measurement fan-out multiplies that: an unguarded 15-way
-   audit nearly OOMed a 15G host. Every benchmark gcc runs under
-   `ulimit -v 4194304` (4 GiB), at most 2-3 measurements in parallel, and
-   the test harness itself hard-caps every `cc` invocation (1 GiB address
-   space + 60s timeout in `conftest.run_cpp`) so pathological codegen fails
-   a test instead of the machine.
+0. **Cap memory, always — derived from the host, never hardcoded.**
+   Benchmark TUs at audit scale allocate gigabytes, and parallel measurement
+   fan-out multiplies that: an unguarded 15-way audit nearly OOMed a 15G
+   host. Before benchmarking, PROBE the machine and derive the budget:
+
+   ```sh
+   avail_kb=$(awk '/MemAvailable/{print $2}' /proc/meminfo)
+   jobs=$(( $(nproc) / 4 )); [ "$jobs" -lt 1 ] && jobs=1
+   per_job_kb=$(( avail_kb / (jobs + 1) ))   # +1 leaves system headroom
+   # each measurement: bash -c "ulimit -v $per_job_kb; gcc -E -P ..."
+   # at most $jobs measurements in flight at once
+   ```
+
+   If a measurement dies against its ulimit, reduce the benchmark scale
+   rather than raising the cap. The test harness applies the same
+   philosophy: `conftest.run_cpp` caps every `cc` invocation at an eighth
+   of physical RAM (clamped to [256 MiB, 2 GiB]) plus a 60s timeout, so
+   pathological codegen fails a test instead of the machine.
 
 1. **Token identity is a precondition.** `diff` of `gcc -E -P` outputs
    (whitespace-canonicalized) between current and proposed codegen must be

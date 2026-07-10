@@ -65,7 +65,19 @@ def canon(text: str) -> str:
 
 # Pathological macro expansions can eat the whole host (an unguarded
 # preprocessor bomb nearly OOMed a 15G machine): cap every cc invocation.
-CPP_MEM_LIMIT_BYTES = 1 << 30  # 1 GiB address space
+# The cap derives from the HOST's memory - an eighth of physical RAM,
+# clamped to [256 MiB, 2 GiB] - so small machines stay safe and big ones
+# don't fail legitimate tests.
+
+
+def _host_mem_bytes() -> int:
+    try:
+        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+    except (ValueError, OSError):
+        return 8 << 30  # sensible default when the probe is unavailable
+
+
+CPP_MEM_LIMIT_BYTES = max(256 << 20, min(2 << 30, _host_mem_bytes() // 8))
 CPP_TIMEOUT_S = 60
 
 
