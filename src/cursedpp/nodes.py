@@ -157,6 +157,7 @@ class MacroDef:
     params: list[Param]
     body: list[BodyNode]
     line: int = 0
+    source: str = ""  # original .cursed text incl. attached comments
 
 
 @dataclass

@@ -343,13 +343,23 @@ def parse_file(source: str, filename: str) -> File:
     extra_includes: list[str] = []
     lines = source.split("\n")
     i = 0
+    attached: list[str] = []  # comment lines directly above the next macro
 
     while i < len(lines):
         stripped = lines[i].strip()
-        if not stripped or stripped.startswith("#"):
+        if not stripped:
+            attached = []
+            i += 1
+            continue
+        if stripped.startswith("#"):
+            if stripped.startswith(("#?", "#=>")):
+                attached = []  # spec comments belong to the test harness
+            else:
+                attached.append(lines[i])
             i += 1
             continue
         if stripped.startswith("@pragma "):
+            attached = []
             key, value = _parse_pragma(stripped, filename, i + 1)
             if key == "include":
                 extra_includes.append(value)
@@ -358,7 +368,10 @@ def parse_file(source: str, filename: str) -> File:
             i += 1
             continue
         if stripped.startswith("macro "):
+            start = i
             macro, i = _parse_macro(lines, i, filename)
+            macro.source = "\n".join(attached + lines[start:i])
+            attached = []
             macros.append(macro)
             continue
         raise CursedppError(f"unexpected line: {stripped!r}", filename, i + 1)

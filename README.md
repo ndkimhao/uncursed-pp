@@ -15,7 +15,11 @@ end
 ```
 
 ```c
-/* generated */
+/* generated — each macro's block carries its .cursed source as a comment */
+/* cursedpp source:
+ * macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
+ * ...
+ */
 #define CURSEDPP_DECLARE_FIELDS_EACH1(r, d, e) BOOST_PP_TUPLE_ELEM(0, e) BOOST_PP_TUPLE_ELEM(1, e);
 #define DECLARE_FIELDS(fields) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_DECLARE_FIELDS_EACH1, ~, fields)
 

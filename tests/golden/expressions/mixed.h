@@ -10,12 +10,31 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 #include "cursedpp_runtime.h"
 
+/* cursedpp source:
+ * # Expressions over mixed data: concat of tuple fields, stringize of a
+ * # seq element and of a computed len(), remove_parens per loop element.
+ * macro FUSE(p: tuple<a, b>)
+ * {{concat(p.a, p.b)}}
+ * end
+ */
 #define CURSEDPP_FUSE_BODY1(a, b) BOOST_PP_CAT(a, b)
 #define CURSEDPP_FUSE_BODY1_D(...) CURSEDPP_FUSE_BODY1(__VA_ARGS__)
 #define FUSE(p) CURSEDPP_FUSE_BODY1_D(CURSEDPP_KW_SPREAD p)
 
+/* cursedpp source:
+ * macro STR0(xs: seq<token>)
+ * {{stringize(xs[0])}} / {{stringize(len(xs))}}
+ * end
+ */
 #define STR0(xs) BOOST_PP_STRINGIZE(BOOST_PP_SEQ_ELEM(0, xs)) / BOOST_PP_STRINGIZE(BOOST_PP_SEQ_SIZE(xs))
 
+/* cursedpp source:
+ * macro CLEAN(fields: seq<tuple<t, n>>)
+ * @for (t, n) in fields
+ * {{remove_parens(t)}} {{n}};
+ * @end
+ * end
+ */
 #define CURSEDPP_CLEAN_AP1(t, n) BOOST_PP_REMOVE_PARENS(t) n;
 #define CURSEDPP_CLEAN_EACH1(r, d, e) CURSEDPP_CLEAN_AP1 e
 #define CLEAN(fields) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_CLEAN_EACH1, ~, fields)

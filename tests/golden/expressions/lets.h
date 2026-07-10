@@ -10,13 +10,35 @@
 #include <boost/preprocessor/seq/for_each_i.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+/* cursedpp source:
+ * # @let may capture an inline @join or @if; the rendered helper is reused
+ * # at every use site. @let inside a loop body binds per element.
+ * macro CALL2(fn, args: seq<tuple<type, argname>>)
+ * @let joined := @join args with ", ": {{argname}}@end
+ * {{fn}}({{joined}}, {{joined}})
+ * end
+ */
 #define CURSEDPP_CALL2_AP1(type, argname) argname
 #define CURSEDPP_CALL2_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) CURSEDPP_CALL2_AP1 e
 #define CALL2(fn, args) fn(BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_CALL2_EACH1, ~, args), BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_CALL2_EACH1, ~, args))
 
+/* cursedpp source:
+ * macro PICK(x)
+ * @let norm := @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end
+ * g({{norm}})
+ * end
+ */
 #define CURSEDPP_PICK_THEN1(x) BOOST_PP_REMOVE_PARENS(x)
 #define CURSEDPP_PICK_ELSE1(x) x
 #define PICK(x) g(BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(x), CURSEDPP_PICK_THEN1, CURSEDPP_PICK_ELSE1)(x))
 
+/* cursedpp source:
+ * macro PAIRS(xs: seq<token>)
+ * @for x in xs
+ * @let id := concat(x, _id)
+ * int {{id}} = sizeof({{id}});
+ * @end
+ * end
+ */
 #define CURSEDPP_PAIRS_EACH1(r, d, e) int BOOST_PP_CAT(e, _id) = sizeof(BOOST_PP_CAT(e, _id));
 #define PAIRS(xs) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_PAIRS_EACH1, ~, xs)

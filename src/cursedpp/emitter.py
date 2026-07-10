@@ -712,6 +712,13 @@ def _format_define(head: str, body: str) -> str:
     return f"#define {head} \\\n    {joined}\n"
 
 
+def _source_comment(source: str) -> str:
+    """The original .cursed text, embedded above the macro's #defines."""
+    lines = [line.rstrip().replace("*/", "* /") for line in source.splitlines()]
+    body = "".join(f" * {line}\n" if line else " *\n" for line in lines)
+    return f"/* cursedpp source:\n{body} */\n"
+
+
 def _format_helper(helper: _Helper) -> str:
     body = f" {helper.body}" if helper.body else ""
     return f"#define {helper.name}({helper.params}){body}\n"
@@ -729,8 +736,10 @@ def emit_file(file: File, *, source_name: str, config: EmitConfig | None = None)
     ]
     collapse(outs, config.helper_prefix)
     macro_chunks: list[str] = []
-    for out in outs:
+    for macro, out in zip(file.macros, outs):
         macro_chunks.append("\n")
+        if macro.source:
+            macro_chunks.append(_source_comment(macro.source))
         for helper in out.helpers:
             macro_chunks.append(_format_helper(helper))
         macro_chunks.extend(out.defines)

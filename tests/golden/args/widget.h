@@ -9,6 +9,15 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include "cursedpp_runtime.h"
 
+/* cursedpp source:
+ * # Named arguments: KEYWORD(value) at the call site, any order, any subset.
+ * #   MAKE_WIDGET(w1)                          → struct widget w1 = { 100, 50, };
+ * #   MAKE_WIDGET(w2, HEIGHT(80))              → struct widget w2 = { 100, 80, };
+ * #   MAKE_WIDGET(w3, FLAGS(BOLD), WIDTH(20))  → struct widget w3 = { 20, 50, BOLD };
+ * macro MAKE_WIDGET(name, named WIDTH = 100, named HEIGHT = 50, named FLAGS = )
+ * struct widget {{name}} = { {{WIDTH}}, {{HEIGHT}}, {{FLAGS}} };
+ * end
+ */
 #define CURSEDPP_MAKE_WIDGET_SET_WIDTH(v) 0, v
 #define CURSEDPP_MAKE_WIDGET_SET_HEIGHT(v) 1, v
 #define CURSEDPP_MAKE_WIDGET_SET_FLAGS(v) 2, v
@@ -33,6 +42,13 @@
 #define CURSEDPP_MAKE_WIDGET_4 CURSEDPP_MAKE_WIDGET_KW
 #define MAKE_WIDGET(...) BOOST_PP_OVERLOAD(CURSEDPP_MAKE_WIDGET_, __VA_ARGS__)(__VA_ARGS__)
 
+/* cursedpp source:
+ * # 'named variadic' keyword values may contain bare commas: the generated
+ * # setter captures __VA_ARGS__ and re-wraps, and {{COLORS}} auto-unwraps.
+ * macro STYLE(name, named variadic COLORS = none)
+ * unsigned {{name}}[] = { {{COLORS}} };
+ * end
+ */
 #define CURSEDPP_STYLE_SET_COLORS(...) 0, (__VA_ARGS__)
 #define CURSEDPP_STYLE_STEP(s, state, e) CURSEDPP_STYLE_STEP_D(state, BOOST_PP_CAT(CURSEDPP_STYLE_SET_, e))
 #define CURSEDPP_STYLE_STEP_D(state, ...) CURSEDPP_STYLE_STEP_I(state, __VA_ARGS__)

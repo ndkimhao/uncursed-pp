@@ -5,6 +5,14 @@
 #include <boost/preprocessor/facilities/empty.hpp>
 #include <boost/preprocessor/seq/for_each_i.hpp>
 
+/* cursedpp source:
+ * # Non-comma separator: the separator text lives in its own SEP helper.
+ * macro ORS(xs: seq<token>)
+ * @join xs as x with " || "
+ * ({{x}})
+ * @end
+ * end
+ */
 #define CURSEDPP_ORS_SEP1() ||
 #define CURSEDPP_ORS_EACH1(r, d, i, e) BOOST_PP_IF(i, CURSEDPP_ORS_SEP1, BOOST_PP_EMPTY)() (e)
 #define ORS(xs) BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_ORS_EACH1, ~, xs)

@@ -5,5 +5,11 @@
 #include <boost/preprocessor/seq/for_each_i.hpp>
 #include <boost/preprocessor/seq/size.hpp>
 
+/* cursedpp source:
+ * # Two inline @joins on one line get independent EACH helpers.
+ * macro ZIP(ks: seq<token>, vs: seq<token>)
+ * k({{len(ks)}}): @join ks as k with ", ": {{k}}@end / v: @join vs as v with ", ": {{v}}@end
+ * end
+ */
 #define CURSEDPP_H1(r, d, i, e) BOOST_PP_COMMA_IF(i) e
 #define ZIP(ks, vs) k(BOOST_PP_SEQ_SIZE(ks)): BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_H1, ~, ks) / v: BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_H1, ~, vs)

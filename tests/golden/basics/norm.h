@@ -5,6 +5,12 @@
 #include <boost/preprocessor/punctuation/is_begin_parens.hpp>
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
 
+/* cursedpp source:
+ * # Normalize: strip parens iff present (inline @if + is_paren).
+ * macro NORM(x)
+ * @if is_paren(x) {{remove_parens(x)}} @else {{x}} @end
+ * end
+ */
 #define CURSEDPP_NORM_THEN1(x) BOOST_PP_REMOVE_PARENS(x)
 #define CURSEDPP_NORM_ELSE1(x) x
 #define NORM(x) BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(x), CURSEDPP_NORM_THEN1, CURSEDPP_NORM_ELSE1)(x)

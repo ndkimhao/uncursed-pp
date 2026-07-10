@@ -9,6 +9,16 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+/* cursedpp source:
+ * # Branch on argument count: single-arg vs n-arg initializer.
+ * macro CTOR(name, args: seq<tuple<type, argname>>)
+ * @if len(args) == 1
+ *   explicit_single_arg_init({{name}})
+ * @else
+ *   {{concat(name, _init)}}(@join args with ", ": {{argname}}@end)
+ * @end
+ * end
+ */
 #define CURSEDPP_CTOR_THEN1(name, args) explicit_single_arg_init(name)
 #define CURSEDPP_CTOR_AP1(type, argname) argname
 #define CURSEDPP_CTOR_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) CURSEDPP_CTOR_AP1 e

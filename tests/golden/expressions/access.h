@@ -4,6 +4,17 @@
 #include <boost/preprocessor/seq/elem.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+/* cursedpp source:
+ * # Element access: seq indexing and chained seq[i].field access.
+ * macro HEADTAIL(xs: seq<token>)
+ * {{xs[0]}} ... {{xs[1]}}
+ * end
+ */
 #define HEADTAIL(xs) BOOST_PP_SEQ_ELEM(0, xs) ... BOOST_PP_SEQ_ELEM(1, xs)
 
+/* cursedpp source:
+ * macro SECOND_NAME(xs: seq<tuple<t, n>>)
+ * {{xs[1].n}}
+ * end
+ */
 #define SECOND_NAME(xs) BOOST_PP_TUPLE_ELEM(1, BOOST_PP_SEQ_ELEM(1, xs))

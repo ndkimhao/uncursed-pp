@@ -4,6 +4,14 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+/* cursedpp source:
+ * # Declare one struct field per (type, name) tuple.
+ * macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
+ * @for (type, name) in fields
+ *   {{type}} {{name}};
+ * @end
+ * end
+ */
 #define CURSEDPP_DECLARE_FIELDS_AP1(type, name) type name;
 #define CURSEDPP_DECLARE_FIELDS_EACH1(r, d, e) CURSEDPP_DECLARE_FIELDS_AP1 e
 #define DECLARE_FIELDS(fields) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_DECLARE_FIELDS_EACH1, ~, fields)

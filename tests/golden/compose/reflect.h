@@ -9,6 +9,15 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include "cursedpp_runtime.h"
 
+/* cursedpp source:
+ * macro DEFINE_STRUCT(sname, fields: seq<tuple<type, name, fmt>>)
+ * typedef struct {
+ * @for (type, name, fmt) in fields
+ *   {{type}} {{name}};
+ * @end
+ * } {{sname}};
+ * end
+ */
 #define CURSEDPP_DEFINE_STRUCT_AP1(type, name, fmt) type name;
 #define CURSEDPP_H1(r, d, e) d e
 #define DEFINE_STRUCT(sname, fields) \
@@ -16,6 +25,16 @@
     BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, CURSEDPP_DEFINE_STRUCT_AP1, fields) \
     } sname;
 
+/* cursedpp source:
+ * macro DEFINE_FIELD_TABLE(sname, fields: seq<tuple<type, name, fmt>>)
+ * static const cursed_field {{concat(sname, _fields)}}[] = {
+ * @for (type, name, fmt) in fields
+ *   { {{stringize(name)}}, {{stringize(type)}}, offsetof({{sname}}, {{name}}) },
+ * @end
+ * };
+ * enum { {{concat(sname, _field_count)}} = {{len(fields)}} };
+ * end
+ */
 #define CURSEDPP_DEFINE_FIELD_TABLE_AP1(sname, type, name, fmt) { BOOST_PP_STRINGIZE(name), BOOST_PP_STRINGIZE(type), offsetof(sname, name) },
 #define CURSEDPP_DEFINE_FIELD_TABLE_AP1_D(...) CURSEDPP_DEFINE_FIELD_TABLE_AP1(__VA_ARGS__)
 #define CURSEDPP_DEFINE_FIELD_TABLE_EACH1(r, d, e) CURSEDPP_DEFINE_FIELD_TABLE_AP1_D(d, CURSEDPP_KW_SPREAD e)
@@ -25,12 +44,31 @@
     }; \
     enum { BOOST_PP_CAT(sname, _field_count) = BOOST_PP_SEQ_SIZE(fields) };
 
+/* cursedpp source:
+ * macro DEFINE_PRINTER(sname, fields: seq<tuple<type, name, fmt>>)
+ * static void {{concat(print_, sname)}}(const {{sname}} *v) {
+ * @for (type, name, fmt) in fields
+ *   printf("  " {{stringize(name)}} " = " {{fmt}} "\n", v->{{name}});
+ * @end
+ * }
+ * end
+ */
 #define CURSEDPP_DEFINE_PRINTER_AP1(type, name, fmt) printf(" " BOOST_PP_STRINGIZE(name) " = " fmt "\n", v->name);
 #define DEFINE_PRINTER(sname, fields) \
     static void BOOST_PP_CAT(print_, sname)(const sname *v) { \
     BOOST_PP_SEQ_FOR_EACH(CURSEDPP_H1, CURSEDPP_DEFINE_PRINTER_AP1, fields) \
     }
 
+/* cursedpp source:
+ * # Generated macros compose: REFLECT fans out to the three above. Its
+ * # variadic<tuple<...>> parameter gives call sites single-paren elements;
+ * # VARIADIC_TO_SEQ hands the inner seq-typed macros their (e)(e) form.
+ * macro REFLECT(sname, fields: variadic<tuple<type, name, fmt>>)
+ * DEFINE_STRUCT({{sname}}, {{fields}})
+ * DEFINE_FIELD_TABLE({{sname}}, {{fields}})
+ * DEFINE_PRINTER({{sname}}, {{fields}})
+ * end
+ */
 #define REFLECT(sname, ...) \
     DEFINE_STRUCT(sname, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \
     DEFINE_FIELD_TABLE(sname, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__)) \

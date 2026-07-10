@@ -4,6 +4,12 @@
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
 #include "cursedpp_runtime.h"
 
+/* cursedpp source:
+ * # Maybe-paren stripping: wrap a comma-containing value at the call site.
+ * macro PAIR(p: tuple<a, b>)
+ * S{ {{remove_parens(p.a)}} | {{p.b}} }
+ * end
+ */
 #define CURSEDPP_PAIR_BODY1(a, b) S{ BOOST_PP_REMOVE_PARENS(a) | b }
 #define CURSEDPP_PAIR_BODY1_D(...) CURSEDPP_PAIR_BODY1(__VA_ARGS__)
 #define PAIR(p) CURSEDPP_PAIR_BODY1_D(CURSEDPP_KW_SPREAD p)

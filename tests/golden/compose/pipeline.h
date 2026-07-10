@@ -12,16 +12,41 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include "cursedpp_runtime.h"
 
+/* cursedpp source:
+ * # Values travel between generated macros: a whole tuple forwarded as one
+ * # argument, and a whole seq carried inside a 'named variadic' value and
+ * # handed to a looping macro. is_paren() guards the empty default.
+ * macro GET_A(p: tuple<a, b>)
+ * {{p.a}}
+ * end
+ */
 #define CURSEDPP_GET_A_BODY1(a, b) a
 #define CURSEDPP_GET_A_BODY1_D(...) CURSEDPP_GET_A_BODY1(__VA_ARGS__)
 #define GET_A(p) CURSEDPP_GET_A_BODY1_D(CURSEDPP_KW_SPREAD p)
 
+/* cursedpp source:
+ * macro USE(q: tuple<a, b>)
+ * first = GET_A({{q}});
+ * end
+ */
 #define USE(q) first = GET_A(q);
 
+/* cursedpp source:
+ * macro EACH_FIELD(fields: seq<tuple<t, n>>)
+ * @for (t, n) in fields
+ * {{t}} {{n}};
+ * @end
+ * end
+ */
 #define CURSEDPP_EACH_FIELD_AP1(t, n) t n;
 #define CURSEDPP_EACH_FIELD_EACH1(r, d, e) CURSEDPP_EACH_FIELD_AP1 e
 #define EACH_FIELD(fields) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_EACH_FIELD_EACH1, ~, fields)
 
+/* cursedpp source:
+ * macro OBJ(name, named variadic FIELDS = )
+ * struct {{name}} { @if is_paren(FIELDS) EACH_FIELD({{FIELDS}}) @end };
+ * end
+ */
 #define CURSEDPP_OBJ_THEN1(FIELDS) EACH_FIELD(FIELDS)
 #define CURSEDPP_OBJ_ELSE1(FIELDS)
 #define CURSEDPP_OBJ_SET_FIELDS(...) 0, (__VA_ARGS__)

@@ -84,3 +84,52 @@ def test_multiple_macros_share_one_header():
 def test_duplicate_interp_on_one_line():
     out = compile_source("macro D(x)\n{{x}} + {{x}} + {{x}}\nend\n", "t.cursed")
     assert "#define D(x) x + x + x\n" in out
+
+
+def test_generated_header_embeds_cursed_source():
+    src = "# doubles x\nmacro TWICE(x)\n({{x}} + {{x}})\nend\n"
+    out = compile_source(src, "t.cursed")
+    comment = (
+        "/* cursedpp source:\n"
+        " * # doubles x\n"
+        " * macro TWICE(x)\n"
+        " * ({{x}} + {{x}})\n"
+        " * end\n"
+        " */\n"
+    )
+    assert comment in out
+    assert out.index(comment) < out.index("#define TWICE(x)")
+
+
+def test_source_comment_per_macro_with_own_comments():
+    src = (
+        "# first\nmacro A(x)\n{{x}}\nend\n"
+        "\n"
+        "# second\nmacro B(y)\n{{y}}\nend\n"
+    )
+    out = compile_source(src, "t.cursed")
+    assert " * # first\n * macro A(x)\n" in out
+    assert " * # second\n * macro B(y)\n" in out
+    # each macro's comment sits with its own block
+    assert out.index("# first") < out.index("#define A(x)") < out.index("# second")
+
+
+def test_spec_comments_are_not_attached():
+    src = "#? A(q)\n#=> q\n# real comment\nmacro A(x)\n{{x}}\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert " * # real comment\n" in out
+    assert "#?" not in out
+    assert "#=>" not in out
+
+
+def test_blank_line_detaches_comments():
+    src = "# stale note\n\nmacro A(x)\n{{x}}\nend\n"
+    out = compile_source(src, "t.cursed")
+    assert "stale note" not in out
+
+
+def test_comment_terminator_in_body_is_sanitized():
+    src = "macro C(x)\n{{x}} /* inline */\nend\n"
+    out = compile_source(src, "t.cursed")
+    # the embedded source must not close the enclosing C comment early
+    assert " * {{x}} /* inline * /\n" in out

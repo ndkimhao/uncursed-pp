@@ -11,6 +11,18 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include "cursedpp_runtime.h"
 
+/* cursedpp source:
+ * # A named value's SHAPE picks the branch: parenthesized initializers
+ * # become brace lists, bare tokens plain assignments, and the empty
+ * # default falls through to a declaration.
+ * macro DECL(name, named INIT = )
+ * @if is_paren(INIT)
+ * pair {{name}} = { {{remove_parens(INIT)}} };
+ * @else
+ * int {{name}} = {{INIT}};
+ * @end
+ * end
+ */
 #define CURSEDPP_DECL_THEN1(name, INIT) pair name = { BOOST_PP_REMOVE_PARENS(INIT) };
 #define CURSEDPP_DECL_ELSE1(name, INIT) int name = INIT;
 #define CURSEDPP_DECL_SET_INIT(v) 0, v

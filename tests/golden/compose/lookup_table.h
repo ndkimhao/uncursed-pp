@@ -7,6 +7,15 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
+/* cursedpp source:
+ * # Composition: @let of len() and @let of an inline @join, each reused.
+ * macro LOOKUP_TABLE(tname, keys: seq<token>)
+ * @let n := len(keys)
+ * @let strings := @join keys as k with ", ": {{stringize(k)}}@end
+ * static const char *{{tname}}[{{n}}] = { {{strings}} };
+ * enum { {{concat(tname, _len)}} = {{n}} };
+ * end
+ */
 #define CURSEDPP_LOOKUP_TABLE_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) BOOST_PP_STRINGIZE(e)
 #define LOOKUP_TABLE(tname, keys) \
     static const char *tname[BOOST_PP_SEQ_SIZE(keys)] = { BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_LOOKUP_TABLE_EACH1, ~, keys) }; \

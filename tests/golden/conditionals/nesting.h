@@ -9,17 +9,59 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+/* cursedpp source:
+ * # @for inside an @else branch
+ * macro OPT(xs: seq<token>)
+ * @if len(xs) == 1
+ * solo({{xs[0]}})
+ * @else
+ * @for x in xs
+ * many({{x}});
+ * @end
+ * @end
+ * end
+ */
 #define CURSEDPP_OPT_THEN1(xs) solo(BOOST_PP_SEQ_ELEM(0, xs))
 #define CURSEDPP_OPT_EACH1(r, d, e) many(e);
 #define CURSEDPP_OPT_ELSE1(xs) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_OPT_EACH1, ~, xs)
 #define OPT(xs) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), 1), CURSEDPP_OPT_THEN1, CURSEDPP_OPT_ELSE1)(xs)
 
+/* cursedpp source:
+ * # @if inside an @if branch
+ * macro GRADE(xs: seq<token>)
+ * @if len(xs) < 3
+ * @if len(xs) == 1
+ * tiny
+ * @else
+ * small
+ * @end
+ * @else
+ * big
+ * @end
+ * end
+ */
 #define CURSEDPP_GRADE_THEN1() tiny
 #define CURSEDPP_GRADE_ELSE1() small
 #define CURSEDPP_GRADE_THEN2(xs) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), 1), CURSEDPP_GRADE_THEN1, CURSEDPP_GRADE_ELSE1)()
 #define CURSEDPP_GRADE_ELSE2(xs) big
 #define GRADE(xs) BOOST_PP_IIF(BOOST_PP_LESS(BOOST_PP_SEQ_SIZE(xs), 3), CURSEDPP_GRADE_THEN2, CURSEDPP_GRADE_ELSE2)(xs)
 
+/* cursedpp source:
+ * # three levels: @if -> @for -> @if
+ * macro TRIAGE(xs: seq<tuple<kind, val>>)
+ * @if len(xs) == 1
+ * only({{xs[0].val}});
+ * @else
+ * @for (kind, val) in xs
+ * @if kind == 1
+ * urgent({{val}});
+ * @else
+ * routine({{kind}}, {{val}});
+ * @end
+ * @end
+ * @end
+ * end
+ */
 #define CURSEDPP_TRIAGE_THEN1(xs) only(BOOST_PP_TUPLE_ELEM(1, BOOST_PP_SEQ_ELEM(0, xs)));
 #define CURSEDPP_TRIAGE_THEN2(val, kind) urgent(val);
 #define CURSEDPP_TRIAGE_ELSE1(val, kind) routine(kind, val);

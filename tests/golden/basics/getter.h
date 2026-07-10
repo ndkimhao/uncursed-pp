@@ -4,6 +4,15 @@
 #include <boost/preprocessor/cat.hpp>
 #include "cursedpp_runtime.h"
 
+/* cursedpp source:
+ * # Getter function for one (type, name) field; concat() pastes the identifier.
+ * macro GETTER(field: tuple<type, name>)
+ * @let getter := concat(get_, field.name)
+ * {{field.type}} {{getter}}(const struct self *s) {
+ *   return s->{{field.name}};
+ * }
+ * end
+ */
 #define CURSEDPP_GETTER_BODY1(type, name) \
     type BOOST_PP_CAT(get_, name)(const struct self *s) { \
     return s->name; \

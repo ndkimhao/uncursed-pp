@@ -3,6 +3,13 @@
 
 #include <boost/preprocessor/facilities/overload.hpp>
 
+/* cursedpp source:
+ * # Tail defaults: arity dispatch at C compile time.
+ * #   LOG(m) / LOG(m, WARN) / LOG(m, WARN, stdout)
+ * macro LOG(msg, level = INFO, out = stderr)
+ * fprintf({{out}}, "[" #{{level}} "] %s\n", {{msg}});
+ * end
+ */
 #define CURSEDPP_LOG_1(msg) CURSEDPP_LOG_3(msg, INFO, stderr)
 #define CURSEDPP_LOG_2(msg, level) CURSEDPP_LOG_3(msg, level, stderr)
 #define CURSEDPP_LOG_3(msg, level, out) fprintf(out, "[" #level "] %s\n", msg);

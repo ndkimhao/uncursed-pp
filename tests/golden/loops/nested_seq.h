@@ -4,5 +4,15 @@
 #include <boost/preprocessor/seq/elem.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 
+/* cursedpp source:
+ * # seq<seq<token>>: index the outer seq, bind the inner one with @let,
+ * # then loop over it (one loop level - the outer access is an index).
+ * macro FIRST_ROW(grid: seq<seq<token>>)
+ * @let row := grid[0]
+ * @for x in row
+ * cell({{x}});
+ * @end
+ * end
+ */
 #define CURSEDPP_FIRST_ROW_EACH1(r, d, e) cell(e);
 #define FIRST_ROW(grid) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_FIRST_ROW_EACH1, ~, BOOST_PP_SEQ_ELEM(0, grid))

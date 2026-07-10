@@ -7,16 +7,50 @@
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
+/* cursedpp source:
+ * # Branch helpers receive the union of both branches' free variables;
+ * # branch bodies may contain commas safely (each lives in its own helper).
+ * macro REPORT(a, b, xs: seq<token>)
+ * @if len(xs) == 1
+ * one({{a}})
+ * @else
+ * many({{b}}, {{len(xs)}})
+ * @end
+ * end
+ */
 #define CURSEDPP_REPORT_THEN1(a, b, xs) one(a)
 #define CURSEDPP_REPORT_ELSE1(a, b, xs) many(b, BOOST_PP_SEQ_SIZE(xs))
 #define REPORT(a, b, xs) BOOST_PP_IIF(BOOST_PP_EQUAL(BOOST_PP_SEQ_SIZE(xs), 1), CURSEDPP_REPORT_THEN1, CURSEDPP_REPORT_ELSE1)(a, b, xs)
 
+/* cursedpp source:
+ * # Line-form @if nested in a @for: branch per element.
+ * macro EMIT(xs: seq<tuple<kind, val>>)
+ * @for (kind, val) in xs
+ * @if kind == 1
+ * one({{val}});
+ * @else
+ * other({{kind}}, {{val}});
+ * @end
+ * @end
+ * end
+ */
 #define CURSEDPP_EMIT_THEN1(val, kind) one(val);
 #define CURSEDPP_EMIT_ELSE1(val, kind) other(kind, val);
 #define CURSEDPP_EMIT_AP1(kind, val) BOOST_PP_IIF(BOOST_PP_EQUAL(kind, 1), CURSEDPP_EMIT_THEN1, CURSEDPP_EMIT_ELSE1)(val, kind)
 #define CURSEDPP_EMIT_EACH1(r, d, e) CURSEDPP_EMIT_AP1 e
 #define EMIT(xs) BOOST_PP_SEQ_FOR_EACH(CURSEDPP_EMIT_EACH1, ~, xs)
 
+/* cursedpp source:
+ * # Two sequential @ifs in one macro get independently numbered helpers.
+ * macro SIZE_CLASS(xs: seq<token>)
+ * @if len(xs) == 1
+ * single
+ * @end
+ * @if len(xs) == 2
+ * double
+ * @end
+ * end
+ */
 #define CURSEDPP_SIZE_CLASS_THEN1() single
 #define CURSEDPP_H1()
 #define CURSEDPP_SIZE_CLASS_THEN2() double

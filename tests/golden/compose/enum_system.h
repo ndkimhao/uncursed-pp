@@ -9,6 +9,27 @@
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include "cursedpp_runtime.h"
 
+/* cursedpp source:
+ * # Composition: typed variadic + loops with free vars + nested concat +
+ * # stringize + len. One entry list yields an enum, a to-string helper,
+ * # and a count.
+ * macro DEFINE_ENUM(ename, entries: variadic<tuple<name, value>>)
+ * typedef enum {
+ * @for (name, value) in entries
+ *   {{concat(ename, concat(_, name))}} = {{value}},
+ * @end
+ * } {{ename}};
+ * static const char *{{concat(ename, _to_string)}}(int v) {
+ *   switch (v) {
+ * @for (name, value) in entries
+ *     case {{value}}: return {{stringize(concat(ename, concat(_, name)))}};
+ * @end
+ *   }
+ *   return "?";
+ * }
+ * enum { {{concat(ename, _count)}} = {{len(entries)}} };
+ * end
+ */
 #define CURSEDPP_DEFINE_ENUM_AP1(ename, name, value) BOOST_PP_CAT(ename, BOOST_PP_CAT(_, name)) = value,
 #define CURSEDPP_DEFINE_ENUM_AP1_D(...) CURSEDPP_DEFINE_ENUM_AP1(__VA_ARGS__)
 #define CURSEDPP_DEFINE_ENUM_EACH1(r, d, e) CURSEDPP_DEFINE_ENUM_AP1_D(d, CURSEDPP_KW_SPREAD e)

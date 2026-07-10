@@ -7,6 +7,13 @@
 #include <boost/preprocessor/seq/for_each_i.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
 
+/* cursedpp source:
+ * # Variadic + inline @if + is_paren(): pad bare tokens to (token, omit).
+ * #   NORMALIZE(a, (b,c), d)  →  S{ (a, omit), (b,c), (d, omit) }
+ * macro NORMALIZE(items: variadic)
+ * S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @end@end }
+ * end
+ */
 #define CURSEDPP_NORMALIZE_THEN1(it) it
 #define CURSEDPP_NORMALIZE_ELSE1(it) (it, omit)
 #define CURSEDPP_NORMALIZE_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(e), CURSEDPP_NORMALIZE_THEN1, CURSEDPP_NORMALIZE_ELSE1)(e)

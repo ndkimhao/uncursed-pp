@@ -9,6 +9,17 @@
 #include <boost/preprocessor/seq/for_each_i.hpp>
 #include <boost/preprocessor/seq/size.hpp>
 
+/* cursedpp source:
+ * # Composition: @if len over a seq, inline @join inside a branch,
+ * # indexing in the other branch, concat in both.
+ * macro DISPATCH(fn, args: seq<token>)
+ * @if len(args) == 1
+ * {{concat(fn, _1)}}({{args[0]}})
+ * @else
+ * {{concat(fn, _n)}}({{len(args)}}, @join args as a with ", ": {{a}}@end)
+ * @end
+ * end
+ */
 #define CURSEDPP_DISPATCH_THEN1(fn, args) BOOST_PP_CAT(fn, _1)(BOOST_PP_SEQ_ELEM(0, args))
 #define CURSEDPP_DISPATCH_EACH1(r, d, i, e) BOOST_PP_COMMA_IF(i) e
 #define CURSEDPP_DISPATCH_ELSE1(fn, args) BOOST_PP_CAT(fn, _n)(BOOST_PP_SEQ_SIZE(args), BOOST_PP_SEQ_FOR_EACH_I(CURSEDPP_DISPATCH_EACH1, ~, args))
