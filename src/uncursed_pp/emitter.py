@@ -812,6 +812,12 @@ class _MacroEmitter:
             self.out.helpers.append(
                 _Helper(name=f"{chain}{n}", params=elem_var, body=f"{body}{sep} {chain}{n - 1}")
             )
+        if k >= 256:
+            # full-range chain: no seq can exceed it (BOOST_PP_LIMIT_SEQ),
+            # so the size pick, the FOR_EACH fallback, and its include are
+            # all unnecessary - dispatch straight into the chain
+            self._big_name = ""
+            return f"{self.pp('CAT')}({chain}, {self.pp('SEQ_SIZE')}({seq_expr})) {seq_expr}"
         self.file_state["chain_tables"].add(k)
         table = f"{self.config.helper_prefix}LE{k}_"
         small = f"{base}SMALL{count}"
@@ -882,6 +888,8 @@ class _MacroEmitter:
         if self._loop_depth:
             return self._render_inner_loop(loop, env, seq_expr, elem_type, sep=None)
         body, data = self._loop_body(loop, env, elem_type)
+        if self.config.loop_chain_limit >= 256 and self._chain_eligible(loop, data):
+            return self._render_chain(body, "", seq_expr, "e")
         helper = self._add_helper("EACH", "r, d, e", body)
         each_call = f"{self.pp('SEQ_FOR_EACH')}({helper}, {data}, "
         if self._chain_eligible(loop, data):
@@ -905,6 +913,9 @@ class _MacroEmitter:
             # identity comma join: SEQ_ENUM is table-driven, ~50-140x cheaper
             # than the FOR-based SEQ_FOR_EACH_I + COMMA_IF machinery
             return f"{self.pp('SEQ_ENUM')}({seq_expr})"
+        if self.config.loop_chain_limit >= 256 and self._chain_eligible(join, data):
+            chain_sep = "," if sep == "," else f" {sep}"
+            return self._render_chain(body, chain_sep, seq_expr, "e")
         if sep == ",":
             each_body = f"{self.pp('COMMA_IF')}(i) {body}"
         else:

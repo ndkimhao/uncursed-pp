@@ -122,6 +122,45 @@ compile errors instead of silently taking defaults.
 Cumulative on the same benchmark TU (`widget.h`, 2000 invocations):
 **2295M → 16M (~143x)**.
 
+### Round 4 — the size-budget round (multi-agent audit, verify-only replay)
+
+A fourth audit (5 finders, adversarial verification, host-derived memory
+caps after the OOM incident) confirmed large wins that were then **rejected
+on the header-size budget** — generated-header growth is a gating axis on
+par with correctness, and material growth needs maintainer sign-off:
+
+| Confirmed find (verified gain) | Why not shipped |
+|---|---|
+| Free-var loops via head/tail FB/FC chains (7.4–25.4x) | +32 one-line defines per loop family; measured header growth up to ~11x on small headers (free_vars.h 1.2KB → 13.5KB). SPLIT-prescan mechanism recorded below for the day the budget changes |
+| Multi-free-var spread as chain params (16.7–32.3x) | same family cost; subsumes the above |
+| Nested-loop chains replacing REPEAT+SEQ_ELEM O(n²) towers (5.8–17.6x; current codegen OOMs at scales the chains survive) | one chain family per level per loop |
+| GT<k> 0/1 tables for relational literals k≥12 (2.4–3.3x) | +257 lines per distinct k per file |
+| `loop_chain_limit` 256 as default (1.30x/TU: retires seq/for_each.hpp) | 256-line chains per loop as a *default*; instead the **full-range shortcut shipped**: opting in via `@pragma loop_chain_limit 256` now drops PICK/BIG/the size table/the for_each include entirely |
+
+**Confirmed but rejected on contract:** curried named-arg setters
+(1.3–1.7x, deletes STEP_D/STEP_I) silently emit garbage instead of a hard
+preprocessor error on a MISSPELLED keyword — the old STEP_D hop incidentally
+keeps the failure parenthesized so BODY's fixed arity catches it
+("requires 4 arguments, but only 2 given"). Both the finder and the
+adversarial verifier missed this; the `#?!` negative spec in
+tests/golden/args/widget.uncursed caught it. Lesson: error-path contracts
+are part of token identity — verify `#?!` specs, not just happy paths.
+
+**Free-var chain mechanism, for the record** (verified token-identical,
+implementable): runtime `SPLIT(e) e,` peels `(head)(tail)` into `head, tail`
+during a variadic FB hop's argument prescan; FC members receive
+`(freevars..., head, tail)` and recurse via `FB_{k-1}(frees, SPLIT tail)`;
+tuple fields spread straight into FC's arity via `SPLITX`. Synthetic
+parameter names MUST live in the reserved helper namespace
+(`uncursed_pp_h`, not `h`) — a bare `h` param captured a template's own
+`h()` call during implementation (caught by the COUNTED golden spec).
+
+Round-4 refuted: `len(xs)` scrutinee hoisting across else-if ladders
+(token divergence when the value feeds a pasting consumer:
+`MANY_BOOST_PP_SEQ_SIZE(...)` vs `MANY_5`), @let continuation hoisting
+(gain did not survive independent scales), SEQ_SIZE threading through
+PICK→SMALL (1.09–1.25x, below bar).
+
 ## Refuted ideas — do not re-attempt without new evidence
 
 | Idea | Why it died |

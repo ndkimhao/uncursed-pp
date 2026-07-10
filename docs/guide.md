@@ -303,7 +303,7 @@ identically from the source file alone:
 | `helper_prefix P` | `UNCURSED_PP_` | prefix of generated helper macros |
 | `runtime_name "F"` | `<helper_prefix>_runtime.h` | filename of the shared runtime header |
 | `loop_chain on\|off` | `on` | consumption-chain iteration for loops without free outer variables (~25x cheaper preprocessing) |
-| `loop_chain_limit K` | `16` | chain length: seqs up to K elements take the chain, longer ones the `SEQ_FOR_EACH` fallback (~0.5% overhead). Non-default K emits a local size table in the header |
+| `loop_chain_limit K` | `16` | chain length: seqs up to K elements take the chain, longer ones the `SEQ_FOR_EACH` fallback (~0.5% overhead). Non-default K emits a local size table; `256` covers every possible seq, dropping the fallback, the size pick, and the `for_each.hpp` include entirely |
 | `include "H"` or `include <H>` | — | extra `#include`s appended in order (repeatable) |
 
 Vendored-boost recipes:

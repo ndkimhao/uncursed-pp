@@ -411,3 +411,19 @@ def test_chain_loop_expands_at_boundary_sizes(tmp_path):
     assert canon("int x;") in out
     assert canon("t0 f0;") in out and canon("t15 f15;") in out
     assert canon("u0 g0;") in out and canon("u16 g16;") in out  # fallback path
+
+
+def test_full_range_chain_limit_drops_dispatch_and_fallback():
+    # at limit 256 no seq can exceed the chain (BOOST_PP_LIMIT_SEQ), so the
+    # size-class pick, the FOR_EACH fallback, and its include all vanish
+    src = (
+        "@pragma loop_chain_limit 256\n"
+        "macro D(fields: seq<tuple<t, n>>)\n@for (t, n) in fields\n{{t}} {{n}};\n@end\nend\n"
+    )
+    out = compile_source(src, "t.uncursed")
+    assert "#define UNCURSED_PP_D_CH1_256(e)" in out
+    assert "BOOST_PP_CAT(UNCURSED_PP_D_CH1_, BOOST_PP_SEQ_SIZE(fields)) fields" in out
+    assert "PICK" not in out and "SMALL" not in out and "BIG" not in out
+    assert "SEQ_FOR_EACH" not in out
+    assert "seq/for_each.hpp" not in out
+    assert "LE256" not in out  # no size table needed either
