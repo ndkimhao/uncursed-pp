@@ -20,7 +20,9 @@ signatures/directives/`{{expr}}` → dataclass AST (`nodes.py`) → semantic che
 factoring (`collapse.py`) → C header text.
 
 Design spec: `docs/design.md`. Language rules and call-site caveats live there —
-consult it before changing DSL syntax or codegen.
+consult it before changing DSL syntax or codegen. Codegen performance work must
+follow `docs/optimization.md` (measurement methodology, applied optimizations,
+and refuted ideas — the refuted list is binding).
 
 ## Conventions
 
