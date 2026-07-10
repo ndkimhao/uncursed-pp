@@ -3,7 +3,7 @@ macro PROTO(name, args: seq<tuple<type, argname>>)
 void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
 end
 
-# ── invocation specs (verified through cc -E by test_integration) ──
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  PROTO(init, ((int, only)))
 #=>     void init(int only);
 

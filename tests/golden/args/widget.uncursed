@@ -12,7 +12,7 @@ macro STYLE(name, named variadic COLORS = none)
 unsigned {{name}}[] = { {{COLORS}} };
 end
 
-# ── invocation specs (verified through cc -E by test_integration) ──
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  MAKE_WIDGET(w1)
 #=>     struct widget w1 = { 100, 50, };
 
@@ -33,7 +33,7 @@ end
 #?  MAKE_WIDGET(w6, WIDTH((a, b)))
 #=>     struct widget w6 = { (a, b), 50, };
 
-# edge: repeated keyword - the last one wins (left-to-right fold)
+# edge: repeated keyword - the last one wins (setters apply left to right)
 #?  MAKE_WIDGET(w7, HEIGHT(80), HEIGHT(99))
 #=>     struct widget w7 = { 100, 99, };
 

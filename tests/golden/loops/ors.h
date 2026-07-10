@@ -10,7 +10,8 @@
 #include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
- * # Non-comma separator: the separator text lives in its own SEP helper.
+ * # Non-comma separator: baked between chain members on the small-seq
+ * # path; the SEQ_FOR_EACH_I fallback keeps it in its own SEP helper.
  * macro ORS(xs: seq<token>)
  * @join xs as x with " || "
  * ({{x}})

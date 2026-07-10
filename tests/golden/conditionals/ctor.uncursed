@@ -7,7 +7,7 @@ macro CTOR(name, args: seq<tuple<type, argname>>)
 @end
 end
 
-# ── invocation specs (verified through cc -E by test_integration) ──
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  CTOR(w, ((int, x)))
 #=>     explicit_single_arg_init(w)
 

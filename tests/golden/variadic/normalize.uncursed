@@ -4,7 +4,7 @@ macro NORMALIZE(items: variadic)
 S{ @join items as it with ", ": @if is_paren(it) {{it}} @else ({{it}}, omit) @end@end }
 end
 
-# ── invocation specs (verified through cc -E by test_integration) ──
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  NORMALIZE(a)
 #=>     S{ (a, omit) }
 

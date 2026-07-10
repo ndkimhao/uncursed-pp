@@ -4,7 +4,7 @@ macro LOG(msg, level = INFO, out = stderr)
 fprintf({{out}}, "[" #{{level}} "] %s\n", {{msg}});
 end
 
-# ── invocation specs (verified through cc -E by test_integration) ──
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  LOG(m)
 #=>     fprintf(stderr, "[" "INFO" "] %s\n", m);
 

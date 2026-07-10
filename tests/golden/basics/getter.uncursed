@@ -6,7 +6,7 @@ macro GETTER(field: tuple<type, name>)
 }
 end
 
-# ── invocation specs (verified through cc -E by test_integration) ──
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  GETTER((int, age))
 #=>     int get_age(const struct self *s) { return s->age; }
 

@@ -1,5 +1,5 @@
-# Deep nesting: loops inside @if branches and @ifs inside @ifs are fine.
-# Only LOOP nesting is rejected (SEQ_FOR_EACH can't re-enter itself).
+# Deep nesting: loops inside @if branches, @ifs inside @ifs, and loops
+# inside loops (up to 4 deep) are all fine; only loop depth 5+ is rejected.
 
 # @for inside an @else branch
 macro OPT(xs: seq<token>)

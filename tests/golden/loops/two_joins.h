@@ -5,7 +5,8 @@
 #include <boost/preprocessor/seq/size.hpp>
 
 /* uncursed-pp source:
- * # Two inline @joins on one line get independent EACH helpers.
+ * # Two inline @joins on one line expand independently; identity comma
+ * # joins like these compile straight to SEQ_ENUM (no helpers needed).
  * macro ZIP(ks: seq<token>, vs: seq<token>)
  * k({{len(ks)}}): @join ks as k with ", ": {{k}}@end / v: @join vs as v with ", ": {{v}}@end
  * end

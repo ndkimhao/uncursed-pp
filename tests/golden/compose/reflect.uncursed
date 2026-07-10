@@ -44,7 +44,7 @@ DEFINE_FIELD_TABLE({{sname}}, {{fields}})
 DEFINE_PRINTER({{sname}}, {{fields}})
 end
 
-# ── invocation specs (verified through cc -E by test_integration) ──
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  REFLECT(Point, (int, x, "%d"), (float, y, "%f"))
 #=>     typedef struct { int x; float y; } Point;
 #=>     static const uncursed_field Point_fields[] = {

@@ -5,7 +5,7 @@ macro DECLARE_FIELDS(fields: seq<tuple<type, name>>)
 @end
 end
 
-# ── invocation specs (verified through cc -E by test_integration) ──
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  DECLARE_FIELDS(((int, x)))
 #=>     int x;
 

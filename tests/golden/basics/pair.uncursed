@@ -3,7 +3,7 @@ macro PAIR(p: tuple<a, b>)
 S{ {{remove_parens(p.a)}} | {{p.b}} }
 end
 
-# ── invocation specs (verified through cc -E by test_integration) ──
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
 #?  PAIR((a, b))
 #=>     S{ a | b }
 
