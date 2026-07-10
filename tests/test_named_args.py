@@ -51,6 +51,47 @@ def test_bare_named_variadic_is_empty_default():
     assert (p.name, p.named, p.variadic_value, p.default) == ("L", True, True, "")
 
 
+def test_parse_required_named_param():
+    src = '@macro C($tag, required named $HOST, named $PORT = 80)\nf({{$HOST}}, {{$PORT}})\n@endmacro\n'
+    [macro] = parse_file(src, "t.uncursed").macros
+    host, port = macro.params[1], macro.params[2]
+    assert (host.name, host.named, host.default) == ("HOST", True, None)
+    assert (port.name, port.named, port.default) == ("PORT", True, "80")
+
+
+def test_parse_required_named_variadic_param():
+    src = '@macro C($tag, required named variadic $OPTS)\nf({{$OPTS}})\n@endmacro\n'
+    [macro] = parse_file(src, "t.uncursed").macros
+    p = macro.params[1]
+    assert (p.name, p.named, p.variadic_value, p.default) == ("OPTS", True, True, None)
+
+
+def test_required_named_with_default_is_an_error():
+    with pytest.raises(UncursedPpError):
+        parse_file('@macro C($t, required named $H = x)\nf\n@endmacro\n', "t.uncursed")
+
+
+def test_required_named_poisons_its_state_slot():
+    src = '@macro C($tag, required named $HOST, named $PORT = 80)\nf({{$HOST}}, {{$PORT}})\n@endmacro\n'
+    out = compile_source(src, "t.uncursed")
+    # the un-set slot holds a poison identifier naming the keyword
+    assert "UNCURSED_PP_C_MISSING_REQUIRED_KEYWORD_HOST, 80" in out
+
+
+def test_required_named_arity_floor_is_an_error_stub():
+    src = '@macro C($tag, required named $HOST, named $PORT = 80)\nf({{$HOST}}, {{$PORT}})\n@endmacro\n'
+    out = compile_source(src, "t.uncursed")
+    # arities below positionals + required keywords route to a
+    # deliberately mismatched function-like macro: hard cpp error
+    assert "#define UNCURSED_PP_C_ERROR_MISSING_REQUIRED_KEYWORD(" in out
+    assert "#define UNCURSED_PP_C_1(...) UNCURSED_PP_C_ERROR_MISSING_REQUIRED_KEYWORD(~)\n" in out
+    # the first valid arity still expands normally
+    assert "#define UNCURSED_PP_C_2(" in out
+    assert "UNCURSED_PP_C_ERROR_MISSING_REQUIRED_KEYWORD(~)" not in (
+        [l for l in out.splitlines() if l.startswith("#define UNCURSED_PP_C_2(")][0]
+    )
+
+
 def test_parse_named_variadic_param():
     src = '@macro S($name, named variadic $COLORS = none)\n{{$COLORS}}\n@endmacro\n'
     [macro] = parse_file(src, "t.uncursed").macros

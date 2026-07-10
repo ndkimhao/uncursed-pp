@@ -177,6 +177,17 @@ Each named argument is written `KEYWORD(value)` at the call site. Semantics:
 - A default may be empty. Bare `named $FLAGS` (no `=`) is shorthand for
   `named $FLAGS = ` — both mean "substitutes as zero tokens unless the
   caller says otherwise". Works for `named variadic` too.
+- `required named $HOST` declares a keyword that **must appear** at the call
+  site (no default, no `=`). Too few arguments to possibly contain it is a
+  hard preprocessor error (the arity dispatch lands on a deliberately
+  mismatched macro named `..._ERROR_MISSING_REQUIRED_KEYWORD`); when the
+  count looks plausible but the keyword is absent (another keyword took its
+  place, or one repeats), the un-set slot's poison identifier
+  `..._MISSING_REQUIRED_KEYWORD_<NAME>` reaches the output and fails C
+  compilation instead. Required means the *keyword* must appear — an
+  explicit empty value `HOST()` satisfies it. Works for `named variadic`
+  too. Caveat: a body that only *stringizes* the poisoned value compiles
+  silently; use the value as real tokens somewhere.
 - A repeated keyword: the **last occurrence wins** (left-to-right fold).
 - A misspelled keyword is a **C compile error** (it fails to dispatch), never a
   silently-applied default.

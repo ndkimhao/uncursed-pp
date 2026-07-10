@@ -5,7 +5,9 @@
 
 signature: CNAME "(" [param_list] ")"
 param_list: param ("," param)* ","?
-param: "named" "variadic" DNAME "=" [DEFAULT] -> named_variadic_param
+param: "required" "named" "variadic" DNAME    -> required_named_variadic_param
+     | "required" "named" DNAME               -> required_named_param
+     | "named" "variadic" DNAME "=" [DEFAULT] -> named_variadic_param
      | "named" "variadic" DNAME               -> named_variadic_param
      | "named" DNAME "=" [DEFAULT] -> named_param
      | "named" DNAME               -> named_param

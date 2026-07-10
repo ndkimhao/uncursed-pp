@@ -99,3 +99,56 @@
  * #?  DECLARE(counter, ATTRS())
  * #=>     int counter;
  */
+
+/* # ── Required keywords ────────────────────────────────────────────────
+ * #
+ * # `required named $HOST` has no default: the keyword must appear at
+ * # the call site or the program does not compile. Forgetting it is a
+ * # hard preprocessor error; if a repeated keyword hides the mistake
+ * # from the argument count, a poison identifier naming the keyword
+ * # lands in the output and the C compiler rejects it instead.
+ * # (An explicit empty value, HOST(), still counts as provided.)
+ */
+
+/* uncursed-pp source:
+ * @macro CONNECT($sock, required named $HOST, named $PORT = 80)
+ * dial({{$sock}}, {{$HOST}}, {{$PORT}});
+ * @endmacro
+ */
+#define UNCURSED_PP_CONNECT_SET_HOST(v) 0, v
+#define UNCURSED_PP_CONNECT_SET_PORT(v) 1, v
+#define UNCURSED_PP_CONNECT_STEP1(e, ...) UNCURSED_PP_CONNECT_STEP_D(BOOST_PP_CAT(UNCURSED_PP_CONNECT_SET_, e), __VA_ARGS__)
+#define UNCURSED_PP_CONNECT_STEP_D(...) UNCURSED_PP_CONNECT_STEP_I(__VA_ARGS__)
+#define UNCURSED_PP_CONNECT_STEP_I(i, v, ...) UNCURSED_PP_CONNECT_PUT_ ## i(v, __VA_ARGS__)
+#define UNCURSED_PP_CONNECT_PUT_0(v, p0, p1) v, p1
+#define UNCURSED_PP_CONNECT_PUT_1(v, p0, p1) p0, v
+#define UNCURSED_PP_CONNECT_BODY(sock, HOST, PORT) dial(sock, HOST, PORT);
+#define UNCURSED_PP_CONNECT_BODY_D(...) UNCURSED_PP_CONNECT_BODY(__VA_ARGS__)
+#define UNCURSED_PP_CONNECT_ERROR_MISSING_REQUIRED_KEYWORD(kw, missing)
+#define UNCURSED_PP_CONNECT_1(...) UNCURSED_PP_CONNECT_ERROR_MISSING_REQUIRED_KEYWORD(~)
+#define UNCURSED_PP_CONNECT_2(sock, e1) UNCURSED_PP_CONNECT_BODY_D(sock, UNCURSED_PP_CONNECT_STEP1(e1, UNCURSED_PP_CONNECT_MISSING_REQUIRED_KEYWORD_HOST, 80))
+#define UNCURSED_PP_CONNECT_3(sock, e1, e2) UNCURSED_PP_CONNECT_BODY_D(sock, UNCURSED_PP_CONNECT_STEP1(e2, UNCURSED_PP_CONNECT_STEP1(e1, UNCURSED_PP_CONNECT_MISSING_REQUIRED_KEYWORD_HOST, 80)))
+#define UNCURSED_PP_CONNECT_SIZE(...) UNCURSED_PP_CONNECT_SIZE_I(__VA_ARGS__, 3, 2, 1,)
+#define UNCURSED_PP_CONNECT_SIZE_I(e0, e1, e2, size, ...) size
+#define UNCURSED_PP_CONNECT_DISPATCH(n) UNCURSED_PP_CONNECT_DISPATCH_I(n)
+#define UNCURSED_PP_CONNECT_DISPATCH_I(n) UNCURSED_PP_CONNECT_ ## n
+#define CONNECT(...) UNCURSED_PP_CONNECT_DISPATCH(UNCURSED_PP_CONNECT_SIZE(__VA_ARGS__))(__VA_ARGS__)
+
+/* #?  CONNECT(s, HOST("example.org"))
+ * #=>     dial(s, "example.org", 80);
+ */
+
+/* #?  CONNECT(s, PORT(443), HOST(h))
+ * #=>     dial(s, h, 443);
+ */
+
+/* # Too few arguments to possibly contain HOST — hard preprocessor error:
+ * #?! CONNECT(s)
+ */
+
+/* # The right argument count but the wrong keyword sneaks past the arity
+ * # check. The expansion "succeeds" — with the poison identifier in it,
+ * # so the C compiler rejects the output while naming the missing keyword:
+ * #?  CONNECT(s, PORT(443))
+ * #=>     dial(s, UNCURSED_PP_CONNECT_MISSING_REQUIRED_KEYWORD_HOST, 443);
+ */

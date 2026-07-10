@@ -334,10 +334,19 @@ class _MacroEmitter:
         base = f"{self.config.helper_prefix}{self.macro.name}_"
         pos_names = [self.arg(p.name) for p in pos]
         all_names = pos_names + [self.arg(p.name) for p in named]
-        defaults = ", ".join(
-            f"({p.default or ''})" if p.variadic_value else (p.default or "")
-            for p in named
-        )
+
+        # a required keyword ('required named', default None) initializes
+        # its slot with a poison identifier: if never set, it lands in the
+        # output and fails C compilation naming the keyword
+        def initial(p: Param) -> str:
+            value = (
+                f"{base}MISSING_REQUIRED_KEYWORD_{p.name}"
+                if p.default is None
+                else p.default
+            )
+            return f"({value})" if p.variadic_value else value
+
+        defaults = ", ".join(initial(p) for p in named)
         defines = self.out.defines
 
         # Each keyword argument dispatches itself: CAT(SET_, WIDTH(20))
@@ -375,11 +384,27 @@ class _MacroEmitter:
         defines.append(f"#define {base}BODY_D(...) {base}BODY(__VA_ARGS__)\n")
 
         required = len(pos)
-        defines.append(
-            f"#define {base}{required}({', '.join(pos_names)}) "
-            f"{base}BODY({', '.join(pos_names)}, {defaults})\n"
-        )
-        for k in range(1, arity + 1):
+        # arities that cannot possibly carry every required keyword route
+        # to a deliberately mismatched function-like macro: calling a
+        # 2-parameter macro with one argument is a hard cpp error whose
+        # message names the macro (no per-call cost - it is just which
+        # define the arity dispatch lands on)
+        n_required_kw = sum(1 for p in named if p.default is None)
+        if n_required_kw:
+            defines.append(
+                f"#define {base}ERROR_MISSING_REQUIRED_KEYWORD"
+                f"({self.arg('kw')}, {self.arg('missing')})\n"
+            )
+        for n in range(required, required + n_required_kw):
+            defines.append(
+                f"#define {base}{n}(...) {base}ERROR_MISSING_REQUIRED_KEYWORD(~)\n"
+            )
+        if n_required_kw == 0:
+            defines.append(
+                f"#define {base}{required}({', '.join(pos_names)}) "
+                f"{base}BODY({', '.join(pos_names)}, {defaults})\n"
+            )
+        for k in range(max(1, n_required_kw), arity + 1):
             kw_params = [self.arg(f"e{j}") for j in range(1, k + 1)]
             nest = defaults
             for e in kw_params:  # innermost gets the first kwarg: last wins

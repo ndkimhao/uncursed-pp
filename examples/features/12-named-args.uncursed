@@ -48,3 +48,31 @@ open_window({{$title}}, {{$W}}, {{$H}}, {{$MONITOR}});
 # Explicit empty value — same result as omitting the keyword:
 #?  DECLARE(counter, ATTRS())
 #=>     int counter;
+
+# ── Required keywords ────────────────────────────────────────────────
+#
+# `required named $HOST` has no default: the keyword must appear at
+# the call site or the program does not compile. Forgetting it is a
+# hard preprocessor error; if a repeated keyword hides the mistake
+# from the argument count, a poison identifier naming the keyword
+# lands in the output and the C compiler rejects it instead.
+# (An explicit empty value, HOST(), still counts as provided.)
+
+@macro CONNECT($sock, required named $HOST, named $PORT = 80)
+dial({{$sock}}, {{$HOST}}, {{$PORT}});
+@endmacro
+
+#?  CONNECT(s, HOST("example.org"))
+#=>     dial(s, "example.org", 80);
+
+#?  CONNECT(s, PORT(443), HOST(h))
+#=>     dial(s, h, 443);
+
+# Too few arguments to possibly contain HOST — hard preprocessor error:
+#?! CONNECT(s)
+
+# The right argument count but the wrong keyword sneaks past the arity
+# check. The expansion "succeeds" — with the poison identifier in it,
+# so the C compiler rejects the output while naming the missing keyword:
+#?  CONNECT(s, PORT(443))
+#=>     dial(s, UNCURSED_PP_CONNECT_MISSING_REQUIRED_KEYWORD_HOST, 443);

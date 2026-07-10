@@ -106,6 +106,16 @@ S{ @join $items as $it with ", ": @if is_paren($it) {{$it}} @else ({{$it}}, omit
   values also pass at call sites: `KEY()` for named args, and an explicit
   empty trailing argument (`M(a,)`) still counts in the arity scan, selecting
   the higher arity with an empty value instead of the default.
+- `required named $X` (also `required named variadic $X`): keyword must appear
+  at the call site. Enforced by two free layers: arities below
+  positionals + #required-keywords dispatch to an error stub (calling a
+  2-param macro with 1 arg — hard cpp error), and the slot's initial value is
+  the poison identifier `UNCURSED_PP_<MACRO>_MISSING_REQUIRED_KEYWORD_<NAME>`,
+  which fails C compilation when the count looked plausible but the keyword
+  was absent (another keyword in its place, or a repeat).
+  Presence of the keyword satisfies the requirement (`X()` is fine). Known
+  gap (accepted): a masked omission whose value is only stringized compiles
+  silently — closing it would cost per-call probes.
 - Seq/variadic args must be non-empty at C call sites (Boost.PP limitation, documented).
 - Conditions: `len($seq) == N` (and <, >, etc.), integer equality (0–256 range),
   `is_paren($x)`, `is_empty($x)`.

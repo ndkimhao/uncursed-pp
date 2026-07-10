@@ -1,0 +1,34 @@
+# 'required named': the keyword must appear at the call site or the
+# program does not compile. Omission fails one of two ways:
+#   - too few arguments: hard preprocessor error via a deliberately
+#     mismatched function-like macro (ERROR_MISSING_REQUIRED_KEYWORD);
+#   - masked by a repeated keyword: the slot's poison identifier
+#     lands in the output and fails C compilation, naming the keyword.
+@macro CONNECT($tag, required named $HOST, named $PORT = 80)
+connect({{$tag}}, {{$HOST}}, {{$PORT}});
+@endmacro
+
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
+#?  CONNECT(t, HOST("example.org"))
+#=>     connect(t, "example.org", 80);
+
+# keyword order stays free:
+#?  CONNECT(t, PORT(443), HOST(h))
+#=>     connect(t, h, 443);
+
+# 'required' means the KEYWORD must appear - an empty value satisfies it
+#?  CONNECT(t, HOST())
+#=>     connect(t, , 80);
+
+# edge: right count, wrong keyword - past the arity floor, but the
+# un-set slot's poison identifier reaches the output (a C compile
+# error naming HOST)
+#?  CONNECT(t, PORT(443))
+#=>     connect(t, UNCURSED_PP_CONNECT_MISSING_REQUIRED_KEYWORD_HOST, 443);
+
+# edge: a repeated keyword masks the count the same way
+#?  CONNECT(t, PORT(1), PORT(2))
+#=>     connect(t, UNCURSED_PP_CONNECT_MISSING_REQUIRED_KEYWORD_HOST, 2);
+
+# too few arguments to possibly contain HOST: hard preprocessor error
+#?! CONNECT(t)

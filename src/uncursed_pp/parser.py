@@ -109,6 +109,19 @@ class _Ast(Transformer[Any, Any]):
             variadic_value=True,
         )
 
+    def required_named_param(self, items: list[Any]) -> Param:
+        # no default: the keyword must appear at the call site
+        return Param(name=str(items[0])[1:], type=None, default=None, named=True)
+
+    def required_named_variadic_param(self, items: list[Any]) -> Param:
+        return Param(
+            name=str(items[0])[1:],
+            type=None,
+            default=None,
+            named=True,
+            variadic_value=True,
+        )
+
     def seq_type(self, items: list[Any]) -> SeqT:
         return SeqT(items[0])
 
