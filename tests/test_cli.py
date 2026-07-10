@@ -38,22 +38,29 @@ def test_cli_reports_errors_to_stderr(tmp_path, capsys):
     assert "bad.cursed" in capsys.readouterr().err
 
 
-def test_cli_pp_prefix_and_include_flags(tmp_path):
+def test_cli_has_no_config_flags():
+    # configuration lives in the .cursed file (@pragma), not on the CLI
+    for flag in ["--pp-prefix", "--pp-include", "--pp-include-dir",
+                 "--helper-prefix", "--runtime-name", "--include"]:
+        with pytest.raises(SystemExit) as excinfo:
+            main(["in.cursed", flag, "X"])
+        assert excinfo.value.code == 2
+
+
+def test_cli_config_via_pragmas(tmp_path):
     src = tmp_path / "d.cursed"
-    src.write_text("macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n")
+    src.write_text(
+        "@pragma pp_prefix V_PP_\n"
+        '@pragma pp_include "v/pp.hpp"\n'
+        "@pragma helper_prefix MY_\n"
+        "macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
+    )
     out = tmp_path / "d.h"
-    main([str(src), "-o", str(out), "--pp-prefix", "V_PP_", "--pp-include", "v/pp.hpp"])
+    main([str(src), "-o", str(out)])
     text = out.read_text()
     assert "#include <v/pp.hpp>" in text
     assert "V_PP_SEQ_FOR_EACH" in text
-
-
-def test_cli_helper_prefix_flag(tmp_path):
-    src = tmp_path / "d.cursed"
-    src.write_text("macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n")
-    out = tmp_path / "d.h"
-    main([str(src), "-o", str(out), "--helper-prefix", "MY_"])
-    assert "MY_D_EACH1" in out.read_text()
+    assert "MY_D_EACH1" in text
 
 
 def test_cli_writes_runtime_header_when_needed(tmp_path):
@@ -74,25 +81,26 @@ def test_cli_no_runtime_for_plain_macros(tmp_path):
     assert not (tmp_path / "cursedpp_runtime.h").exists()
 
 
-def test_cli_runtime_name_flag(tmp_path):
+def test_cli_runtime_name_pragma(tmp_path):
     src = tmp_path / "w.cursed"
-    src.write_text("macro W(name, named WIDTH = 1)\nf({{name}}, {{WIDTH}})\nend\n")
-    main([str(src), "--runtime-name", "acme_common.h"])
+    src.write_text(
+        '@pragma runtime_name "acme_common.h"\n'
+        "macro W(name, named WIDTH = 1)\nf({{name}}, {{WIDTH}})\nend\n"
+    )
+    main([str(src)])
     assert (tmp_path / "acme_common.h").exists()
     assert '#include "acme_common.h"' in (tmp_path / "w.h").read_text()
 
 
-def test_cli_extra_include_and_pp_include_dir(tmp_path):
+def test_cli_extra_include_and_pp_include_dir_pragmas(tmp_path):
     src = tmp_path / "d.cursed"
-    src.write_text("macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n")
-    main(
-        [
-            str(src),
-            "--include", "myproj/types.h",
-            "--include", "<stdio.h>",
-            "--pp-include-dir", "boost_foo/preprocessor",
-        ]
+    src.write_text(
+        '@pragma include "myproj/types.h"\n'
+        "@pragma include <stdio.h>\n"
+        "@pragma pp_include_dir boost_foo/preprocessor\n"
+        "macro D(xs: seq<token>)\n@for x in xs\nf({{x}});\n@end\nend\n"
     )
+    main([str(src)])
     text = (tmp_path / "d.h").read_text()
     assert '#include "myproj/types.h"' in text
     assert "#include <stdio.h>" in text

@@ -275,18 +275,20 @@ slot automatically: one free variable travels as `d` itself, several as a tuple
 in `d`. You never manage this; it is mentioned because it is visible in the
 generated code.
 
-## 8. Configuration: CLI flags & pragmas
+## 8. Configuration: pragmas
 
-Every flag has a matching `@pragma` (pragma wins over the CLI flag):
+All configuration lives in the template as top-of-file `@pragma` lines —
+the CLI takes only the input path and `-o`, so a header regenerates
+identically from the source file alone:
 
-| CLI | `@pragma` | Default | Meaning |
-|---|---|---|---|
-| `--pp-prefix P` | `pp_prefix P` | `BOOST_PP_` | prefix of the preprocessor library's macros |
-| `--pp-include H` | `pp_include "H"` | *(granular)* | single header to include instead of granular ones |
-| `--pp-include-dir D` | `pp_include_dir D` | `boost/preprocessor` | root of granular usage-derived includes |
-| `--helper-prefix P` | `helper_prefix P` | `CURSEDPP_` | prefix of generated helper macros |
-| `--runtime-name F` | `runtime_name "F"` | `<helper-prefix>_runtime.h` | filename of the shared runtime header |
-| `--include H` (repeatable) | `include "H"` or `include <H>` | — | extra `#include`s appended in order |
+| `@pragma` | Default | Meaning |
+|---|---|---|
+| `pp_prefix P` | `BOOST_PP_` | prefix of the preprocessor library's macros |
+| `pp_include "H"` | *(granular)* | single header to include instead of granular ones |
+| `pp_include_dir D` | `boost/preprocessor` | root of granular usage-derived includes |
+| `helper_prefix P` | `CURSEDPP_` | prefix of generated helper macros |
+| `runtime_name "F"` | `<helper_prefix>_runtime.h` | filename of the shared runtime header |
+| `include "H"` or `include <H>` | — | extra `#include`s appended in order (repeatable) |
 
 Vendored-boost recipes:
 

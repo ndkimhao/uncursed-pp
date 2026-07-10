@@ -42,4 +42,4 @@ consult it before changing DSL syntax or codegen.
 - Generated helpers are namespaced `CURSEDPP_<MACRO>_*` (shared collapsed helpers:
   `CURSEDPP_H<n>` in first-use order — output must stay deterministic).
 - The `BOOST_PP_` prefix is never hardcoded in emitter output paths; always go
-  through the configured prefix (`--pp-prefix` / `@pragma pp_prefix`).
+  through the configured prefix (`@pragma pp_prefix`; EmitConfig for API use).

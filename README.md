@@ -45,16 +45,18 @@ comments that the suite discovers and verifies through the real preprocessor:
 #=>     struct widget w3 = { 20, 50, BOLD };
 ```
 
-Flags (each also settable per file via `@pragma <name> <value>`):
+Configuration lives in the template itself (`@pragma <name> <value>` lines),
+so a header regenerates identically from the source file alone — the CLI
+takes only the input path and `-o`:
 
-| Flag | Default | Meaning |
+| Pragma | Default | Meaning |
 |---|---|---|
-| `--pp-prefix` | `BOOST_PP_` | prefix of the preprocessor library's macros |
-| `--pp-include` | *(granular)* | single header to include instead of granular ones |
-| `--pp-include-dir` | `boost/preprocessor` | root of the granular usage-derived includes |
-| `--helper-prefix` | `CURSEDPP_` | prefix of generated helper macros |
-| `--runtime-name` | `<helper-prefix>_runtime.h` | filename of the shared runtime header |
-| `--include` | — | extra `#include` for the generated header (repeatable) |
+| `pp_prefix` | `BOOST_PP_` | prefix of the preprocessor library's macros |
+| `pp_include` | *(granular)* | single header to include instead of granular ones |
+| `pp_include_dir` | `boost/preprocessor` | root of the granular usage-derived includes |
+| `helper_prefix` | `CURSEDPP_` | prefix of generated helper macros |
+| `runtime_name` | `<helper_prefix>_runtime.h` | filename of the shared runtime header |
+| `include` | — | extra `#include` for the generated header (repeatable) |
 
 ```text
 @pragma pp_prefix  MYLIB_PP_
