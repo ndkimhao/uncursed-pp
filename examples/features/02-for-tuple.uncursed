@@ -1,0 +1,29 @@
+# ── @for with tuple destructuring ────────────────────────────────────
+#
+# A seq can hold tuples with NAMED elements: `seq<tuple<ctype, regname>>`.
+# `@for (ctype, regname) in regs` unpacks each tuple; the names bind
+# inside the loop body (arity must match the declared tuple).
+#
+# CALL-SITE RULE (the one everybody trips on): a seq of tuples needs
+# DOUBLE parens — the outer paren is the seq-element wrapper (it also
+# protects the tuple's commas from argument splitting), the inner paren
+# is the tuple itself:
+#
+#     ((uint32_t, CTRL))((uint16_t, STATUS))
+#
+# Scenario: memory-mapped register declarations for a device driver.
+
+macro DECLARE_REGISTERS(regs: seq<tuple<ctype, regname>>)
+@for (ctype, regname) in regs
+  volatile {{ctype}} {{regname}};
+@end
+end
+
+#?  DECLARE_REGISTERS(((uint32_t, CTRL))((uint16_t, STATUS))((uint16_t, DATA)))
+#=>     volatile uint32_t CTRL;
+#=>     volatile uint16_t STATUS;
+#=>     volatile uint16_t DATA;
+
+# Edge: an element type containing a space is still one token-sequence.
+#?  DECLARE_REGISTERS(((unsigned long, TICKS)))
+#=>     volatile unsigned long TICKS;
