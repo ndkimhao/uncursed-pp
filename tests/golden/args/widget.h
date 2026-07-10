@@ -2,7 +2,6 @@
 #pragma once
 
 #include <boost/preprocessor/cat.hpp>
-#include <boost/preprocessor/facilities/overload.hpp>
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
 
 /* cursedpp source:
@@ -29,7 +28,11 @@
 #define CURSEDPP_MAKE_WIDGET_2(name, e1) CURSEDPP_MAKE_WIDGET_BODY_D(name, CURSEDPP_MAKE_WIDGET_STEP1(e1, 100, 50, ))
 #define CURSEDPP_MAKE_WIDGET_3(name, e1, e2) CURSEDPP_MAKE_WIDGET_BODY_D(name, CURSEDPP_MAKE_WIDGET_STEP1(e2, CURSEDPP_MAKE_WIDGET_STEP1(e1, 100, 50, )))
 #define CURSEDPP_MAKE_WIDGET_4(name, e1, e2, e3) CURSEDPP_MAKE_WIDGET_BODY_D(name, CURSEDPP_MAKE_WIDGET_STEP1(e3, CURSEDPP_MAKE_WIDGET_STEP1(e2, CURSEDPP_MAKE_WIDGET_STEP1(e1, 100, 50, ))))
-#define MAKE_WIDGET(...) BOOST_PP_OVERLOAD(CURSEDPP_MAKE_WIDGET_, __VA_ARGS__)(__VA_ARGS__)
+#define CURSEDPP_MAKE_WIDGET_SIZE(...) CURSEDPP_MAKE_WIDGET_SIZE_I(__VA_ARGS__, 4, 3, 2, 1,)
+#define CURSEDPP_MAKE_WIDGET_SIZE_I(e0, e1, e2, e3, size, ...) size
+#define CURSEDPP_MAKE_WIDGET_DISPATCH(n) CURSEDPP_MAKE_WIDGET_DISPATCH_I(n)
+#define CURSEDPP_MAKE_WIDGET_DISPATCH_I(n) CURSEDPP_MAKE_WIDGET_ ## n
+#define MAKE_WIDGET(...) CURSEDPP_MAKE_WIDGET_DISPATCH(CURSEDPP_MAKE_WIDGET_SIZE(__VA_ARGS__))(__VA_ARGS__)
 
 /* cursedpp source:
  * # 'named variadic' keyword values may contain bare commas: the generated
@@ -47,4 +50,8 @@
 #define CURSEDPP_STYLE_BODY_D(...) CURSEDPP_STYLE_BODY(__VA_ARGS__)
 #define CURSEDPP_STYLE_1(name) CURSEDPP_STYLE_BODY(name, (none))
 #define CURSEDPP_STYLE_2(name, e1) CURSEDPP_STYLE_BODY_D(name, CURSEDPP_STYLE_STEP1(e1, (none)))
-#define STYLE(...) BOOST_PP_OVERLOAD(CURSEDPP_STYLE_, __VA_ARGS__)(__VA_ARGS__)
+#define CURSEDPP_STYLE_SIZE(...) CURSEDPP_STYLE_SIZE_I(__VA_ARGS__, 2, 1,)
+#define CURSEDPP_STYLE_SIZE_I(e0, e1, size, ...) size
+#define CURSEDPP_STYLE_DISPATCH(n) CURSEDPP_STYLE_DISPATCH_I(n)
+#define CURSEDPP_STYLE_DISPATCH_I(n) CURSEDPP_STYLE_ ## n
+#define STYLE(...) CURSEDPP_STYLE_DISPATCH(CURSEDPP_STYLE_SIZE(__VA_ARGS__))(__VA_ARGS__)

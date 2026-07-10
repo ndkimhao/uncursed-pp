@@ -3,7 +3,6 @@
 
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/control/iif.hpp>
-#include <boost/preprocessor/facilities/overload.hpp>
 #include <boost/preprocessor/punctuation/is_begin_parens.hpp>
 #include <boost/preprocessor/punctuation/remove_parens.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
@@ -56,4 +55,8 @@
 #define CURSEDPP_OBJ_BODY_D(...) CURSEDPP_OBJ_BODY(__VA_ARGS__)
 #define CURSEDPP_OBJ_1(name) CURSEDPP_OBJ_BODY(name, ())
 #define CURSEDPP_OBJ_2(name, e1) CURSEDPP_OBJ_BODY_D(name, CURSEDPP_OBJ_STEP1(e1, ()))
-#define OBJ(...) BOOST_PP_OVERLOAD(CURSEDPP_OBJ_, __VA_ARGS__)(__VA_ARGS__)
+#define CURSEDPP_OBJ_SIZE(...) CURSEDPP_OBJ_SIZE_I(__VA_ARGS__, 2, 1,)
+#define CURSEDPP_OBJ_SIZE_I(e0, e1, size, ...) size
+#define CURSEDPP_OBJ_DISPATCH(n) CURSEDPP_OBJ_DISPATCH_I(n)
+#define CURSEDPP_OBJ_DISPATCH_I(n) CURSEDPP_OBJ_ ## n
+#define OBJ(...) CURSEDPP_OBJ_DISPATCH(CURSEDPP_OBJ_SIZE(__VA_ARGS__))(__VA_ARGS__)

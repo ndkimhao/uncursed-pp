@@ -254,6 +254,24 @@ class _MacroEmitter:
                 line,
             )
 
+    def _emit_arity_dispatch(self, base: str, max_arity: int) -> None:
+        """Dispatch on argument count with a max-arity-bounded scan.
+
+        BOOST_PP_OVERLOAD runs a 65-slot VARIADIC_SIZE on every invocation;
+        the macro's max arity is known at generation time (audit: ~2x).
+        """
+        defines = self.out.defines
+        countdown = ", ".join(str(n) for n in range(max_arity, 0, -1))
+        slots = ", ".join(f"e{j}" for j in range(max_arity))
+        defines.append(f"#define {base}SIZE(...) {base}SIZE_I(__VA_ARGS__, {countdown},)\n")
+        defines.append(f"#define {base}SIZE_I({slots}, size, ...) size\n")
+        defines.append(f"#define {base}DISPATCH(n) {base}DISPATCH_I(n)\n")
+        defines.append(f"#define {base}DISPATCH_I(n) {base} ## n\n")
+        defines.append(
+            f"#define {self.macro.name}(...) "
+            f"{base}DISPATCH({base}SIZE(__VA_ARGS__))(__VA_ARGS__)\n"
+        )
+
     def _emit_overload_chain(
         self, pos: list[Param], defaulted: list[Param], body: str
     ) -> None:
@@ -266,10 +284,7 @@ class _MacroEmitter:
             args = names[:k] + [p.default or "" for p in all_params[k:]]
             self.out.defines.append(f"#define {head} {base}{total}({', '.join(args)})\n")
         self.out.defines.append(_format_define(f"{base}{total}({', '.join(names)})", body))
-        self.out.defines.append(
-            f"#define {self.macro.name}(...) "
-            f"{self.pp('OVERLOAD')}({base}, __VA_ARGS__)(__VA_ARGS__)\n"
-        )
+        self._emit_arity_dispatch(base, total)
 
     def _emit_named(self, pos: list[Param], named: list[Param], body: str) -> None:
         base = f"{self.config.helper_prefix}{self.macro.name}_"
@@ -326,10 +341,7 @@ class _MacroEmitter:
                 f"#define {base}{required + k}({', '.join(pos_names + kw_params)}) "
                 f"{base}BODY_D({', '.join(pos_names)}, {nest})\n"
             )
-        defines.append(
-            f"#define {self.macro.name}(...) "
-            f"{self.pp('OVERLOAD')}({base}, __VA_ARGS__)(__VA_ARGS__)\n"
-        )
+        self._emit_arity_dispatch(base, required + arity)
 
     # ── rendering ────────────────────────────────────────────────────
 

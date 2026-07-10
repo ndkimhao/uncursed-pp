@@ -2,7 +2,6 @@
 #pragma once
 
 #include <boost/preprocessor/cat.hpp>
-#include <boost/preprocessor/facilities/overload.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
@@ -25,4 +24,8 @@
 #define CURSEDPP_VEC_BODY_D(...) CURSEDPP_VEC_BODY(__VA_ARGS__)
 #define CURSEDPP_VEC_2(name, items) CURSEDPP_VEC_BODY(name, items, v)
 #define CURSEDPP_VEC_3(name, items, e1) CURSEDPP_VEC_BODY_D(name, items, CURSEDPP_VEC_STEP1(e1, v))
-#define VEC(...) BOOST_PP_OVERLOAD(CURSEDPP_VEC_, __VA_ARGS__)(__VA_ARGS__)
+#define CURSEDPP_VEC_SIZE(...) CURSEDPP_VEC_SIZE_I(__VA_ARGS__, 3, 2, 1,)
+#define CURSEDPP_VEC_SIZE_I(e0, e1, e2, size, ...) size
+#define CURSEDPP_VEC_DISPATCH(n) CURSEDPP_VEC_DISPATCH_I(n)
+#define CURSEDPP_VEC_DISPATCH_I(n) CURSEDPP_VEC_ ## n
+#define VEC(...) CURSEDPP_VEC_DISPATCH(CURSEDPP_VEC_SIZE(__VA_ARGS__))(__VA_ARGS__)
