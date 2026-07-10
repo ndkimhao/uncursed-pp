@@ -4,6 +4,7 @@
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
+#include "uncursed_pp_runtime.h"
 
 /* uncursed-pp source:
  * # Named args composed with a loop: BODY params referenced inside the
@@ -39,4 +40,40 @@
 
 /* #?  VEC(acc, (x)(y), PREFIX(k))
  * #=>     kx acc; ky acc;
+ */
+
+/* uncursed-pp source:
+ * # 'named variadic' values ride loops too: the value transports WRAPPED
+ * # through the data slot and unwraps at use, so its bare commas never
+ * # split Boost.PP's internal argument lists
+ * @macro TAG_ROWS($xs: seq<token>, named variadic $TAGS = none)
+ * @for $x in $xs
+ * row({{$x}}, {{$TAGS}});
+ * @end
+ * @endmacro
+ */
+#define UNCURSED_PP_TAG_ROWS_EACH1(r, d, e) row(e, UNCURSED_PP_KW_SPREAD d);
+#define UNCURSED_PP_TAG_ROWS_SET_TAGS(...) 0, (__VA_ARGS__)
+#define UNCURSED_PP_TAG_ROWS_STEP1(e, ...) UNCURSED_PP_TAG_ROWS_STEP_D(BOOST_PP_CAT(UNCURSED_PP_TAG_ROWS_SET_, e), __VA_ARGS__)
+#define UNCURSED_PP_TAG_ROWS_STEP_D(...) UNCURSED_PP_TAG_ROWS_STEP_I(__VA_ARGS__)
+#define UNCURSED_PP_TAG_ROWS_STEP_I(i, v, ...) UNCURSED_PP_TAG_ROWS_PUT_ ## i(v, __VA_ARGS__)
+#define UNCURSED_PP_TAG_ROWS_PUT_0(v, p0, e0) v, e0
+#define UNCURSED_PP_TAG_ROWS_BODY(xs, TAGS, e0) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_TAG_ROWS_EACH1, TAGS, xs)
+#define UNCURSED_PP_TAG_ROWS_BODY_D(...) UNCURSED_PP_TAG_ROWS_BODY(__VA_ARGS__)
+#define UNCURSED_PP_TAG_ROWS_1(xs) UNCURSED_PP_TAG_ROWS_BODY(xs, (none), ~)
+#define UNCURSED_PP_TAG_ROWS_2(xs, e1) UNCURSED_PP_TAG_ROWS_BODY_D(xs, UNCURSED_PP_TAG_ROWS_STEP1(e1, (none), ~))
+#define UNCURSED_PP_TAG_ROWS_SIZE(...) UNCURSED_PP_TAG_ROWS_SIZE_I(__VA_ARGS__, 2, 1,)
+#define UNCURSED_PP_TAG_ROWS_SIZE_I(e0, e1, size, ...) size
+#define UNCURSED_PP_TAG_ROWS_DISPATCH(n) UNCURSED_PP_TAG_ROWS_DISPATCH_I(n)
+#define UNCURSED_PP_TAG_ROWS_DISPATCH_I(n) UNCURSED_PP_TAG_ROWS_ ## n
+#define TAG_ROWS(...) UNCURSED_PP_TAG_ROWS_DISPATCH(UNCURSED_PP_TAG_ROWS_SIZE(__VA_ARGS__))(__VA_ARGS__)
+#define UNCURSED_PP_TAG_ROWS_ERROR_TOO_MANY_ARGUMENTS(kw, excess)
+#define UNCURSED_PP_TAG_ROWS_TAGS(...) UNCURSED_PP_TAG_ROWS_ERROR_TOO_MANY_ARGUMENTS(~)
+
+/* #?  TAG_ROWS((a)(b), TAGS(t1, t2))
+ * #=>     row(a, t1, t2); row(b, t1, t2);
+ */
+
+/* #?  TAG_ROWS((a))
+ * #=>     row(a, none);
  */

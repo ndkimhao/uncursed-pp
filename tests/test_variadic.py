@@ -53,3 +53,20 @@ def test_at_most_one_variadic():
         compile_source(
             '@macro F($a: variadic, $b: variadic)\n{{$a[0]}}\n@endmacro\n', "f.uncursed"
         )
+
+
+def test_named_variadic_value_usable_inside_loop(tmp_path):
+    # the value transports WRAPPED through the d slot and unwraps at use;
+    # transporting the unwrapped form exposed its commas mid-expansion
+    # and split Boost.PP's internal argument lists
+    import pytest as _pytest
+    from conftest import CC, canon, preprocess_src
+
+    if CC is None:
+        _pytest.skip("no C compiler available")
+    src = (
+        '@macro NV($xs: seq<token>, named variadic $TAGS = none)\n'
+        '@for $x in $xs\nrow({{$x}}, {{$TAGS}});\n@end\n@endmacro\n'
+    )
+    out = preprocess_src(tmp_path, src, "nv", "NV((a)(b), TAGS(t1, t2))")
+    assert canon("row(a, t1, t2); row(b, t1, t2);") in out

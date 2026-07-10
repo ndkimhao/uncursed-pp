@@ -415,3 +415,28 @@ def test_full_range_chain_expands_computed_seqs(tmp_path):
     )
     out = preprocess_src(tmp_path, src, "cf", "V(f, a, b)")
     assert canon("v(a); v(b);") in out
+
+
+@requires_boost
+def test_param_named_d_with_free_vars_in_tuple_loop(tmp_path):
+    # a param literally named $d must not be mistaken for the FOR_EACH
+    # data slot when recovering which names ride it (exact list, not
+    # string-matching c_exprs)
+    src = (
+        '@macro G($d: token, $q: token, $pairs: seq<tuple<$k, $v>>)\n'
+        'prefix {{$d}};\n@for ($k, $v) in $pairs\n{{$q}} {{$k}} = {{$v}};\n@end\n@endmacro\n'
+    )
+    out = preprocess_src(tmp_path, src, "dd", "G(D, Q, ((a,1))((b,2)))")
+    assert canon("prefix D; Q a = 1; Q b = 2;") in out
+
+
+@requires_boost
+def test_let_bound_to_d_param_field_does_not_confuse_ap(tmp_path):
+    # a @let bound to a field of $d has a c_expr ending in ', d)' - it
+    # must not be misread as a d-slot rider either
+    src = (
+        '@macro L($d: tuple<$a, $b>, $q: token, $xs: seq<tuple<$k, $v>>)\n'
+        '@let $first := $d.$a\nhead {{$first}};\n@for ($k, $v) in $xs\n{{$q}} {{$k}} = {{$v}};\n@end\n@endmacro\n'
+    )
+    out = preprocess_src(tmp_path, src, "dl", "L((A,B), Q, ((x,1)))")
+    assert canon("head A; Q x = 1;") in out

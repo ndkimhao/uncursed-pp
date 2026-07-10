@@ -66,9 +66,26 @@ _LARK = Lark(
 )
 
 _INTERP_RE = re.compile(r"\{\{(.*?)\}\}")
-_INLINE_OPEN_RE = re.compile(r"@(join|if)\s")
-_INLINE_TOKEN_RE = re.compile(r"@(join|if)\s|@else\b|@end\b")
-_STRAY_TOKEN_RE = re.compile(r"@(else|end)\b")
+# One source of truth for C literal tokenization (emitter and tests
+# import it from there). Directive scanners embed it so string/char
+# literals are opaque: '@if'/'@else'/'@end' inside one is literal text.
+C_LITERAL_PATTERN = (
+    r'(?:u8|[uUL])?R"(?P<_rawd>[^"()\\\s]*)\((?s:.*?)\)(?P=_rawd)"'
+    r'|(?:u8|[uUL])?"(?:\\.|[^"\\])*"'
+    r"|(?:u8|[uUL])?'(?:\\.|[^'\\])*'"
+)
+
+_INLINE_OPEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?P<kw>join|if)\s")
+_INLINE_TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?:join|if)\s|@else\b|@end\b")
+_STRAY_TOKEN_RE = re.compile(C_LITERAL_PATTERN + r"|@(?:else|end)\b")
+
+
+def _search_directive(pattern: re.Pattern[str], text: str) -> re.Match[str] | None:
+    """First match that is an @-token, skipping matched C literals."""
+    for m in pattern.finditer(text):
+        if m.group(0).startswith("@"):
+            return m
+    return None
 
 _CMP = r"(?:==|!=|<=|>=|<|>)"
 _COND_PATTERNS = [
@@ -312,6 +329,8 @@ def _scan_to_end(
     else_at: tuple[int, int] | None = None
     for m in _INLINE_TOKEN_RE.finditer(text):
         token = m.group(0)
+        if not token.startswith("@"):
+            continue  # a C string/char literal: its @-tokens are text
         if token.startswith("@join") or token.startswith("@if"):
             depth += 1
         elif token == "@else":
@@ -337,12 +356,12 @@ def _match_cond(text: str, filename: str, lineno: int) -> tuple[Cond, str]:
 
 def _parse_segments(text: str, lineno: int, filename: str) -> list[BodyNode]:
     nodes: list[BodyNode] = []
-    m = _INLINE_OPEN_RE.search(text)
+    m = _search_directive(_INLINE_OPEN_RE, text)
     if m:
         before, after_kw = text[: m.start()], text[m.end() :]
         nodes.extend(_parse_segments(before, lineno, filename))
         node: Join | If
-        if m.group(1) == "join":
+        if m.group("kw") == "join":
             node, rest = _parse_inline_join(after_kw, lineno, filename)
         else:
             node, rest = _parse_inline_if(after_kw, lineno, filename)
@@ -350,7 +369,7 @@ def _parse_segments(text: str, lineno: int, filename: str) -> list[BodyNode]:
         nodes.extend(_parse_segments(rest, lineno, filename))
         return nodes
 
-    stray = _STRAY_TOKEN_RE.search(text)
+    stray = _search_directive(_STRAY_TOKEN_RE, text)
     if stray:
         raise UncursedPpError(f"stray {stray.group(0)} outside a directive", filename, lineno)
 
@@ -554,7 +573,7 @@ def _parse_macro(lines: list[str], start: int, filename: str) -> tuple[MacroDef,
                 filename,
                 lineno,
             )
-        if word is not None and word not in {"join", "if"} and not _INLINE_OPEN_RE.search(raw):
+        if word is not None and word not in {"join", "if"} and not _search_directive(_INLINE_OPEN_RE, raw):
             raise UncursedPpError(
                 f"unknown directive: @{word} (known: for, join, if, else, "
                 "end, let, pragma)",

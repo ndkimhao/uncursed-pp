@@ -12,3 +12,18 @@
 
 #?  VEC(acc, (x)(y), PREFIX(k))
 #=>     kx acc; ky acc;
+
+# 'named variadic' values ride loops too: the value transports WRAPPED
+# through the data slot and unwraps at use, so its bare commas never
+# split Boost.PP's internal argument lists
+@macro TAG_ROWS($xs: seq<token>, named variadic $TAGS = none)
+@for $x in $xs
+row({{$x}}, {{$TAGS}});
+@end
+@endmacro
+
+#?  TAG_ROWS((a)(b), TAGS(t1, t2))
+#=>     row(a, t1, t2); row(b, t1, t2);
+
+#?  TAG_ROWS((a))
+#=>     row(a, none);

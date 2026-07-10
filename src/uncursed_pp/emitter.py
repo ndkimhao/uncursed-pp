@@ -38,6 +38,7 @@ from .nodes import (
     VarRef,
     VarTupleT,
 )
+from .parser import C_LITERAL_PATTERN as C_LITERAL_PATTERN
 from .parser import UncursedPpError, parse_file
 
 
@@ -128,6 +129,9 @@ class _Binding:
     fragile: bool = False  # rendered @join/@if call: expands to comma-bearing
     # text, so it cannot travel as a helper argument or data-slot value
     spread: bool = False  # tuple param whose fields are direct BODY params
+    wrapped: str | None = None  # parenthesized transport form of a
+    # comma-capable value ('named variadic'): ride slots/args as this,
+    # unwrap (KW_SPREAD juxtaposition) only at the point of use
 
 
 _Env = dict[str, _Binding]
@@ -186,7 +190,9 @@ class _MacroEmitter:
                 # wasted work here (audit: 2.33x)
                 self.file_state["kw_utils"] = True
                 env[p.name] = _Binding(
-                    f"{self.config.helper_prefix}KW_SPREAD {self.arg(p.name)}", TokenT()
+                    f"{self.config.helper_prefix}KW_SPREAD {self.arg(p.name)}",
+                    TokenT(),
+                    wrapped=self.arg(p.name),
                 )
         spread_params: set[str] = set()
         if not defaulted and not named:
@@ -807,11 +813,12 @@ class _MacroEmitter:
 
     def _loop_data(
         self, node: ForEach | Join, env: _Env, loop_env: _Env
-    ) -> tuple[str, _Env]:
+    ) -> tuple[str, _Env, list[str]]:
         """Free outer variables in a loop body ride FOR_EACH's `d` slot.
 
-        Returns (data argument for the call site, adjusted loop env).
-        One free variable travels as `d` itself; several as a tuple in `d`.
+        Returns (data argument for the call site, adjusted loop env, and
+        the names riding `d` in slot order). One free variable travels as
+        `d` itself; several as a tuple in `d`.
         """
         # bound = names the loop itself introduced or rebound (unpack names,
         # `as` var, implicit tuple fields); everything else from the outer
@@ -820,18 +827,32 @@ class _MacroEmitter:
         free = self._free_vars(node.body, env, bound)
         self._guard_fragile(free, env, node.line)
         if not free:
-            return "~", loop_env
+            return "~", loop_env, []
         loop_env = dict(loop_env)
-        if len(free) == 1:
-            data = env[free[0]].c_expr
-            loop_env[free[0]] = _Binding(self.arg("d"), env[free[0]].type)
-        else:
-            data = "(" + ", ".join(env[n].c_expr for n in free) + ")"
-            for idx, name in enumerate(free):
-                loop_env[name] = _Binding(
-                    f"{self.pp('TUPLE_ELEM')}({idx}, {self.arg('d')})", env[name].type
+
+        def transport(binding: _Binding, slot: str) -> _Binding:
+            # comma-capable values ride the slot in their WRAPPED form and
+            # unwrap at use; juxtaposition works on computed slot refs too
+            # (the unexpanded KW_SPREAD meets the parens after they expand)
+            if binding.wrapped is not None:
+                return _Binding(
+                    f"{self.config.helper_prefix}KW_SPREAD {slot}",
+                    binding.type,
+                    wrapped=slot,
                 )
-        return data, loop_env
+            return _Binding(slot, binding.type)
+
+        if len(free) == 1:
+            b = env[free[0]]
+            data = b.wrapped or b.c_expr
+            loop_env[free[0]] = transport(b, self.arg("d"))
+        else:
+            data = "(" + ", ".join(env[n].wrapped or env[n].c_expr for n in free) + ")"
+            for idx, name in enumerate(free):
+                loop_env[name] = transport(
+                    env[name], f"{self.pp('TUPLE_ELEM')}({idx}, {self.arg('d')})"
+                )
+        return data, loop_env, free
 
     def _render_inner_loop(
         self,
@@ -866,7 +887,8 @@ class _MacroEmitter:
         self._guard_fragile(free, env, node.line)
 
         if free:
-            parts = [seq_expr] + [env[n].c_expr for n in free]
+            # comma-capable values (wrapped) travel in their wrapped form
+            parts = [seq_expr] + [env[n].wrapped or env[n].c_expr for n in free]
             data = "(" + ", ".join(parts) + ")"
             seq_ref = f"{self.pp('TUPLE_ELEM')}(0, {self.arg('d')})"
         else:
@@ -874,9 +896,15 @@ class _MacroEmitter:
             seq_ref = self.arg("d")
         base_env = dict(env)
         for idx, name in enumerate(free):
-            base_env[name] = _Binding(
-                f"{self.pp('TUPLE_ELEM')}({idx + 1}, {self.arg('d')})", env[name].type
-            )
+            slot = f"{self.pp('TUPLE_ELEM')}({idx + 1}, {self.arg('d')})"
+            if env[name].wrapped is not None:
+                base_env[name] = _Binding(
+                    f"{self.config.helper_prefix}KW_SPREAD {slot}",
+                    env[name].type,
+                    wrapped=slot,
+                )
+            else:
+                base_env[name] = _Binding(slot, env[name].type)
         if node.iterable in env:
             base_env[node.iterable] = _Binding(seq_ref, env[node.iterable].type)
         elem = f"{self.pp('SEQ_ELEM')}({self.arg('n')}, {seq_ref})"
@@ -914,20 +942,15 @@ class _MacroEmitter:
         """
         unpack = node.unpack if isinstance(node, ForEach) else None
         loop_env = self._loop_env(env, unpack, node.var, elem_type, node, elem=self.arg("e"))
-        data, loop_env = self._loop_data(node, env, loop_env)
+        # free = exactly the names _loop_data rebound onto the d slot, in
+        # slot order (never re-derived by string-matching c_exprs: a param
+        # literally named $d, or a @let over a field of it, must not be
+        # mistaken for a rider)
+        data, loop_env, free = self._loop_data(node, env, loop_env)
 
         field_names: tuple[str, ...] = ()
         if node.var is None and isinstance(elem_type, TupleT):
             field_names = unpack or elem_type.names
-        # free vars are the ones _loop_data rebound onto the d slot,
-        # kept in slot order
-        d_ = self.arg("d")
-        free = [
-            n for n, b in loop_env.items()
-            if b.c_expr == d_ or b.c_expr.endswith(f", {d_})")
-        ]
-        d_slot_re = re.compile(rf"\((\d+), {re.escape(d_)}\)")
-        free.sort(key=lambda n: int(m.group(1)) if (m := d_slot_re.search(loop_env[n].c_expr)) else 0)
         ap_params = free + list(field_names)
 
         use_ap = bool(field_names) and len(set(ap_params)) == len(ap_params)
@@ -935,7 +958,15 @@ class _MacroEmitter:
         if use_ap:
             render_env = dict(loop_env)
             for name in ap_params:
-                render_env[name] = _Binding(self.arg(name), loop_env[name].type)
+                if loop_env[name].wrapped is not None:
+                    # the AP param receives the still-wrapped value
+                    render_env[name] = _Binding(
+                        f"{self.config.helper_prefix}KW_SPREAD {self.arg(name)}",
+                        loop_env[name].type,
+                        wrapped=self.arg(name),
+                    )
+                else:
+                    render_env[name] = _Binding(self.arg(name), loop_env[name].type)
         self._loop_depth += 1
         try:
             body = _collapse_ws(self._render_block(node.body, render_env))
@@ -1232,15 +1263,8 @@ def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
     return walk(nodes)
 
 
-# One source of truth for C literal tokenization (tests import this too):
-# raw strings (delimiter backreference, content verbatim), then prefixed
-# string/char literals. Prefixes bind only when the quote is adjacent.
-C_LITERAL_PATTERN = (
-    r'(?:u8|[uUL])?R"(?P<_rawd>[^"()\\\s]*)\((?s:.*?)\)(?P=_rawd)"'
-    r'|(?:u8|[uUL])?"(?:\\.|[^"\\])*"'
-    r"|(?:u8|[uUL])?'(?:\\.|[^'\\])*'"
-)
-
+# C_LITERAL_PATTERN lives in parser.py (the directive scanners embed it);
+# re-exported here for collapse.py and the tests.
 _LITERAL_RE = re.compile(C_LITERAL_PATTERN)
 
 

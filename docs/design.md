@@ -189,7 +189,11 @@ the whole output file then:
 Shared helpers are named `UNCURSED_PP_<FILESTEM>_H<n>` in deterministic
 (first-use) order so golden files stay stable; the file-stem segment keeps
 independently generated headers from colliding when included together in one
-translation unit. The pass never fires for a single user, never makes
+translation unit. Known limitation: the stem is the source BASENAME only, so
+two templates with the same basename in different directories (`ui/x.uncursed`
+and `net/x.uncursed`) generate colliding shared-helper names — one header
+silently redefines the other's helpers in a TU that includes both. Give such
+files distinct basenames, or set a distinct `@pragma helper_prefix` in one. The pass never fires for a single user, never makes
 the generated code more indirect than the unshared version (beyond the `d`
 pass-through), and no fancier unification than single-token abstraction is
 attempted (keep it simple).

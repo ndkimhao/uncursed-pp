@@ -165,3 +165,25 @@ def test_comparison_literal_above_256_is_error():
 def test_comparison_literal_at_256_is_ok():
     src = '@macro F($xs: seq<token>)\n@if len($xs) == 256\nmax\n@end\n@endmacro\n'
     compile_source(src, "t.uncursed")  # boundary value is legal
+
+
+def test_else_inside_string_literal_stays_in_the_string():
+    # the inline scanner must not split a branch at an @else that lives
+    # inside a C string literal
+    src = (
+        '@macro PICK($x)\n'
+        '@if is_paren($x) const char *s = "took the @else branch"; @else other; @end\n'
+        '@endmacro\n'
+    )
+    out = compile_source(src, "t.uncursed")
+    assert '"took the @else branch"' in out
+
+
+def test_end_inside_string_literal_stays_in_the_string():
+    src = (
+        '@macro P2($x)\n'
+        '@if is_paren($x) puts("not the @end yet"); @end\n'
+        '@endmacro\n'
+    )
+    out = compile_source(src, "t.uncursed")
+    assert '"not the @end yet"' in out

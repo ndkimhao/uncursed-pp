@@ -397,7 +397,9 @@ Two whole-file passes keep output small and deterministic:
 
 - **Helper collapse**: identical helpers merge into shared
   `UNCURSED_PP_<FILESTEM>_H<n>` macros, numbered in first-use order and
-  namespaced by file stem so two generated headers never collide; loop
+  namespaced by file stem (the source *basename* — templates that share a
+  basename across directories collide when both headers land in one
+  translation unit; rename one or set `@pragma helper_prefix`); loop
   helpers differing by exactly one constant token merge with the constant
   passed through the `d` slot. Anything needing more machinery stays
   unmerged on purpose.

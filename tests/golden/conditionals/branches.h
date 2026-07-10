@@ -4,6 +4,7 @@
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/comparison/equal.hpp>
 #include <boost/preprocessor/control/iif.hpp>
+#include <boost/preprocessor/punctuation/is_begin_parens.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/seq/size.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
@@ -96,4 +97,23 @@
 
 /* #?  SIZE_CLASS((a)(b))
  * #=>     double
+ */
+
+/* uncursed-pp source:
+ * # @-tokens inside C string literals are literal text, never directives:
+ * # the scanner treats string/char literals as opaque
+ * @macro SAYS($x)
+ * @if is_paren($x) const char *s = "took the @else branch"; @else plain({{$x}}); @end
+ * @endmacro
+ */
+#define UNCURSED_PP_SAYS_THEN1(x) const char *s = "took the @else branch";
+#define UNCURSED_PP_SAYS_ELSE1(x) plain(x);
+#define SAYS(x) BOOST_PP_IIF(BOOST_PP_IS_BEGIN_PARENS(x), UNCURSED_PP_SAYS_THEN1, UNCURSED_PP_SAYS_ELSE1)(x)
+
+/* #?  SAYS((k))
+ * #=>     const char *s = "took the @else branch";
+ */
+
+/* #?  SAYS(k)
+ * #=>     plain(k);
  */
