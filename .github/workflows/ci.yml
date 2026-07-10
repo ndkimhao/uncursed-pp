@@ -82,12 +82,19 @@ jobs:
           packages: gcc-12 gcc-13 gcc-14 gcc-15 gcc-16 clang-19 clang-20 clang-21 clang-22
           version: 1.0
 
-      - name: Spec-check every template with every compiler
+      - name: Spec-check every template with every compiler (nproc-parallel)
         run: |
           set -eu
-          for cc in gcc-12 gcc-13 gcc-14 gcc-15 gcc-16 \
-                    clang-19 clang-20 clang-21 clang-22; do
+          ccs="gcc-12 gcc-13 gcc-14 gcc-15 gcc-16 clang-19 clang-20 clang-21 clang-22"
+          # parallel across compilers, one log per compiler so the
+          # grouped output below stays readable; xargs keeps running the
+          # remaining compilers when one fails and exits nonzero at the end
+          failed=0
+          printf '%s\n' $ccs | xargs -P "$(nproc)" -I{} sh -c \
+            'make speccheck CHECK_CC={} > /tmp/speccheck-{}.log 2>&1' || failed=1
+          for cc in $ccs; do
             echo "::group::${cc} ($($cc --version | head -1))"
-            make speccheck CHECK_CC="$cc"
+            cat "/tmp/speccheck-$cc.log"
             echo "::endgroup::"
           done
+          exit "$failed"
