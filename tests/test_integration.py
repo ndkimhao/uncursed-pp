@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from cursedpp.emitter import compile_source
+from cursedpp.emitter import compile_template
 
 GOLDEN = Path(__file__).parent / "golden"
 
@@ -35,7 +35,10 @@ def preprocess(tmp_path: Path, cursed_name: str, invocation: str) -> str:
     """Compile a golden template, include it from a snippet, run cc -E -P."""
     source = (GOLDEN / f"{cursed_name}.cursed").read_text()
     header = tmp_path / f"{cursed_name}.h"
-    header.write_text(compile_source(source, f"{cursed_name}.cursed"))
+    result = compile_template(source, f"{cursed_name}.cursed")
+    header.write_text(result.header)
+    if result.runtime is not None:
+        (tmp_path / result.runtime_name).write_text(result.runtime)
     snippet = tmp_path / "main.c"
     snippet.write_text(f'#include "{header.name}"\n{invocation}\n')
     result = subprocess.run(
@@ -115,7 +118,10 @@ WIDGET_SRC = (
 
 def preprocess_src(tmp_path: Path, source: str, stem: str, invocation: str) -> str:
     header = tmp_path / f"{stem}.h"
-    header.write_text(compile_source(source, f"{stem}.cursed"))
+    result = compile_template(source, f"{stem}.cursed")
+    header.write_text(result.header)
+    if result.runtime is not None:
+        (tmp_path / result.runtime_name).write_text(result.runtime)
     snippet = tmp_path / "main.c"
     snippet.write_text(f'#include "{header.name}"\n{invocation}\n')
     result = subprocess.run(

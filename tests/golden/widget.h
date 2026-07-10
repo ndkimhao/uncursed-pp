@@ -6,11 +6,7 @@
 #include <boost/preprocessor/facilities/overload.hpp>
 #include <boost/preprocessor/seq/fold_left.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
-
-#define CURSEDPP_KW_CHECK_N(x, n, ...) n
-#define CURSEDPP_KW_CHECK(...) CURSEDPP_KW_CHECK_N(__VA_ARGS__, 0,)
-#define CURSEDPP_KW_FIRST_N(x, ...) x
-#define CURSEDPP_KW_FIRST(...) CURSEDPP_KW_FIRST_N(__VA_ARGS__,)
+#include "cursedpp_runtime.h"
 
 #define CURSEDPP_MAKE_WIDGET_KW_WIDTH_WIDTH(v) v, 1
 #define CURSEDPP_MAKE_WIDGET_IS_WIDTH(e) CURSEDPP_KW_CHECK(BOOST_PP_CAT(CURSEDPP_MAKE_WIDGET_KW_WIDTH_, e))

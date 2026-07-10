@@ -69,6 +69,12 @@ Identical generated helpers are deduplicated across the file into shared
 `CURSEDPP_H<n>` macros; loop bodies differing by one constant token share a
 helper with the constant passed through `FOR_EACH`'s data slot.
 
+Common utilities (the keyword-argument `KW_CHECK`/`KW_FIRST` machinery) are
+not inlined: headers that need them `#include "cursedpp_runtime.h"`, a small
+companion file cursedpp writes next to the output. Multiple generated headers
+share the one runtime file. Its name follows `--helper-prefix`
+(`MYLIB_` → `mylib_runtime.h`).
+
 ## Call-site rules (C is still C)
 
 - **Seqs of tuples need double parens**: `F(((int, x))((float, y)))` — each

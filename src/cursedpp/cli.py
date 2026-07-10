@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .emitter import EmitConfig, compile_source
+from .emitter import EmitConfig, compile_template
 from .parser import CursedppError
 
 
@@ -41,11 +41,13 @@ def main(argv: list[str] | None = None) -> None:
         helper_prefix=args.helper_prefix,
     )
     try:
-        header = compile_source(input_path.read_text(), str(input_path), config=config)
+        result = compile_template(input_path.read_text(), str(input_path), config=config)
     except CursedppError as exc:
         print(exc, file=sys.stderr)
         raise SystemExit(1) from exc
-    output_path.write_text(header)
+    output_path.write_text(result.header)
+    if result.runtime is not None:
+        (output_path.parent / result.runtime_name).write_text(result.runtime)
 
 
 if __name__ == "__main__":

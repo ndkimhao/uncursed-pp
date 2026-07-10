@@ -125,6 +125,9 @@ def test_named_args_emit_probe_and_fold():
     out = compile_source(WIDGET_SRC, "widget.cursed")
     assert "#define CURSEDPP_MAKE_WIDGET_KW_WIDTH_WIDTH(v) v, 1\n" in out
     assert "BOOST_PP_SEQ_FOLD_LEFT" in out
+    # common utils live in the companion runtime header, not inline
+    assert '#include "cursedpp_runtime.h"' in out
+    assert "#define CURSEDPP_KW_CHECK" not in out
     assert "#define CURSEDPP_MAKE_WIDGET_1(name) CURSEDPP_MAKE_WIDGET_BODY(name, 100, 50, )\n" in out
     assert (
         "#define MAKE_WIDGET(...) "
@@ -189,3 +192,24 @@ def test_custom_pp_prefix_requires_include():
     with pytest.raises(CursedppError) as excinfo:
         compile_source("@pragma pp_prefix MYPP_\nmacro ID(x)\n{{x}}\nend\n", "t.cursed")
     assert "pp_include" in str(excinfo.value)
+
+
+def test_runtime_header_contents():
+    from cursedpp.emitter import EmitConfig, runtime_header
+
+    rt = runtime_header(EmitConfig())
+    assert "#pragma once" in rt
+    assert "#define CURSEDPP_KW_CHECK_N(x, n, ...) n" in rt
+    assert "#define CURSEDPP_KW_FIRST_N(x, ...) x" in rt
+    assert "shared by all cursedpp-generated headers" in rt
+
+
+def test_compile_template_reports_runtime_dependency():
+    from cursedpp.emitter import compile_template
+
+    result = compile_template(WIDGET_SRC, "widget.cursed")
+    assert result.runtime is not None
+    assert result.runtime_name == "cursedpp_runtime.h"
+
+    plain = compile_template("macro ID(x)\n{{x}}\nend\n", "id.cursed")
+    assert plain.runtime is None

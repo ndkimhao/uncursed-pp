@@ -54,3 +54,21 @@ def test_cli_helper_prefix_flag(tmp_path):
     out = tmp_path / "d.h"
     main([str(src), "-o", str(out), "--helper-prefix", "MY_"])
     assert "MY_D_EACH1" in out.read_text()
+
+
+def test_cli_writes_runtime_header_when_needed(tmp_path):
+    src = tmp_path / "w.cursed"
+    src.write_text("macro W(name, named WIDTH = 1)\nf({{name}}, {{WIDTH}})\nend\n")
+    out = tmp_path / "sub" / "w.h"
+    out.parent.mkdir()
+    main([str(src), "-o", str(out)])
+    runtime = out.parent / "cursedpp_runtime.h"
+    assert runtime.exists()
+    assert "CURSEDPP_KW_CHECK" in runtime.read_text()
+
+
+def test_cli_no_runtime_for_plain_macros(tmp_path):
+    src = tmp_path / "p.cursed"
+    src.write_text("macro ID(x)\n{{x}}\nend\n")
+    main([str(src)])
+    assert not (tmp_path / "cursedpp_runtime.h").exists()
