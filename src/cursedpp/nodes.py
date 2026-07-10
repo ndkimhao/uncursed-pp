@@ -34,7 +34,23 @@ class VarRef:
     name: str
 
 
-Expr = VarRef
+@dataclass(frozen=True)
+class ElemAccess:
+    base: "Expr"
+    accessor: str | int  # str = tuple field name, int = seq index
+
+
+@dataclass(frozen=True)
+class Concat:
+    args: tuple["Expr", ...]
+
+
+@dataclass(frozen=True)
+class RemoveParens:
+    arg: "Expr"
+
+
+Expr = VarRef | ElemAccess | Concat | RemoveParens
 
 
 # ── Body nodes ───────────────────────────────────────────────────────
@@ -60,7 +76,23 @@ class ForEach:
     line: int = 0
 
 
-BodyNode = Text | Interp | ForEach
+@dataclass
+class Join:
+    var: str | None
+    iterable: str
+    sep: str
+    body: list[BodyNode] = field(default_factory=list)
+    line: int = 0
+
+
+@dataclass
+class Let:
+    name: str
+    expr: Expr
+    line: int = 0
+
+
+BodyNode = Text | Interp | ForEach | Join | Let
 
 
 # ── Top level ────────────────────────────────────────────────────────

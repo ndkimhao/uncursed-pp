@@ -44,7 +44,14 @@ def preprocess(tmp_path: Path, cursed_name: str, invocation: str) -> str:
         text=True,
         check=True,
     )
-    return re.sub(r"\s+", " ", result.stdout).strip()
+    return canon(result.stdout)
+
+
+def canon(text: str) -> str:
+    """Whitespace-canonical form: the preprocessor may add/drop spaces around
+    punctuation, but never inside identifiers - so compare modulo that."""
+    text = re.sub(r"\s+", " ", text).strip()
+    return re.sub(r" ?([(),;{}|]) ?", r"\1", text)
 
 
 @requires_boost
@@ -52,4 +59,30 @@ def test_declare_fields_expansion(tmp_path):
     expanded = preprocess(
         tmp_path, "declare_fields", "DECLARE_FIELDS(((int, x))((float, y))((char *, name)))"
     )
-    assert "int x; float y; char * name;" in expanded
+    assert canon("int x; float y; char * name;") in expanded
+
+
+@requires_boost
+def test_proto_expansion(tmp_path):
+    expanded = preprocess(
+        tmp_path, "proto", "PROTO(draw, ((struct ctx *, ctx))((int, flags)))"
+    )
+    assert canon("void draw(struct ctx * ctx, int flags);") in expanded
+
+
+@requires_boost
+def test_getter_concat_expansion(tmp_path):
+    expanded = preprocess(tmp_path, "getter", "GETTER((int, age))")
+    assert canon("int get_age(const struct self *s) { return s->age; }") in expanded
+
+
+@requires_boost
+def test_pair_remove_parens_expansion(tmp_path):
+    expanded = preprocess(tmp_path, "pair", "PAIR(((pair<int,int>), b))")
+    assert canon("S{ pair<int,int> | b }") in expanded
+
+
+@requires_boost
+def test_pair_without_parens_passthrough(tmp_path):
+    expanded = preprocess(tmp_path, "pair", "PAIR((a, b))")
+    assert canon("S{ a | b }") in expanded

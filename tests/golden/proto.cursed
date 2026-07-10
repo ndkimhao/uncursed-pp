@@ -1,0 +1,4 @@
+# Function prototype from a seq of (type, argname) tuples.
+macro PROTO(name, args: seq<tuple<type, argname>>)
+void {{name}}(@join args with ", ": {{type}} {{argname}}@end);
+end

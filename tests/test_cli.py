@@ -17,7 +17,7 @@ def test_cli_compiles_to_default_output(tmp_path, monkeypatch):
     out = tmp_path / "fields.h"
     assert out.exists()
     assert "#define ID(x) x" in out.read_text()
-    assert "#ifndef FIELDS_CURSED_H" in out.read_text()
+    assert "#pragma once" in out.read_text()
 
 
 def test_cli_explicit_output(tmp_path):

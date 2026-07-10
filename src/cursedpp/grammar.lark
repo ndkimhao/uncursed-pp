@@ -14,8 +14,18 @@ for_line: "for" for_target "in" CNAME
 for_target: "(" name_list ")" -> unpack_target
           | CNAME             -> var_target
 
-expr: CNAME -> var_ref
+join_header: "join" CNAME ["as" CNAME] "with" ESCAPED_STRING
+
+let_line: "let" CNAME ":=" expr
+
+expr: CNAME "(" expr ("," expr)* ")" -> func_call
+    | postfix
+postfix: CNAME accessor*
+accessor: "." CNAME  -> field_access
+        | "[" INT "]" -> index_access
 
 %import common.CNAME
+%import common.INT
+%import common.ESCAPED_STRING
 %import common.WS_INLINE
 %ignore WS_INLINE

@@ -1,6 +1,18 @@
 import pytest
 
-from cursedpp.nodes import ForEach, Interp, SeqT, Text, TupleT, VarRef
+from cursedpp.nodes import (
+    Concat,
+    ElemAccess,
+    ForEach,
+    Interp,
+    Join,
+    Let,
+    RemoveParens,
+    SeqT,
+    Text,
+    TupleT,
+    VarRef,
+)
 from cursedpp.parser import CursedppError, parse_file
 
 DECLARE_FIELDS = """\
@@ -61,3 +73,49 @@ def test_bad_signature_reports_position():
     with pytest.raises(CursedppError) as excinfo:
         parse_file("macro FOO(x::)\nbody\nend\n", "t.cursed")
     assert "t.cursed:1" in str(excinfo.value)
+
+
+def test_parse_inline_join():
+    src = (
+        "macro PROTO(name, args: seq<tuple<type, argname>>)\n"
+        'void {{name}}(@join args with ", ": {{type}} {{argname}}@end);\n'
+        "end\n"
+    )
+    [macro] = parse_file(src, "t.cursed").macros
+    join = next(n for n in macro.body if isinstance(n, Join))
+    assert join.iterable == "args"
+    assert join.sep == ", "
+    assert join.var is None
+    interps = [n for n in join.body if isinstance(n, Interp)]
+    assert [i.expr for i in interps] == [VarRef("type"), VarRef("argname")]
+
+
+def test_parse_line_form_join_with_as_binding():
+    src = 'macro ORS(xs: seq<token>)\n@join xs as x with " || "\n({{x}})\n@end\nend\n'
+    [macro] = parse_file(src, "t.cursed").macros
+    join = next(n for n in macro.body if isinstance(n, Join))
+    assert join.var == "x"
+    assert join.sep == " || "
+    assert join.iterable == "xs"
+
+
+def test_parse_let_and_concat():
+    src = "macro G(f: tuple<t, n>)\n@let g := concat(get_, f.n)\n{{g}}\nend\n"
+    [macro] = parse_file(src, "t.cursed").macros
+    let = next(n for n in macro.body if isinstance(n, Let))
+    assert let.name == "g"
+    assert let.expr == Concat((VarRef("get_"), ElemAccess(VarRef("f"), "n")))
+
+
+def test_parse_index_access_and_remove_parens():
+    src = "macro F(xs: seq<token>)\n{{remove_parens(xs[0])}}\nend\n"
+    [macro] = parse_file(src, "t.cursed").macros
+    interp = next(n for n in macro.body if isinstance(n, Interp))
+    assert interp.expr == RemoveParens(ElemAccess(VarRef("xs"), 0))
+
+
+def test_inline_join_missing_end_is_error():
+    src = 'macro P(xs: seq<token>)\nf(@join xs with ", ": {{xs}});\nend\n'
+    with pytest.raises(CursedppError) as excinfo:
+        parse_file(src, "t.cursed")
+    assert "t.cursed:2" in str(excinfo.value)
