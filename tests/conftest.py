@@ -1,5 +1,6 @@
 """Shared helpers: the gcc e2e harness and golden-tree discovery."""
 
+import os
 import re
 import shutil
 import subprocess
@@ -30,6 +31,14 @@ def _boost_available() -> bool:
     )
     return probe.returncode == 0
 
+
+# Locally, missing cc/boost skips the e2e layer; in CI (GitHub sets CI=1)
+# that would silently hollow out the suite - fail loudly instead.
+if os.environ.get("CI") and not _boost_available():
+    raise RuntimeError(
+        "CI requires the gcc e2e layer: cc/gcc and Boost.PP must be present "
+        "(did 'make boost-pp' run?)"
+    )
 
 requires_boost = pytest.mark.skipif(
     not _boost_available(), reason="boost/preprocessor.hpp not available"
