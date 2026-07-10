@@ -112,8 +112,8 @@ All `BOOST_PP_` occurrences below use the configured prefix
 
 | Construct | Generated code |
 |---|---|
-| `@for` over seq | helper `UNCURSED_PP_<M>_EACHn(r,d,e)` + `BOOST_PP_SEQ_FOR_EACH` |
-| `@join ... with sep` | identity comma joins: table-driven `BOOST_PP_SEQ_ENUM`; otherwise `BOOST_PP_SEQ_FOR_EACH_I` + `BOOST_PP_COMMA_IF(i)` for `","`, `BOOST_PP_IF(i, UNCURSED_PP_<M>_SEPn, BOOST_PP_EMPTY)()` for other seps |
+| `@for` over seq | no free outer vars: consumption chain `UNCURSED_PP_<M>_CH<n>_k` (body inlined, ~2 expansions/element; size-class table picks chain vs `SEQ_FOR_EACH` fallback above `loop_chain_limit`); otherwise helper `UNCURSED_PP_<M>_EACHn(r,d,e)` + `BOOST_PP_SEQ_FOR_EACH` |
+| `@join ... with sep` | identity comma joins: table-driven `BOOST_PP_SEQ_ENUM`; other no-free-var joins: consumption chains with the separator baked between members; otherwise `BOOST_PP_SEQ_FOR_EACH_I` + `BOOST_PP_COMMA_IF(i)` for `","`, `BOOST_PP_IF(i, UNCURSED_PP_<M>_SEPn, BOOST_PP_EMPTY)()` for other seps |
 | tuple named access | direct AP/BODY parameter when the tuple is unpacked (loops, spread tuple params); `BOOST_PP_TUPLE_ELEM(idx, x)` otherwise (whole-tuple use, name collisions) |
 | seq index `xs[k]` | `BOOST_PP_SEQ_ELEM(k, xs)` |
 | `@if/@else` | branch bodies emitted as separate helper macros, selected by `BOOST_PP_IIF(cond, THEN, ELSE)` then invoked — branch text may contain commas |
