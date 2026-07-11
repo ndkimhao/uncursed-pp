@@ -50,3 +50,28 @@ edge({{$t.$a}}, {{$t.$b}}, {{$t.$c}});
 # fewer fields than required is a hard preprocessor error, never
 # silent garbage
 #?! EDGE((only))
+
+# tuple_or_token: opt-in bare-token elements (one required field; a
+# bare element supplies it, a parenthesized one is a full tuple). The
+# paren probe is fused into the size dispatch.
+@macro DEFINE_ENUM($name, $es: tuple<tuple_or_token<$n, $v?>...>)
+enum {{$name}} { @join $es as $e with " ": @if has($e.$v) @then {{$e.$n}} = {{$e.$v}}, @else {{$e.$n}}, @end@end };
+@endmacro
+
+#?  DEFINE_ENUM(E, (x, (y, 1), z))
+#=>     enum E { x, y = 1, z, };
+
+# typed 'named variadic': the keyword value is an iterable list of the
+# element type (empty default = zero elements; keywords stay optional
+# and order-free)
+@macro DEFINE_STRUCT($name,
+    named variadic $MEMBERS: tuple_or_token<$m, $init?> = ,
+    named variadic $FUNCS: token = )
+struct {{$name}} { @join $MEMBERS as $f with " ": @if has($f.$init) @then {{$f.$m}} = {{$f.$init}}, @else {{$f.$m}}, @end@end @join $FUNCS as $g with " ": {{$g}}(), @end };
+@endmacro
+
+#?  DEFINE_STRUCT(Foo, MEMBERS(a, b, (c, 1), d), FUNCS(q, w))
+#=>     struct Foo { a, b, c = 1, d, q(), w(), };
+
+#?  DEFINE_STRUCT(Bar, FUNCS(q))
+#=>     struct Bar { q(), };

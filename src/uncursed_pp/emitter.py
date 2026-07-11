@@ -193,9 +193,17 @@ class _MacroEmitter:
             )
         for p in named:
             if p.variadic_value:
-                # value is parenthesized by construction, so unwrap by
-                # juxtaposition - the conditional REMOVE_PARENS probe is
-                # wasted work here (audit: 2.33x)
+                if p.type is not None:
+                    # typed keyword list: the setter's re-wrap makes the
+                    # value a parenthesized comma list - exactly an
+                    # unbounded tuple of the element type, so the whole
+                    # VarTupleT machinery (gated loops, len, is_empty,
+                    # element normalization) applies unchanged
+                    env[p.name] = _Binding(self.arg(p.name), VarTupleT(p.type))
+                    continue
+                # untyped: verbatim value, unwrap by juxtaposition - the
+                # conditional REMOVE_PARENS probe is wasted work here
+                # (audit: 2.33x)
                 self.file_state["kw_utils"] = True
                 env[p.name] = _Binding(
                     f"{self.config.helper_prefix}KW_SPREAD {self.arg(p.name)}",
@@ -261,7 +269,7 @@ class _MacroEmitter:
                 body_params.extend(self.arg(n) for n in p.type.names)
                 if p.type.maybe:
                     body_params.append(self.arg(f"{p.name}_sz"))
-                if p.type.has_optional:
+                if p.type.has_optional or p.type.or_token:
                     norm_any = True
                 args.append(f"{spread} {self.arg(p.name)}")
             else:
@@ -1066,7 +1074,9 @@ class _MacroEmitter:
             return body, data
 
         ap_param_names = [self.arg(n) for n in ap_params]
-        norm = isinstance(elem_type, TupleT) and elem_type.has_optional
+        norm = isinstance(elem_type, TupleT) and (
+            elem_type.has_optional or elem_type.or_token
+        )
         if isinstance(elem_type, TupleT) and elem_type.maybe:
             ap_param_names.append(self.arg("fsz"))  # hidden size slot
         ap = self._add_helper("AP", ", ".join(ap_param_names), body)
@@ -1186,7 +1196,7 @@ class _MacroEmitter:
         shape has `?` fields). CAT(NF_, TUPLE_SIZE(t)) t consumes the
         argument-pre-expanded tuple by juxtaposition; sizes below the
         required count land on a mismatched error stub."""
-        key = (t.names, t.defaults, t.maybe)
+        key = (t.names, t.defaults, t.maybe, t.or_token)
         if key in self._norm_helpers:
             return self._norm_helpers[key]
         base = f"{self.config.helper_prefix}{self.macro.name}_"
@@ -1194,8 +1204,29 @@ class _MacroEmitter:
         self._norm_helpers[key] = name
         total, req = len(t.names), t.required
         t_, n_ = self.arg("t"), self.arg("n")
+        a_, b_, f_ = self.arg("a"), self.arg("b"), self.arg("f")
         d = self.out.defines
-        d.append(f"#define {name}({t_}) {name}_D({self.pp('TUPLE_SIZE')}({t_}), {t_})\n")
+        if t.or_token:
+            # fused token-or-tuple dispatch (measured: 224M vs 241M GC
+            # alloc against IS_BEGIN_PARENS+IIF at 15k elems, and no
+            # extra boost includes). {name}_C consumes a parenthesized
+            # value; the paste target is always a KNOWN probe name -
+            # never the user token, so strings/numbers stay paste-safe.
+            d.append(f"#define {name}({t_}) {name}_S({t_}, {name}_CT({name}_R_, {name}_C {t_}))\n")
+            d.append(f"#define {name}_C(...) 1\n")
+            d.append(f"#define {name}_CT({a_}, {b_}) {name}_CTI({a_}, {b_})\n")
+            d.append(f"#define {name}_CTI({a_}, {b_}) {a_} ## {b_}\n")
+            d.append(f"#define {name}_R_1 {name}_T,\n")
+            d.append(f"#define {name}_R_{name}_C {name}_B,\n")
+            d.append(f"#define {name}_S(...) {name}_SI(__VA_ARGS__)\n")
+            d.append(f"#define {name}_SI({t_}, {f_}, ...) {f_}({t_})\n")
+            bare_fill = [t_] + [t.defaults[j] or "" for j in range(1, total)]
+            if t.maybe:
+                bare_fill.append("1")
+            d.append(f"#define {name}_B({t_}) ({', '.join(bare_fill)})\n")
+            d.append(f"#define {name}_T({t_}) {name}_D({self.pp('TUPLE_SIZE')}({t_}), {t_})\n")
+        else:
+            d.append(f"#define {name}({t_}) {name}_D({self.pp('TUPLE_SIZE')}({t_}), {t_})\n")
         d.append(f"#define {name}_D(...) {name}_I(__VA_ARGS__)\n")
         d.append(f"#define {name}_I({n_}, {t_}) {name}_ ## {n_} {t_}\n")
         if req > 1:
@@ -1216,7 +1247,7 @@ class _MacroEmitter:
     def _tuple_value(self, expr: str, t: Type | None) -> str:
         """Normalize a raw tuple value at its binding-creation point when
         its type carries optional fields; identity otherwise."""
-        if isinstance(t, TupleT) and t.has_optional:
+        if isinstance(t, TupleT) and (t.has_optional or t.or_token):
             return f"{self._tuple_norm(t)}({expr})"
         return expr
 

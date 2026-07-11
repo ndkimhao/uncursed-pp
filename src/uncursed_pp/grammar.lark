@@ -5,10 +5,10 @@
 
 signature: CNAME "(" [param_list] ")"
 param_list: param ("," param)* ","?
-param: "required" "named" "variadic" DNAME    -> required_named_variadic_param
+param: "required" "named" "variadic" DNAME [":" type] -> required_named_variadic_param
      | "required" "named" DNAME               -> required_named_param
-     | "named" "variadic" DNAME "=" [DEFAULT] -> named_variadic_param
-     | "named" "variadic" DNAME               -> named_variadic_param
+     | "named" "variadic" DNAME [":" type] "=" [DEFAULT] -> named_variadic_param
+     | "named" "variadic" DNAME [":" type]    -> named_variadic_param
      | "named" DNAME "=" [DEFAULT] -> named_param
      | "named" DNAME               -> named_param
      | DNAME "=" [DEFAULT]         -> defaulted_param
@@ -19,6 +19,7 @@ type: "seq" "<" type ">"                        -> seq_type
     | "tuple" "<" type "..." ">"                -> var_tuple_type
     | "tuple" "<" name_list "," type "..." ">"  -> hybrid_tuple_type
     | "tuple" "<" field_list ">"                -> tuple_type
+    | "tuple_or_token" "<" field_list ">"       -> tuple_or_token_type
     | "tuple"                                   -> bare_var_tuple_type
     | "token"                                   -> token_type
     | "variadic" ["<" type ">"]                 -> variadic_type

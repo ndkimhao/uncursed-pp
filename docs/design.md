@@ -150,6 +150,15 @@ S{ @join $items as $it with ", ": @if is_paren($it) @then {{$it}} @else ({{$it}}
   table. Sizes below the required count land on a mismatched error
   stub. `?`-tuples have no whole-value form (interp/concat/to_seq
   reject them). Optional fields exclude hybrid/unbounded tuples.
+- `tuple_or_token<...>` (exactly one required field): bare call-site
+  elements supply the required field. Codegen: the paren probe is
+  FUSED into the normalizer - the probe result pastes directly onto
+  the tuple/bare continuation name (never onto user tokens), measured
+  224M vs 241M GC alloc against IS_BEGIN_PARENS+IIF at 15k elements.
+- `named variadic $X: <elem-type>` (typed keyword list): the setter's
+  re-wrap makes the value a parenthesized comma list - bound as an
+  unbounded tuple of the element type, so gated loops, len/is_empty
+  and element normalization all apply unchanged.
 - Call-site caveats (documented in README): args with bare commas must be
   parenthesized; named-arg keywords must not be `#define`d at the call site.
 

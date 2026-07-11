@@ -113,10 +113,13 @@ class _Ast(Transformer[Any, Any]):
         return Param(name=str(name)[1:], type=None, default=_clean_default(default), named=True)
 
     def named_variadic_param(self, items: list[Any]) -> Param:
-        name, default = items if len(items) == 2 else (items[0], None)
+        if len(items) == 3:
+            name, vtype, default = items
+        else:
+            (name, vtype), default = items, None
         return Param(
             name=str(name)[1:],
-            type=None,
+            type=_check_kw_elem_type(vtype),
             default=_clean_default(default),
             named=True,
             variadic_value=True,
@@ -127,9 +130,10 @@ class _Ast(Transformer[Any, Any]):
         return Param(name=str(items[0])[1:], type=None, default=None, named=True)
 
     def required_named_variadic_param(self, items: list[Any]) -> Param:
+        name, vtype = items
         return Param(
-            name=str(items[0])[1:],
-            type=None,
+            name=str(name)[1:],
+            type=_check_kw_elem_type(vtype),
             default=None,
             named=True,
             variadic_value=True,
@@ -139,24 +143,10 @@ class _Ast(Transformer[Any, Any]):
         return SeqT(items[0])
 
     def tuple_type(self, items: list[Any]) -> TupleT:
-        fields = items[0]
-        names = tuple(f[0] for f in fields)
-        if all(default is None and not is_maybe for _, default, is_maybe in fields):
-            return TupleT(names)
-        first_opt = next(
-            i for i, (_, d, m) in enumerate(fields) if d is not None or m
-        )
-        for fname, default, is_maybe in fields[first_opt:]:
-            if default is None and not is_maybe:
-                raise ValueError(
-                    f"required tuple field ${fname} cannot follow an "
-                    "optional one (optional fields go at the end)"
-                )
-        return TupleT(
-            names,
-            defaults=tuple(d for _, d, _m in fields),
-            maybe=tuple(i for i, (_, _d, m) in enumerate(fields) if m),
-        )
+        return _build_tuple_type(items[0], or_token=False)
+
+    def tuple_or_token_type(self, items: list[Any]) -> TupleT:
+        return _build_tuple_type(items[0], or_token=True)
 
     def field_list(self, items: list[Any]) -> list[tuple[str, str | None, bool]]:
         return list(items)
@@ -305,6 +295,43 @@ def _build_call(name: str, args: tuple[Expr, ...]) -> Expr:
         return ToTuple(args[0])
     known = "concat, has, is_empty, is_paren, len, remove_parens, stringize, to_seq, to_tuple"
     raise ValueError(f"unknown function: {name}() (known: {known})")
+
+
+def _build_tuple_type(
+    fields: list[tuple[str, str | None, bool]], *, or_token: bool
+) -> TupleT:
+    names = tuple(f[0] for f in fields)
+    plain = all(default is None and not is_maybe for _, default, is_maybe in fields)
+    if plain and not or_token:
+        return TupleT(names)
+    optional = [i for i, (_, d, m) in enumerate(fields) if d is not None or m]
+    for fname, default, is_maybe in fields[optional[0] :] if optional else []:
+        if default is None and not is_maybe:
+            raise ValueError(
+                f"required tuple field ${fname} cannot follow an "
+                "optional one (optional fields go at the end)"
+            )
+    required = optional[0] if optional else len(names)
+    if or_token and required > 1:
+        raise ValueError(
+            "tuple_or_token needs exactly one required field (a bare "
+            "token can only supply the first)"
+        )
+    return TupleT(
+        names,
+        defaults=tuple(d for _, d, _m in fields) if (optional or or_token) else (),
+        maybe=tuple(i for i, (_, _d, m) in enumerate(fields) if m),
+        or_token=or_token,
+    )
+
+
+def _check_kw_elem_type(vtype: Any) -> Any:
+    if vtype is not None and not isinstance(vtype, (TokenT, TupleT, VarTupleT)):
+        raise ValueError(
+            "a 'named variadic' element type must be token, tuple<...>, "
+            "tuple_or_token<...> or tuple<T...>"
+        )
+    return vtype
 
 
 def _clean_default(token: Any) -> str:

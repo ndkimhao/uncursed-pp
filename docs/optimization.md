@@ -161,6 +161,18 @@ Round-4 refuted: `len($xs)` scrutinee hoisting across else-if ladders
 (gain did not survive independent scales), SEQ_SIZE threading through
 PICK→SMALL (1.09–1.25x, below bar).
 
+### Fused token-or-tuple dispatch (tuple_or_token)
+
+The bare/tuple paren probe pastes its result directly onto the
+tuple/bare continuation macro name instead of returning 0/1 through
+`BOOST_PP_IS_BEGIN_PARENS` + `BOOST_PP_IIF`. Measured at 15,000 mixed
+elements (methodology above): fused 224M vs naive 241M total GC
+allocation (~7.5% TU-wide; larger on the dispatch itself), plus two
+fewer boost includes. The paste target is always the known unexpanded
+probe name — user tokens are never paste operands, so string/number
+elements stay safe. The probe exists only on `tuple_or_token` shapes:
+plain `tuple<...>` (optional fields or not) never pays it.
+
 ## Refuted ideas — do not re-attempt without new evidence
 
 | Idea | Why it died |

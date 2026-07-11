@@ -23,6 +23,9 @@ class TupleT:
     # indices of `?` fields: truly absent when omitted (an omitted slot
     # normalizes to zero tokens; query presence with has($t.$f))
     maybe: tuple[int, ...] = ()
+    # tuple_or_token<...>: call sites may pass a BARE token for the
+    # single required field (opt-in: costs a per-element paren probe)
+    or_token: bool = False
 
     @property
     def required(self) -> int:

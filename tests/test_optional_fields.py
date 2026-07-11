@@ -185,3 +185,107 @@ def test_composes_in_nested_loops(tmp_path: Path) -> None:
     )
     out = preprocess_src(tmp_path, src, "nn", "NN((((a))((b, 7)))(((c))))")
     assert canon("{ a=0; b=7; } { c=0; }") in out
+
+
+# ── tuple_or_token: opt-in bare-token elements ───────────────────────
+
+
+def test_parse_tuple_or_token() -> None:
+    src = "@macro F($t: tuple_or_token<$n, $v?>)\n{{$t.$n}}\n@endmacro\n"
+    [macro] = parse_file(src, "t.uncursed").macros
+    t = macro.params[0].type
+    assert t == TupleT(("n", "v"), (None, None), (1,), or_token=True)
+
+
+def test_tuple_or_token_needs_single_required_field() -> None:
+    with pytest.raises(UncursedPpError) as excinfo:
+        parse_file(
+            "@macro F($t: tuple_or_token<$a, $b, $c?>)\nx\n@endmacro\n", "t.uncursed"
+        )
+    assert "one required field" in str(excinfo.value)
+
+
+def test_define_struct_with_bare_mixed_elements(tmp_path: Path) -> None:
+    # the motivating example: DEFINE_STRUCT(Foo, a, b, (c, 1), d)
+    src = (
+        "@macro DEFINE_STRUCT($name, $ms: variadic<tuple_or_token<$m, $init?>>)\n"
+        'struct {{$name}} { @join $ms as $f with " ": '
+        "@if has($f.$init) @then {{$f.$m}} = {{$f.$init}}, @else {{$f.$m}}, @end@end };\n"
+        "@endmacro\n"
+    )
+    out = preprocess_src(tmp_path, src, "ds", "DEFINE_STRUCT(Foo, a, b, (c, 1), d)")
+    assert canon("struct Foo { a, b, c = 1, d, };") in out
+
+
+def test_define_enum_with_unbounded_tuple_elements(tmp_path: Path) -> None:
+    # the second motivating example: DEFINE_ENUM(E, (x, (y, 1), z))
+    src = (
+        "@macro DEFINE_ENUM($name, $es: tuple<tuple_or_token<$n, $v?>...>)\n"
+        'enum {{$name}} { @join $es as $e with " ": '
+        "@if has($e.$v) @then {{$e.$n}} = {{$e.$v}}, @else {{$e.$n}}, @end@end };\n"
+        "@endmacro\n"
+    )
+    out = preprocess_src(tmp_path, src, "de", "DEFINE_ENUM(E, (x, (y, 1), z))")
+    assert canon("enum E { x, y = 1, z, };") in out
+
+
+def test_tuple_or_token_as_direct_param(tmp_path: Path) -> None:
+    src = (
+        "@macro P($t: tuple_or_token<$n, $v = 0>)\np({{$t.$n}}, {{$t.$v}});\n@endmacro\n"
+    )
+    out = preprocess_src(tmp_path, src, "dp", "P(bare)\nP((x, 9))")
+    assert canon("p(bare, 0);") in out
+    assert canon("p(x, 9);") in out
+
+
+def test_tuple_or_token_in_seq(tmp_path: Path) -> None:
+    src = (
+        "@macro S($es: seq<tuple_or_token<$n, $v = 0>>)\n"
+        "@for ($n, $v) in $es\ns({{$n}}, {{$v}});\n@end\n@endmacro\n"
+    )
+    out = preprocess_src(tmp_path, src, "sq", "S((a)((b, 2)))")
+    assert canon("s(a, 0); s(b, 2);") in out
+
+
+def test_plain_optional_tuples_have_no_probe() -> None:
+    # the probe is OPT-IN: plain tuple<...> shapes must not pay for it
+    src = "@macro F($t: tuple<$n, $v = 0>)\n{{$t.$n}}\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    assert "_R_" not in out and "_CT" not in out
+
+
+# ── typed 'named variadic': iterable keyword lists ───────────────────
+
+DS = (
+    "@macro DEFINE_STRUCT($name,\n"
+    "    named variadic $MEMBERS: tuple_or_token<$m, $init?> = ,\n"
+    "    named variadic $FUNCS: token = )\n"
+    'struct {{$name}} { @join $MEMBERS as $f with " ": '
+    "@if has($f.$init) @then {{$f.$m}} = {{$f.$init}}, @else {{$f.$m}}, @end@end"
+    ' @join $FUNCS as $g with " ": {{$g}}(), @end };\n'
+    "@endmacro\n"
+)
+
+
+def test_named_variadic_with_element_type(tmp_path: Path) -> None:
+    # the motivating example, keyword-list form
+    out = preprocess_src(
+        tmp_path, DS, "kv", "DEFINE_STRUCT(Foo, MEMBERS(a, b, (c, 1), d), FUNCS(q, w))"
+    )
+    assert canon("struct Foo { a, b, c = 1, d, q(), w(), };") in out
+
+
+def test_typed_keyword_lists_are_optional_and_ordered_freely(tmp_path: Path) -> None:
+    out = preprocess_src(
+        tmp_path, DS, "kv2", "DEFINE_STRUCT(Bar, FUNCS(q))\nDEFINE_STRUCT(Baz)"
+    )
+    assert canon("struct Bar { q(), };") in out
+    assert canon("struct Baz { };") in out
+
+
+def test_named_variadic_elem_type_must_be_element_like() -> None:
+    with pytest.raises(UncursedPpError):
+        parse_file(
+            "@macro F($a, named variadic $XS: seq<token> = )\nx\n@endmacro\n",
+            "t.uncursed",
+        )

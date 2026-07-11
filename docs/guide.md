@@ -142,6 +142,16 @@ Notes:
   access fields or branch on `has()`. Composes everywhere fixed
   tuples do: `seq<tuple<...>>`, `variadic<tuple<...>>`, unbounded
   tuple elements, loop unpacking, `$xs[0].$f`.
+- **`tuple_or_token<...>`**: like `tuple<...>` with optional fields,
+  but call sites may pass a BARE token supplying the single required
+  field (`DEFINE_ENUM(E, (x, (y, 1), z))` — `x` and `z` are bare).
+  Opt-in because every element pays a small paren probe, fused into
+  the width dispatch. Exactly one required field.
+- **Typed `named variadic`**: `named variadic $MEMBERS: <elem-type> = `
+  makes the keyword's value an iterable list of that element type
+  (token, `tuple<...>`, `tuple_or_token<...>`, or `tuple<T...>`) —
+  loop it, measure it, `has()` its elements. An empty default means
+  zero elements; the keyword stays optional and order-free.
 - **Unbounded tuples** (`tuple<T...>` — the ellipsis is what distinguishes
   them from a fixed field list — `tuple<$token>` would be a 1-tuple whose
   element is *named* token) support `len()`, `[i]` indexing, iteration

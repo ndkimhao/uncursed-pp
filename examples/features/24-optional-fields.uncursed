@@ -38,3 +38,26 @@ static {{$r.$qual}} int {{concat($r.$name, _reset)}} = {{$r.$reset}};
 
 #?  FIELDS(((n))((f, float)))
 #=>     int n; float f;
+
+# ── tuple_or_token: mixed bare/tuple elements ────────────────────────
+#
+# `tuple_or_token<...>` additionally lets a call site pass a BARE token
+# where a tuple is expected - it supplies the single required field,
+# and every optional field behaves as if omitted. Opt-in because each
+# element pays a small paren probe (fused into the width dispatch).
+#
+# Typed `named variadic` keywords compose with it: annotate the element
+# type and the keyword's value becomes an iterable list.
+
+@macro DEFINE_STRUCT($name,
+    named variadic $MEMBERS: tuple_or_token<$m, $init?> = ,
+    named variadic $FUNCS: token = )
+struct {{$name}} { @join $MEMBERS as $f with " ": @if has($f.$init) @then {{$f.$m}} = {{$f.$init}}, @else {{$f.$m}}, @end@end @join $FUNCS as $g with " ": {{$g}}(), @end };
+@endmacro
+
+#?  DEFINE_STRUCT(Foo, MEMBERS(a, b, (c, 1), d), FUNCS(q, w))
+#=>     struct Foo { a, b, c = 1, d, q(), w(), };
+
+# Keywords stay optional and order-free; empty default = zero elements:
+#?  DEFINE_STRUCT(Bar, FUNCS(tick))
+#=>     struct Bar { tick(), };
