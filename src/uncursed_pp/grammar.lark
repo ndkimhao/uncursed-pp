@@ -16,6 +16,7 @@ param: "required" "named" "variadic" DNAME [":" type] -> required_named_variadic
 DEFAULT: /[^,()\s][^,()]*/
 
 type: "seq" "<" type ">"                        -> seq_type
+    | "seq_or_token" "<" type ">"               -> seq_or_token_type
     | "tuple" "<" type "..." ">"                -> var_tuple_type
     | "tuple" "<" name_list "," type "..." ">"  -> hybrid_tuple_type
     | "tuple" "<" field_list ">"                -> tuple_type

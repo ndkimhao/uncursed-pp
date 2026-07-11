@@ -60,6 +60,9 @@ class VarTupleT:
 @dataclass(frozen=True)
 class SeqT:
     elem: "Type"
+    # seq_or_token<T>: call sites may pass a BARE token, promoted to a
+    # single-element seq (opt-in: costs a per-value paren probe)
+    or_token: bool = False
 
 
 @dataclass(frozen=True)

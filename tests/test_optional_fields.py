@@ -286,6 +286,81 @@ def test_typed_keyword_lists_are_optional_and_ordered_freely(tmp_path: Path) -> 
 def test_named_variadic_elem_type_must_be_element_like() -> None:
     with pytest.raises(UncursedPpError):
         parse_file(
-            "@macro F($a, named variadic $XS: seq<token> = )\nx\n@endmacro\n",
+            "@macro F($a, named variadic $XS: variadic = )\nx\n@endmacro\n",
             "t.uncursed",
         )
+
+
+# ── seq_or_token: bare token promotes to a 1-element seq ─────────────
+
+
+def test_parse_seq_or_token() -> None:
+    from uncursed_pp.nodes import SeqT, TokenT
+
+    src = "@macro F($xs: seq_or_token<token>)\n{{len($xs)}}\n@endmacro\n"
+    [macro] = parse_file(src, "t.uncursed").macros
+    assert macro.params[0].type == SeqT(TokenT(), or_token=True)
+
+
+def test_seq_or_token_param(tmp_path: Path) -> None:
+    src = (
+        "@macro CALLS($xs: seq_or_token<token>)\n"
+        "@for $x in $xs\nf({{$x}});\n@end\nn={{len($xs)}}\n@endmacro\n"
+    )
+    out = preprocess_src(tmp_path, src, "st", "CALLS(one)\nCALLS((a)(b))")
+    assert canon("f(one); n=1") in out
+    assert canon("f(a); f(b); n=2") in out
+
+
+def test_seq_or_token_variadic_elements(tmp_path: Path) -> None:
+    src = (
+        "@macro GROUPS($gs: variadic<seq_or_token<token>>)\n"
+        "@for $g in $gs\n[\n@for $x in $g\n{{$x}};\n@end\n]\n@end\n@endmacro\n"
+    )
+    out = preprocess_src(tmp_path, src, "sg", "GROUPS(solo, (a)(b))")
+    assert canon("[ solo; ] [ a; b; ]") in out
+
+
+def test_seq_or_token_in_typed_keyword_list(tmp_path: Path) -> None:
+    src = (
+        "@macro W($n, named variadic $GROUPS: seq_or_token<token> = )\n"
+        '@for $g in $GROUPS\n{ @join $g as $x with ",": {{$x}}@end }\n@end\n@endmacro\n'
+
+    )
+    out = preprocess_src(tmp_path, src, "sk", "W(w, GROUPS(solo, (a)(b)))")
+    assert canon("{ solo } { a,b }") in out
+
+
+def test_plain_seq_has_no_probe() -> None:
+    src = "@macro F($xs: seq<token>)\n{{len($xs)}}\n@endmacro\n"
+    out = compile_source(src, "t.uncursed")
+    assert "_NS" not in out and "_R_" not in out
+
+
+def test_or_token_types_past_the_chain_limit(tmp_path: Path) -> None:
+    # >16 elements takes the SEQ_FOR_EACH fallback (BIG) instead of the
+    # consumption chain: normalization must ride both paths
+    src = (
+        "@macro TL($ms: variadic<tuple_or_token<$m, $v = 0>>)\n"
+        "@for ($m, $v) in $ms\nt({{$m}}, {{$v}});\n@end\n@endmacro\n"
+        "@macro SL($xs: seq_or_token<token>)\n"
+        "@for $x in $xs\ns({{$x}});\n@end\nn={{len($xs)}}\n@endmacro\n"
+    )
+    elems = ", ".join(f"(m{i}, {i})" if i % 2 else f"m{i}" for i in range(20))
+    out = preprocess_src(tmp_path, src, "big", f"TL({elems})")
+    assert canon("t(m0, 0);") in out and canon("t(m19, 19);") in out
+    assert canon("t(m1, 1);") in out  # tuple element deep in the tail
+    seq = "".join(f"(s{i})" for i in range(20))
+    out2 = preprocess_src(tmp_path, src, "big2", f"SL({seq})\nSL(solo)")
+    assert canon("s(s0);") in out2 and canon("s(s19);") in out2
+    assert canon("n=20") in out2 and canon("n=1") in out2
+
+
+def test_typed_keyword_list_past_the_chain_limit(tmp_path: Path) -> None:
+    src = (
+        "@macro KL($n, named variadic $MS: tuple_or_token<$m, $v?> = )\n"
+        "@for ($m, $v) in $MS\nk({{$m}});\n@end\n@endmacro\n"
+    )
+    elems = ", ".join(f"(k{i}, {i})" if i % 3 == 0 else f"k{i}" for i in range(20))
+    out = preprocess_src(tmp_path, src, "kbig", f"KL(x, MS({elems}))")
+    assert canon("k(k0);") in out and canon("k(k19);") in out

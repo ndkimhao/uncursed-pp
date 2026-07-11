@@ -298,3 +298,55 @@
 /* #?  DEFINE_STRUCT(Bar, FUNCS(q))
  * #=>     struct Bar { q(), };
  */
+
+/* uncursed-pp source:
+ * # seq_or_token: a bare value promotes to a single-element seq (same
+ * # fused probe; paren case is identity, bare case wraps once)
+ * @macro EMITS($xs: seq_or_token<token>)
+ * @for $x in $xs
+ * emit({{$x}});
+ * @end
+ * n={{len($xs)}}
+ * @endmacro
+ */
+#define UNCURSED_PP_EMITS_EACH1(r, d, e) emit(e);
+#define UNCURSED_PP_EMITS_CH1_1(e) emit(e);
+#define UNCURSED_PP_EMITS_CH1_2(e) emit(e); UNCURSED_PP_EMITS_CH1_1
+#define UNCURSED_PP_EMITS_CH1_3(e) emit(e); UNCURSED_PP_EMITS_CH1_2
+#define UNCURSED_PP_EMITS_CH1_4(e) emit(e); UNCURSED_PP_EMITS_CH1_3
+#define UNCURSED_PP_EMITS_CH1_5(e) emit(e); UNCURSED_PP_EMITS_CH1_4
+#define UNCURSED_PP_EMITS_CH1_6(e) emit(e); UNCURSED_PP_EMITS_CH1_5
+#define UNCURSED_PP_EMITS_CH1_7(e) emit(e); UNCURSED_PP_EMITS_CH1_6
+#define UNCURSED_PP_EMITS_CH1_8(e) emit(e); UNCURSED_PP_EMITS_CH1_7
+#define UNCURSED_PP_EMITS_CH1_9(e) emit(e); UNCURSED_PP_EMITS_CH1_8
+#define UNCURSED_PP_EMITS_CH1_10(e) emit(e); UNCURSED_PP_EMITS_CH1_9
+#define UNCURSED_PP_EMITS_CH1_11(e) emit(e); UNCURSED_PP_EMITS_CH1_10
+#define UNCURSED_PP_EMITS_CH1_12(e) emit(e); UNCURSED_PP_EMITS_CH1_11
+#define UNCURSED_PP_EMITS_CH1_13(e) emit(e); UNCURSED_PP_EMITS_CH1_12
+#define UNCURSED_PP_EMITS_CH1_14(e) emit(e); UNCURSED_PP_EMITS_CH1_13
+#define UNCURSED_PP_EMITS_CH1_15(e) emit(e); UNCURSED_PP_EMITS_CH1_14
+#define UNCURSED_PP_EMITS_CH1_16(e) emit(e); UNCURSED_PP_EMITS_CH1_15
+#define UNCURSED_PP_EMITS_NS1(t) UNCURSED_PP_EMITS_NS1_S(t, UNCURSED_PP_EMITS_NS1_CT(UNCURSED_PP_EMITS_NS1_R_, UNCURSED_PP_EMITS_NS1_C t))
+#define UNCURSED_PP_EMITS_NS1_C(...) 1
+#define UNCURSED_PP_EMITS_NS1_CT(a, b) UNCURSED_PP_EMITS_NS1_CTI(a, b)
+#define UNCURSED_PP_EMITS_NS1_CTI(a, b) a ## b
+#define UNCURSED_PP_EMITS_NS1_R_1 UNCURSED_PP_EMITS_NS1_T,
+#define UNCURSED_PP_EMITS_NS1_R_UNCURSED_PP_EMITS_NS1_C UNCURSED_PP_EMITS_NS1_B,
+#define UNCURSED_PP_EMITS_NS1_S(...) UNCURSED_PP_EMITS_NS1_SI(__VA_ARGS__)
+#define UNCURSED_PP_EMITS_NS1_SI(t, f, ...) f(t)
+#define UNCURSED_PP_EMITS_NS1_T(t) t
+#define UNCURSED_PP_EMITS_NS1_B(t) (t)
+#define UNCURSED_PP_EMITS_SMALL1(seq) BOOST_PP_CAT(UNCURSED_PP_EMITS_CH1_, BOOST_PP_SEQ_SIZE(seq)) seq
+#define UNCURSED_PP_EMITS_PICK1(n) BOOST_PP_IIF(BOOST_PP_CAT(UNCURSED_PP_LE16_, n), UNCURSED_PP_EMITS_SMALL1, UNCURSED_PP_EMITS_BIG1)
+#define UNCURSED_PP_EMITS_BIG1(seq) BOOST_PP_SEQ_FOR_EACH(UNCURSED_PP_EMITS_EACH1, ~, seq)
+#define EMITS(xs) \
+    UNCURSED_PP_EMITS_PICK1(BOOST_PP_SEQ_SIZE(UNCURSED_PP_EMITS_NS1(xs)))(UNCURSED_PP_EMITS_NS1(xs)) \
+    n=BOOST_PP_SEQ_SIZE(UNCURSED_PP_EMITS_NS1(xs))
+
+/* #?  EMITS(solo)
+ * #=>     emit(solo); n=1
+ */
+
+/* #?  EMITS((a)(b))
+ * #=>     emit(a); emit(b); n=2
+ */

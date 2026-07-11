@@ -75,3 +75,18 @@ struct {{$name}} { @join $MEMBERS as $f with " ": @if has($f.$init) @then {{$f.$
 
 #?  DEFINE_STRUCT(Bar, FUNCS(q))
 #=>     struct Bar { q(), };
+
+# seq_or_token: a bare value promotes to a single-element seq (same
+# fused probe; paren case is identity, bare case wraps once)
+@macro EMITS($xs: seq_or_token<token>)
+@for $x in $xs
+emit({{$x}});
+@end
+n={{len($xs)}}
+@endmacro
+
+#?  EMITS(solo)
+#=>     emit(solo); n=1
+
+#?  EMITS((a)(b))
+#=>     emit(a); emit(b); n=2

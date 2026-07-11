@@ -61,3 +61,14 @@ struct {{$name}} { @join $MEMBERS as $f with " ": @if has($f.$init) @then {{$f.$
 # Keywords stay optional and order-free; empty default = zero elements:
 #?  DEFINE_STRUCT(Bar, FUNCS(tick))
 #=>     struct Bar { tick(), };
+
+# And the seq flavor: seq_or_token<T> promotes a bare value to a
+# single-element seq - handy when "one thing" shouldn't need wrapping.
+@macro ON_EVENTS($handler, named variadic $EVENTS: seq_or_token<token> = )
+@for $g in $EVENTS
+{ @join $g as $e with ",": {{$e}}@end } -> {{$handler}};
+@end
+@endmacro
+
+#?  ON_EVENTS(h, EVENTS(open, (close)(abort)))
+#=>     { open } -> h; { close,abort } -> h;

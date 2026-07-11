@@ -147,6 +147,10 @@ Notes:
   field (`DEFINE_ENUM(E, (x, (y, 1), z))` — `x` and `z` are bare).
   Opt-in because every element pays a small paren probe, fused into
   the width dispatch. Exactly one required field.
+- **`seq_or_token<T>`**: like `seq<T>`, but a bare value promotes to a
+  single-element seq (same fused probe; identity when already a seq).
+  Usable wherever `seq<T>` is, including as a `named variadic`
+  element type.
 - **Typed `named variadic`**: `named variadic $MEMBERS: <elem-type> = `
   makes the keyword's value an iterable list of that element type
   (token, `tuple<...>`, `tuple_or_token<...>`, or `tuple<T...>`) —

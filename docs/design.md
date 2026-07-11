@@ -155,6 +155,8 @@ S{ @join $items as $it with ", ": @if is_paren($it) @then {{$it}} @else ({{$it}}
   FUSED into the normalizer - the probe result pastes directly onto
   the tuple/bare continuation name (never onto user tokens), measured
   224M vs 241M GC alloc against IS_BEGIN_PARENS+IIF at 15k elements.
+- `seq_or_token<T>`: bare value promotes to a 1-element seq (same fused
+  probe as tuple_or_token; paren case is identity).
 - `named variadic $X: <elem-type>` (typed keyword list): the setter's
   re-wrap makes the value a parenthesized comma list - bound as an
   unbounded tuple of the element type, so gated loops, len/is_empty

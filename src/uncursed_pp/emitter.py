@@ -1249,7 +1249,34 @@ class _MacroEmitter:
         its type carries optional fields; identity otherwise."""
         if isinstance(t, TupleT) and (t.has_optional or t.or_token):
             return f"{self._tuple_norm(t)}({expr})"
+        if isinstance(t, SeqT) and t.or_token:
+            return f"{self._seq_norm(t)}({expr})"
         return expr
+
+    def _seq_norm(self, t: SeqT) -> str:
+        """seq_or_token: bare values promote to a single-element seq.
+        Same fused probe as tuple_or_token (see docs/optimization.md),
+        with trivial continuations: paren case is identity, bare case
+        wraps once."""
+        key = ("seq", t.elem, True)
+        if key in self._norm_helpers:
+            return self._norm_helpers[key]
+        base = f"{self.config.helper_prefix}{self.macro.name}_"
+        name = f"{base}NS{sum(1 for k in self._norm_helpers if k[0] == 'seq') + 1}"
+        self._norm_helpers[key] = name
+        t_, a_, b_, f_ = self.arg("t"), self.arg("a"), self.arg("b"), self.arg("f")
+        d = self.out.defines
+        d.append(f"#define {name}({t_}) {name}_S({t_}, {name}_CT({name}_R_, {name}_C {t_}))\n")
+        d.append(f"#define {name}_C(...) 1\n")
+        d.append(f"#define {name}_CT({a_}, {b_}) {name}_CTI({a_}, {b_})\n")
+        d.append(f"#define {name}_CTI({a_}, {b_}) {a_} ## {b_}\n")
+        d.append(f"#define {name}_R_1 {name}_T,\n")
+        d.append(f"#define {name}_R_{name}_C {name}_B,\n")
+        d.append(f"#define {name}_S(...) {name}_SI(__VA_ARGS__)\n")
+        d.append(f"#define {name}_SI({t_}, {f_}, ...) {f_}({t_})\n")
+        d.append(f"#define {name}_T({t_}) {t_}\n")
+        d.append(f"#define {name}_B({t_}) ({t_})\n")
+        return name
 
     def _has_probe(self, t: TupleT, j: int) -> str:
         """0/1 lookup for field-j presence, dispatched by pasting the

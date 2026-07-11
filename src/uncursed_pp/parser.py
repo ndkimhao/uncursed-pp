@@ -142,6 +142,9 @@ class _Ast(Transformer[Any, Any]):
     def seq_type(self, items: list[Any]) -> SeqT:
         return SeqT(items[0])
 
+    def seq_or_token_type(self, items: list[Any]) -> SeqT:
+        return SeqT(items[0], or_token=True)
+
     def tuple_type(self, items: list[Any]) -> TupleT:
         return _build_tuple_type(items[0], or_token=False)
 
@@ -178,8 +181,11 @@ class _Ast(Transformer[Any, Any]):
         elem = items[0]
         if elem is None:
             return VariadicT()
-        if not isinstance(elem, (TupleT, TokenT, VarTupleT)):
-            raise ValueError("variadic elements must be token, tuple<...> or tuple<T...>")
+        if not isinstance(elem, (TupleT, TokenT, VarTupleT, SeqT)):
+            raise ValueError(
+                "variadic elements must be token, tuple<...>, tuple<T...>, "
+                "or seq/seq_or_token<...>"
+            )
         return VariadicT(elem)
 
     def name_list(self, items: list[Any]) -> tuple[str, ...]:
@@ -326,10 +332,10 @@ def _build_tuple_type(
 
 
 def _check_kw_elem_type(vtype: Any) -> Any:
-    if vtype is not None and not isinstance(vtype, (TokenT, TupleT, VarTupleT)):
+    if vtype is not None and not isinstance(vtype, (TokenT, TupleT, VarTupleT, SeqT)):
         raise ValueError(
             "a 'named variadic' element type must be token, tuple<...>, "
-            "tuple_or_token<...> or tuple<T...>"
+            "tuple_or_token<...>, tuple<T...>, or seq/seq_or_token<...>"
         )
     return vtype
 

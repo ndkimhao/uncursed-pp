@@ -103,7 +103,7 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 | Raw directives | `@#include <stdint.h>` / `@#define CAP 16` — passed through to the header verbatim |
 | Meta-templating | Jinja2 with `<<% %>>` / `<<{ }>>` / `<<# #>>` delimiters runs before the DSL parser — generate the macros themselves programmatically |
 | Optional tuple fields | `tuple<$n, $t = int, $init?>` — call sites pass any prefix; `has($t.$init)` probes presence at C compile time |
-| Mixed bare/tuple lists | `tuple_or_token<$n, $v?>` + typed `named variadic` — `DEFINE_STRUCT(Foo, MEMBERS(a, b, (c, 1), d), FUNCS(q, w))` |
+| Mixed bare/tuple lists | `tuple_or_token<$n, $v?>` / `seq_or_token<T>` + typed `named variadic` — `DEFINE_STRUCT(Foo, MEMBERS(a, b, (c, 1), d), FUNCS(q, w))` |
 | Variadic | `@macro F($items: variadic)` — call `F(a, (b,c), d)`; body sees a seq. `variadic<tuple<$t, $n>>` gives single-paren tuple call sites: `F((int, x), (float, y))` |
 
 Within a loop over `seq<tuple<...>>`, the tuple's element names are bound
