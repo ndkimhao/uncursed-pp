@@ -116,7 +116,7 @@ earlier ones *textually* in their bodies (see the reflection example, §13).
 | Type | Declares | C call-site shape |
 |---|---|---|
 | *(none)* / `token` | a single preprocessor token-sequence | `foo`, `123`, `(wrapped, commas)` |
-| `tuple<n1, n2, ...>` | a parenthesized tuple with **named** elements | `(int, x)` |
+| `tuple<n1, n2, ...>` | a parenthesized tuple with **named** elements; trailing fields may be optional: `$f = def` (default fills) or `$f?` (truly absent) | `(int, x)`; `tuple<$n, $t = int>` accepts `(x)` |
 | `tuple` / `tuple<T...>` | an **unbounded** tuple: variable element count, all of type `T` (bare `tuple` = `tuple<token...>`) | `(a, b, c)`; `()` = zero elements |
 | `tuple<n1, .., nk, T...>` | **hybrid**: fixed named head fields, then an unbounded `T` tail | `(x, int, RO, LOGGED)`; `(x, int)` = empty tail |
 | `seq<T>` | a Boost.PP seq of `T` | `(a)(b)(c)` or `((int,x))((float,y))` |
@@ -132,6 +132,16 @@ Notes:
   the `$`. The `$` never reaches the generated C — helper parameters
   keep plain names.
 - `tuple` element names are how you access elements: `{{$f.$type}}`, `{{$f.$name}}` — the field name is `$`-prefixed too.
+- **Optional trailing fields**: after the required prefix, `$f = value`
+  fills a default when the call site omits the field, and `$f?` is
+  truly absent — `has($t.$f)` is a 1/0 compile-time probe (usable in
+  `@if` and `{{...}}`), and accessing an absent field yields zero
+  tokens. Width dispatch happens when the C compiler expands the
+  macro; too few fields is a hard preprocessor error. Tuples with `?`
+  fields have no whole-value form (no `{{$t}}`, `concat`, `to_seq`) —
+  access fields or branch on `has()`. Composes everywhere fixed
+  tuples do: `seq<tuple<...>>`, `variadic<tuple<...>>`, unbounded
+  tuple elements, loop unpacking, `$xs[0].$f`.
 - **Unbounded tuples** (`tuple<T...>` — the ellipsis is what distinguishes
   them from a fixed field list — `tuple<$token>` would be a 1-tuple whose
   element is *named* token) support `len()`, `[i]` indexing, iteration

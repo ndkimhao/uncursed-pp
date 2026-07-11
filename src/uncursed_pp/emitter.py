@@ -15,6 +15,7 @@ from .nodes import (
     Expr,
     File,
     ForEach,
+    Has,
     If,
     Interp,
     IsEmpty,
@@ -159,6 +160,9 @@ class _MacroEmitter:
         self._big_name = ""
         self._loop_depth = 0
         self._gated_nodes: set[int] = set()
+        self._norm_helpers: dict[tuple[object, ...], str] = {}
+        self._has_probes: dict[tuple[object, ...], str] = {}
+        self._tuple_err_emitted = False
 
     def pp(self, name: str) -> str:
         self.used.add(name)
@@ -177,7 +181,10 @@ class _MacroEmitter:
         variadic = [p for p in self.macro.params if isinstance(p.type, VariadicT)]
         self._validate_params(pos, defaulted, named, variadic)
 
-        env = {p.name: _Binding(self.arg(p.name), p.type) for p in self.macro.params}
+        env = {
+            p.name: _Binding(self._tuple_value(self.arg(p.name), p.type), p.type)
+            for p in self.macro.params
+        }
         for p in variadic:
             # the body sees the variadic tail as a seq of the element type
             assert isinstance(p.type, VariadicT)
@@ -247,10 +254,15 @@ class _MacroEmitter:
         spread = f"{self.config.helper_prefix}KW_SPREAD"
         body_params: list[str] = []
         args: list[str] = []
+        norm_any = False
         for p in self.macro.params:
             if p.name in spread_params:
                 assert isinstance(p.type, TupleT)
                 body_params.extend(self.arg(n) for n in p.type.names)
+                if p.type.maybe:
+                    body_params.append(self.arg(f"{p.name}_sz"))
+                if p.type.has_optional:
+                    norm_any = True
                 args.append(f"{spread} {self.arg(p.name)}")
             else:
                 body_params.append(self.arg(p.name))
@@ -260,8 +272,25 @@ class _MacroEmitter:
         )
         self.out.defines.append(f"#define {base}BODY1_D(...) {base}BODY1(__VA_ARGS__)\n")
         heads = ", ".join(self.arg(p.name) for p in self.macro.params)
+        if not norm_any:
+            self.out.defines.append(
+                f"#define {self.macro.name}({heads}) {base}BODY1_D({', '.join(args)})\n"
+            )
+            return
+        # optional-field tuples normalize one layer EARLY (BODY1_P): the
+        # KW_SPREAD in BODY1_P's body sees them as parameters, which is
+        # the only position the scanner unwraps
         self.out.defines.append(
-            f"#define {self.macro.name}({heads}) {base}BODY1_D({', '.join(args)})\n"
+            f"#define {base}BODY1_P({heads}) {base}BODY1_D({', '.join(args)})\n"
+        )
+        outer = ", ".join(
+            self._tuple_value(self.arg(p.name), p.type)
+            if p.name in spread_params
+            else self.arg(p.name)
+            for p in self.macro.params
+        )
+        self.out.defines.append(
+            f"#define {self.macro.name}({heads}) {base}BODY1_P({outer})\n"
         )
 
     def _validate_params(
@@ -487,7 +516,12 @@ class _MacroEmitter:
             if isinstance(node, Text):
                 parts.append(node.value)
             elif isinstance(node, Interp):
-                parts.append(self._resolve(node.expr, env, node.line).c_expr)
+                binding = self._resolve(node.expr, env, node.line)
+                if isinstance(node.expr, VarRef):
+                    self._forbid_maybe(
+                        binding.type, "whole-value interpolation", node.line
+                    )
+                parts.append(binding.c_expr)
             elif isinstance(node, ForEach):
                 parts.append(self._render_foreach(node, env))
                 parts.append("\n")
@@ -527,7 +561,10 @@ class _MacroEmitter:
         if isinstance(expr, ElemAccess):
             return self._resolve_access(expr, env, line)
         if isinstance(expr, Concat):
-            rendered = [self._resolve(a, env, line, allow_literal=True).c_expr for a in expr.args]
+            arg_bindings = [self._resolve(a, env, line, allow_literal=True) for a in expr.args]
+            for b in arg_bindings:
+                self._forbid_maybe(b.type, "concat()", line)
+            rendered = [b.c_expr for b in arg_bindings]
             if len(rendered) >= 4:
                 # one k-ary paste (2 expansions total) beats the nested CAT
                 # chain (2 per pair); below 4 args nesting measured equal
@@ -568,6 +605,37 @@ class _MacroEmitter:
             if isinstance(inner.type, VarTupleT):
                 return _Binding(f"{self._isnil()}({self._vtuple_view(inner)})", TokenT())
             return _Binding(f"{self.pp('IS_EMPTY')}({inner.c_expr})", TokenT())
+        if isinstance(expr, Has):
+            access = expr.arg
+            assert isinstance(access, ElemAccess) and isinstance(access.accessor, str)
+            base = self._resolve(access.base, env, line)
+            if not (isinstance(base.type, TupleT) and base.type.maybe):
+                raise UncursedPpError(
+                    "has() needs a '?' tuple field (declared like "
+                    "tuple<$a, $b?>)",
+                    self.filename,
+                    line,
+                )
+            if access.accessor not in base.type.names:
+                raise UncursedPpError(
+                    f"tuple has no element {access.accessor!r} "
+                    f"(has: {', '.join(base.type.names)})",
+                    self.filename,
+                    line,
+                )
+            j = base.type.names.index(access.accessor)
+            if j not in base.type.maybe:
+                raise UncursedPpError(
+                    f"has() needs a '?' field; ${access.accessor} is always "
+                    "present",
+                    self.filename,
+                    line,
+                )
+            size_slot = f"{self.pp('TUPLE_ELEM')}({len(base.type.names)}, {base.c_expr})"
+            return _Binding(
+                f"{self.pp('CAT')}({self._has_probe(base.type, j)}, {size_slot})",
+                TokenT(),
+            )
         if isinstance(expr, ToSeq):
             inner = self._resolve(expr.arg, env, line)
             if isinstance(inner.type, SeqT):
@@ -580,6 +648,7 @@ class _MacroEmitter:
                 )
             if isinstance(inner.type, TupleT):
                 # names are access sugar; the value converts like any tuple
+                self._forbid_maybe(inner.type, "to_seq()", line)
                 return _Binding(
                     f"{self.pp('TUPLE_TO_SEQ')}({inner.c_expr})", SeqT(TokenT())
                 )
@@ -589,6 +658,7 @@ class _MacroEmitter:
         if isinstance(expr, ToTuple):
             inner = self._resolve(expr.arg, env, line)
             if isinstance(inner.type, (VarTupleT, TupleT)):
+                self._forbid_maybe(inner.type, "to_tuple()", line)
                 return inner  # identity
             if isinstance(inner.type, SeqT):
                 return _Binding(
@@ -642,7 +712,10 @@ class _MacroEmitter:
         if isinstance(base.type, VarTupleT):
             # tail-relative for hybrids: [i] must agree with len/iteration
             return _Binding(
-                f"{self.pp('TUPLE_ELEM')}({expr.accessor}, {self._vtuple_view(base)})",
+                self._tuple_value(
+                    f"{self.pp('TUPLE_ELEM')}({expr.accessor}, {self._vtuple_view(base)})",
+                    base.type.elem,
+                ),
                 base.type.elem,
             )
         if not isinstance(base.type, SeqT):
@@ -651,7 +724,8 @@ class _MacroEmitter:
                 self.filename,
                 line,
             )
-        return _Binding(f"{self.pp('SEQ_ELEM')}({expr.accessor}, {base.c_expr})", base.type.elem)
+        elem_expr = f"{self.pp('SEQ_ELEM')}({expr.accessor}, {base.c_expr})"
+        return _Binding(self._tuple_value(elem_expr, base.type.elem), base.type.elem)
 
     # ── conditionals ─────────────────────────────────────────────────
 
@@ -699,7 +773,7 @@ class _MacroEmitter:
         is 1 iff x > k, so > / >= read it directly and < / <= swap branches;
         k below zero constant-folds ("0"/"1" sentinel = always else/then).
         """
-        if isinstance(cond, (IsParen, IsEmpty)):
+        if isinstance(cond, (IsParen, IsEmpty, Has)):
             return self._resolve(cond, env, line).c_expr, False
         if not 0 <= cond.value <= 256:
             raise UncursedPpError(
@@ -736,7 +810,7 @@ class _MacroEmitter:
             elif isinstance(e, Concat):
                 for a in e.args:
                     walk_expr(a)
-            elif isinstance(e, (RemoveParens, Stringize, Len, IsParen, IsEmpty, ToSeq, ToTuple)):
+            elif isinstance(e, (RemoveParens, Stringize, Len, IsParen, IsEmpty, Has, ToSeq, ToTuple)):
                 walk_expr(e.arg)
 
         def loop_names(n: ForEach | Join) -> set[str]:
@@ -768,7 +842,7 @@ class _MacroEmitter:
                     add(n.iterable)
                     walk(n.body, local_bound | loop_names(n))
                 elif isinstance(n, If):
-                    if isinstance(n.cond, (IsParen, IsEmpty)):
+                    if isinstance(n.cond, (IsParen, IsEmpty, Has)):
                         walk_expr(n.cond.arg)
                     else:
                         walk_expr(n.cond.lhs)
@@ -790,6 +864,7 @@ class _MacroEmitter:
         elem: str = "e",
     ) -> _Env:
         loop_env = dict(env)
+        elem = self._tuple_value(elem, elem_type)
         if unpack is not None:
             if not isinstance(elem_type, TupleT):
                 raise UncursedPpError("tuple unpacking needs a seq of tuples", self.filename, node.line)
@@ -990,16 +1065,40 @@ class _MacroEmitter:
         if not use_ap:
             return body, data
 
-        ap = self._add_helper("AP", ", ".join(self.arg(n) for n in ap_params), body)
+        ap_param_names = [self.arg(n) for n in ap_params]
+        norm = isinstance(elem_type, TupleT) and elem_type.has_optional
+        if isinstance(elem_type, TupleT) and elem_type.maybe:
+            ap_param_names.append(self.arg("fsz"))  # hidden size slot
+        ap = self._add_helper("AP", ", ".join(ap_param_names), body)
+        # optional-field elems must normalize one layer EARLY: the scanner
+        # never revisits a name it already passed, so juxtaposition (and
+        # KW_SPREAD) only work on values that arrive as parameters
+        t_ = self.arg("t")
         if not free:
-            return f"{ap} {self.arg('e')}", data
+            if not norm:
+                return f"{ap} {self.arg('e')}", data
+            self.out.helpers.append(
+                _Helper(name=f"{ap}_N", params=t_, body=f"{ap} {t_}")
+            )
+            return f"{ap}_N({self._tuple_value(self.arg('e'), elem_type)})", data
         self.file_state["kw_utils"] = True
         spread = f"{self.config.helper_prefix}KW_SPREAD"
         d_part = self.arg("d") if len(free) == 1 else f"{spread} {self.arg('d')}"
         self.out.helpers.append(
             _Helper(name=f"{ap}_D", params="...", body=f"{ap}(__VA_ARGS__)")
         )
-        return f"{ap}_D({d_part}, {spread} {self.arg('e')})", data
+        if not norm:
+            return f"{ap}_D({d_part}, {spread} {self.arg('e')})", data
+        d_ = self.arg("d")
+        inner_d = d_ if len(free) == 1 else f"{spread} {d_}"
+        self.out.helpers.append(
+            _Helper(
+                name=f"{ap}_P",
+                params=f"{d_}, {t_}",
+                body=f"{ap}_D({inner_d}, {spread} {t_})",
+            )
+        )
+        return f"{ap}_P({self.arg('d')}, {self._tuple_value(self.arg('e'), elem_type)})", data
 
     def _render_chain(self, body: str, sep: str, seq_expr: str, elem_var: str) -> str:
         """Consumption-chain iteration: each member emits the body for one
@@ -1079,6 +1178,69 @@ class _MacroEmitter:
         the extracted tail when named head fields precede it."""
         assert isinstance(binding.type, VarTupleT)
         return self._tail_of(binding) if binding.type.names else binding.c_expr
+
+    def _tuple_norm(self, t: TupleT) -> str:
+        """Size-dispatched normalizer for optional trailing fields: pads
+        a call-site tuple to full width (omitted `= def` fields filled,
+        omitted `?` fields empty, plus a trailing size slot when the
+        shape has `?` fields). CAT(NF_, TUPLE_SIZE(t)) t consumes the
+        argument-pre-expanded tuple by juxtaposition; sizes below the
+        required count land on a mismatched error stub."""
+        key = (t.names, t.defaults, t.maybe)
+        if key in self._norm_helpers:
+            return self._norm_helpers[key]
+        base = f"{self.config.helper_prefix}{self.macro.name}_"
+        name = f"{base}NF{len(self._norm_helpers) + 1}"
+        self._norm_helpers[key] = name
+        total, req = len(t.names), t.required
+        t_, n_ = self.arg("t"), self.arg("n")
+        d = self.out.defines
+        d.append(f"#define {name}({t_}) {name}_D({self.pp('TUPLE_SIZE')}({t_}), {t_})\n")
+        d.append(f"#define {name}_D(...) {name}_I(__VA_ARGS__)\n")
+        d.append(f"#define {name}_I({n_}, {t_}) {name}_ ## {n_} {t_}\n")
+        if req > 1:
+            err = f"{base}ERROR_TOO_FEW_TUPLE_FIELDS"
+            if not self._tuple_err_emitted:
+                self._tuple_err_emitted = True
+                d.append(f"#define {err}({self.arg('need')}, {self.arg('got')})\n")
+            for k in range(1, req):
+                d.append(f"#define {name}_{k}(...) {err}(~)\n")
+        for k in range(req, total + 1):
+            heads = [self.arg(f"f{j}") for j in range(k)]
+            filled = heads + [t.defaults[j] or "" for j in range(k, total)]
+            if t.maybe:
+                filled.append(str(k))
+            d.append(f"#define {name}_{k}({', '.join(heads)}) ({', '.join(filled)})\n")
+        return name
+
+    def _tuple_value(self, expr: str, t: Type | None) -> str:
+        """Normalize a raw tuple value at its binding-creation point when
+        its type carries optional fields; identity otherwise."""
+        if isinstance(t, TupleT) and t.has_optional:
+            return f"{self._tuple_norm(t)}({expr})"
+        return expr
+
+    def _has_probe(self, t: TupleT, j: int) -> str:
+        """0/1 lookup for field-j presence, dispatched by pasting the
+        normalized tuple's size slot: HP<i>_<k> is 1 iff k > j."""
+        key = (t.names, t.defaults, t.maybe, j)
+        if key in self._has_probes:
+            return self._has_probes[key]
+        base = f"{self.config.helper_prefix}{self.macro.name}_"
+        name = f"{base}HP{len(self._has_probes) + 1}_"
+        self._has_probes[key] = name
+        for k in range(t.required, len(t.names) + 1):
+            self.out.defines.append(f"#define {name}{k} {1 if k > j else 0}\n")
+        return name
+
+    def _forbid_maybe(self, t: Type | None, what: str, line: int) -> None:
+        if isinstance(t, TupleT) and t.maybe:
+            raise UncursedPpError(
+                f"{what} cannot take a tuple with '?' fields (an absent "
+                "field has no whole-value form; access fields or use has())",
+                self.filename,
+                line,
+            )
 
     def _isnil(self) -> str:
         """0/1 emptiness probe for a parenthesized value. The argument is
@@ -1250,6 +1412,13 @@ def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
             return expr_whole(e.base)
         if isinstance(e, Concat):
             return any(expr_whole(a) for a in e.args)
+        if isinstance(e, Has):
+            a = e.arg
+            return (
+                isinstance(a, ElemAccess)
+                and isinstance(a.base, VarRef)
+                and a.base.name == name
+            )
         if isinstance(e, (RemoveParens, Stringize, Len, IsParen, IsEmpty, ToSeq, ToTuple)):
             return expr_whole(e.arg)
         return False
@@ -1269,7 +1438,7 @@ def _uses_whole(nodes: list[BodyNode], name: str) -> bool:
                     return True
             if isinstance(n, If):
                 cond_expr = (
-                    n.cond.arg if isinstance(n.cond, (IsParen, IsEmpty)) else n.cond.lhs
+                    n.cond.arg if isinstance(n.cond, (IsParen, IsEmpty, Has)) else n.cond.lhs
                 )
                 if expr_whole(cond_expr) or walk(n.then) or walk(n.else_):
                     return True

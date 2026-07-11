@@ -141,6 +141,15 @@ S{ @join $items as $it with ", ": @if is_paren($it) @then {{$it}} @else ({{$it}}
   (`TL<k>(t) = TL<k>_I t`, `TL<k>_I(f1..fk, ...) = (__VA_ARGS__)`) whose
   result is a plain unbounded tuple — all VarTupleT codegen reuses. At
   least k elements required at the call site; head+tail ≤64.
+- Fixed tuples may declare optional TRAILING fields: `$f = def` (an
+  omitted field takes the default) or `$f?` (truly absent; probe with
+  `has($t.$f)`, access yields zero tokens). Codegen: a size-dispatched
+  normalizer (`CAT(NF_, TUPLE_SIZE(t)) t`, argument-pre-expanded) pads
+  to full width at every binding-creation point; `?` shapes carry a
+  hidden trailing size slot, and has() pastes it onto a 0/1 lookup
+  table. Sizes below the required count land on a mismatched error
+  stub. `?`-tuples have no whole-value form (interp/concat/to_seq
+  reject them). Optional fields exclude hybrid/unbounded tuples.
 - Call-site caveats (documented in README): args with bare commas must be
   parenthesized; named-arg keywords must not be `#define`d at the call site.
 

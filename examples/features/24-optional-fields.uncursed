@@ -1,0 +1,40 @@
+# ── Optional trailing tuple fields ───────────────────────────────────
+#
+# After a tuple's required fields, trailing fields can be optional in
+# two ways:
+#
+#   $field = value   omitted at the call site -> the default fills in
+#   $field?          omitted at the call site -> truly ABSENT
+#
+# For a `?` field, `has($t.$field)` is 1/0 at C compile time, and
+# accessing an absent field expands to zero tokens. The call site
+# passes any prefix: (a), (a, b), (a, b, c) - the width is dispatched
+# when the C compiler expands the macro, like everything else here.
+#
+# Scenario: a register description where the reset value is optional
+# and the access qualifier defaults.
+
+@macro REG($r: tuple<$name, $addr, $qual = volatile, $reset?>)
+enum { {{concat($r.$name, _ADDR)}} = {{$r.$addr}} };
+@if has($r.$reset)
+static {{$r.$qual}} int {{concat($r.$name, _reset)}} = {{$r.$reset}};
+@end
+@endmacro
+
+# All four fields:
+#?  REG((CTRL, 0x40, volatile, 0x1))
+#=>     enum { CTRL_ADDR = 0x40 }; static volatile int CTRL_reset = 0x1;
+
+# Reset omitted - the @if branch vanishes entirely:
+#?  REG((STAT, 0x44))
+#=>     enum { STAT_ADDR = 0x44 };
+
+# It composes: optional-field tuples as seq elements, loop-unpacked.
+@macro FIELDS($fs: seq<tuple<$name, $type = int>>)
+@for ($name, $type) in $fs
+{{$type}} {{$name}};
+@end
+@endmacro
+
+#?  FIELDS(((n))((f, float)))
+#=>     int n; float f;

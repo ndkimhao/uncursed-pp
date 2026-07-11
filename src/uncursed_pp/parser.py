@@ -25,6 +25,7 @@ from .nodes import (
     Expr,
     File,
     ForEach,
+    Has,
     If,
     Interp,
     IsEmpty,
@@ -138,7 +139,37 @@ class _Ast(Transformer[Any, Any]):
         return SeqT(items[0])
 
     def tuple_type(self, items: list[Any]) -> TupleT:
-        return TupleT(items[0])
+        fields = items[0]
+        names = tuple(f[0] for f in fields)
+        if all(default is None and not is_maybe for _, default, is_maybe in fields):
+            return TupleT(names)
+        first_opt = next(
+            i for i, (_, d, m) in enumerate(fields) if d is not None or m
+        )
+        for fname, default, is_maybe in fields[first_opt:]:
+            if default is None and not is_maybe:
+                raise ValueError(
+                    f"required tuple field ${fname} cannot follow an "
+                    "optional one (optional fields go at the end)"
+                )
+        return TupleT(
+            names,
+            defaults=tuple(d for _, d, _m in fields),
+            maybe=tuple(i for i, (_, _d, m) in enumerate(fields) if m),
+        )
+
+    def field_list(self, items: list[Any]) -> list[tuple[str, str | None, bool]]:
+        return list(items)
+
+    def req_field(self, items: list[Any]) -> tuple[str, str | None, bool]:
+        return (str(items[0])[1:], None, False)
+
+    def dfl_field(self, items: list[Any]) -> tuple[str, str | None, bool]:
+        name, default = items
+        return (str(name)[1:], _clean_default(default), False)
+
+    def maybe_field(self, items: list[Any]) -> tuple[str, str | None, bool]:
+        return (str(items[0])[1:], None, True)
 
     def var_tuple_type(self, items: list[Any]) -> VarTupleT:
         return VarTupleT(items[0])
@@ -194,9 +225,10 @@ class _Ast(Transformer[Any, Any]):
     def cond(self, items: list[Any]) -> Cond:
         lhs, op, value = items
         if op is None:
-            if not isinstance(lhs, (IsParen, IsEmpty)):
+            if not isinstance(lhs, (IsParen, IsEmpty, Has)):
                 raise ValueError(
-                    "@if condition must be a comparison, is_paren() or is_empty()"
+                    "@if condition must be a comparison, is_paren(), "
+                    "is_empty() or has()"
                 )
             return lhs
         return Cmp(lhs, str(op), int(value))
@@ -253,6 +285,16 @@ def _build_call(name: str, args: tuple[Expr, ...]) -> Expr:
         if len(args) != 1:
             raise ValueError("is_empty() takes exactly one argument")
         return IsEmpty(args[0])
+    if name == "has":
+        if len(args) != 1:
+            raise ValueError("has() takes exactly one argument")
+        if not (
+            isinstance(args[0], ElemAccess) and isinstance(args[0].accessor, str)
+        ):
+            raise ValueError(
+                "has() takes a tuple field access: has($t.$field)"
+            )
+        return Has(args[0])
     if name == "to_seq":
         if len(args) != 1:
             raise ValueError("to_seq() takes exactly one argument")
@@ -261,7 +303,7 @@ def _build_call(name: str, args: tuple[Expr, ...]) -> Expr:
         if len(args) != 1:
             raise ValueError("to_tuple() takes exactly one argument")
         return ToTuple(args[0])
-    known = "concat, is_empty, is_paren, len, remove_parens, stringize, to_seq, to_tuple"
+    known = "concat, has, is_empty, is_paren, len, remove_parens, stringize, to_seq, to_tuple"
     raise ValueError(f"unknown function: {name}() (known: {known})")
 
 

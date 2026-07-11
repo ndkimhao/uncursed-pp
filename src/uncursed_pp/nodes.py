@@ -16,6 +16,26 @@ class TokenT:
 @dataclass(frozen=True)
 class TupleT:
     names: tuple[str, ...]
+    # aligned with names when any field is optional (else empty):
+    # defaults[i] is the fill value for an omitted `$f = value` field,
+    # None for required fields and `?` fields
+    defaults: tuple[str | None, ...] = ()
+    # indices of `?` fields: truly absent when omitted (an omitted slot
+    # normalizes to zero tokens; query presence with has($t.$f))
+    maybe: tuple[int, ...] = ()
+
+    @property
+    def required(self) -> int:
+        """Number of leading fields the call site must provide."""
+        if not self.defaults:
+            return len(self.names)
+        optional = {i for i, d in enumerate(self.defaults) if d is not None}
+        optional |= set(self.maybe)
+        return min(optional, default=len(self.names))
+
+    @property
+    def has_optional(self) -> bool:
+        return bool(self.defaults) and self.required < len(self.names)
 
 
 @dataclass(frozen=True)
@@ -104,6 +124,14 @@ class IsEmpty:
 
 
 @dataclass(frozen=True)
+class Has:
+    """Presence probe for a `?` tuple field: has($t.$f) is 1 when the
+    call site provided the field, 0 when it is absent."""
+
+    arg: "Expr"
+
+
+@dataclass(frozen=True)
 class ToSeq:
     """Explicit shape conversion: unbounded-tuple value -> seq (hybrids
     convert their tail); identity on values already seq-typed."""
@@ -121,7 +149,7 @@ class ToTuple:
 
 Expr = (
     VarRef | Literal | ElemAccess | Concat | RemoveParens | Stringize
-    | Len | IsParen | IsEmpty | ToSeq | ToTuple
+    | Len | IsParen | IsEmpty | Has | ToSeq | ToTuple
 )
 
 
@@ -135,7 +163,7 @@ class Cmp:
     value: int
 
 
-Cond = Cmp | IsParen | IsEmpty
+Cond = Cmp | IsParen | IsEmpty | Has
 
 
 # ── Body nodes ───────────────────────────────────────────────────────

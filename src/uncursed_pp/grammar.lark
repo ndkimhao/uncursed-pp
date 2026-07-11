@@ -18,11 +18,17 @@ DEFAULT: /[^,()\s][^,()]*/
 type: "seq" "<" type ">"                        -> seq_type
     | "tuple" "<" type "..." ">"                -> var_tuple_type
     | "tuple" "<" name_list "," type "..." ">"  -> hybrid_tuple_type
-    | "tuple" "<" name_list ">"                 -> tuple_type
+    | "tuple" "<" field_list ">"                -> tuple_type
     | "tuple"                                   -> bare_var_tuple_type
     | "token"                                   -> token_type
     | "variadic" ["<" type ">"]                 -> variadic_type
 name_list: DNAME ("," DNAME)*
+field_list: field ("," field)*
+field: DNAME "=" [FDEFAULT] -> dfl_field
+     | DNAME "?"            -> maybe_field
+     | DNAME                -> req_field
+// like DEFAULT, but stops before the type's closing '>'
+FDEFAULT: /[^,()<>\s][^,()<>]*/
 
 for_line: "for" for_target "in" DNAME
 for_target: "(" name_list ")" -> unpack_target

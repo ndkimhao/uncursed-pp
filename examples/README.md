@@ -40,6 +40,7 @@ call-site rules that apply to it:
 | 21 | conversions — `to_seq()`, `to_tuple()`, and the automatic ones |
 | 22 | `@#` — raw preprocessing-directive passthrough |
 | 23 | meta-templating — Jinja2 at generation time |
+| 24 | optional tuple fields — trailing `= default` and `?` fields |
 
 `combined/` shows features composing into realistic artifacts: a bitflag
 system, a finite state machine, and a unit-test registry — each driven

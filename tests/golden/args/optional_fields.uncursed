@@ -1,0 +1,52 @@
+# Optional trailing tuple fields. `$f = def` fills a default when the
+# call site omits the field; `$f?` is truly absent when omitted -
+# has($t.$f) probes presence, and accessing an absent field yields
+# zero tokens. Normalization is size-dispatched at C compile time.
+@macro FIELD($f: tuple<$name, $type = int, $qual = >)
+{{$f.$qual}} {{$f.$type}} {{$f.$name}};
+@endmacro
+
+@macro DECL($t: tuple<$name, $init?>)
+@if has($t.$init)
+int {{$t.$name}} = {{$t.$init}};
+@else
+int {{$t.$name}};
+@end
+@endmacro
+
+@macro EDGE($t: tuple<$a, $b, $c = 1>)
+edge({{$t.$a}}, {{$t.$b}}, {{$t.$c}});
+@endmacro
+
+# composition: optional-field tuples as seq elements, unpacked in loops
+@macro ROWS($fs: seq<tuple<$name, $type = int>>)
+@for ($name, $type) in $fs
+{{$type}} {{$name}};
+@end
+@endmacro
+
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
+#?  FIELD((x))
+#=>     int x;
+
+#?  FIELD((y, float))
+#=>     float y;
+
+#?  FIELD((z, char, const))
+#=>     const char z;
+
+#?  DECL((a, 42))
+#=>     int a = 42;
+
+#?  DECL((b))
+#=>     int b;
+
+#?  ROWS(((a))((b, float)))
+#=>     int a; float b;
+
+#?  EDGE((p, q))
+#=>     edge(p, q, 1);
+
+# fewer fields than required is a hard preprocessor error, never
+# silent garbage
+#?! EDGE((only))

@@ -102,6 +102,7 @@ definitions. The body is raw C text; control flow uses `@`-directives;
 | Named args | `@macro W($name, named $WIDTH = 100)` — call `W(n, WIDTH(20))`, any order/subset; `required named $HOST` must appear |
 | Raw directives | `@#include <stdint.h>` / `@#define CAP 16` — passed through to the header verbatim |
 | Meta-templating | Jinja2 with `<<% %>>` / `<<{ }>>` / `<<# #>>` delimiters runs before the DSL parser — generate the macros themselves programmatically |
+| Optional tuple fields | `tuple<$n, $t = int, $init?>` — call sites pass any prefix; `has($t.$init)` probes presence at C compile time |
 | Variadic | `@macro F($items: variadic)` — call `F(a, (b,c), d)`; body sees a seq. `variadic<tuple<$t, $n>>` gives single-paren tuple call sites: `F((int, x), (float, y))` |
 
 Within a loop over `seq<tuple<...>>`, the tuple's element names are bound
