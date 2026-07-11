@@ -1,0 +1,36 @@
+# _or_token normalization must ride BOTH loop strategies: sizes up to
+# loop_chain_limit take the consumption chain, larger ones the
+# SEQ_FOR_EACH fallback. K=4 here so the specs can cross the boundary
+# cheaply (same trick as chain_limit.uncursed).
+@pragma loop_chain_limit 4
+
+@macro TL($ms: variadic<tuple_or_token<$m, $v = 0>>)
+@for ($m, $v) in $ms
+t({{$m}}, {{$v}});
+@end
+@endmacro
+
+@macro SL($xs: seq_or_token<token>)
+@for $x in $xs
+s({{$x}});
+@end
+n={{len($xs)}}
+@endmacro
+
+# ── invocation specs (verified through cc -E by test_e2e_specs) ──
+# within the chain (3 <= 4):
+#?  TL(a, (b, 2), c)
+#=>     t(a, 0); t(b, 2); t(c, 0);
+
+# past the limit (6 > 4): the SEQ_FOR_EACH fallback normalizes too
+#?  TL(a, (b, 2), c, d, (e, 5), f)
+#=>     t(a, 0); t(b, 2); t(c, 0); t(d, 0); t(e, 5); t(f, 0);
+
+#?  SL(solo)
+#=>     s(solo); n=1
+
+#?  SL((a)(b)(c))
+#=>     s(a); s(b); s(c); n=3
+
+#?  SL((a)(b)(c)(d)(e)(f))
+#=>     s(a); s(b); s(c); s(d); s(e); s(f); n=6
